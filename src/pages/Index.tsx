@@ -1,12 +1,41 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from 'react';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
+import { MarketsPage } from '@/pages/MarketsPage';
+import { PortfolioPage } from '@/pages/PortfolioPage';
+import MarketDataProvider from '@/services/MarketDataProvider';
+
+type Page = 'markets' | 'portfolio';
 
 const Index = () => {
+  const [currentPage, setCurrentPage] = useState<Page>('markets');
+  const [userBalance, setUserBalance] = useState(0);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      const portfolio = await MarketDataProvider.getUserPortfolio();
+      setUserBalance(portfolio.balance);
+    };
+    fetchBalance();
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header
+        balance={userBalance}
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
+      />
+
+      <main className="flex-1 container mx-auto px-4 py-8">
+        {currentPage === 'markets' ? (
+          <MarketsPage userBalance={userBalance} />
+        ) : (
+          <PortfolioPage />
+        )}
+      </main>
+
+      <Footer />
     </div>
   );
 };

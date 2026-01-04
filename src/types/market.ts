@@ -10,6 +10,12 @@ export interface MarketLimits {
   maxBuy: number;
 }
 
+export interface OddsHistoryPoint {
+  timestamp: Date;
+  yesPrice: number;
+  noPrice: number;
+}
+
 export interface MarketEvent {
   id: string;
   title: string;
@@ -24,6 +30,7 @@ export interface MarketEvent {
   lastUpdatedAt: Date;
   volume?: number;
   description?: string;
+  settlementRules?: string[];
 }
 
 export interface UserContract {
@@ -45,6 +52,14 @@ export interface Transaction {
   eventTitle?: string;
   outcome?: 'YES' | 'NO';
   createdAt: Date;
+}
+
+export interface Comment {
+  id: string;
+  author: string;
+  content: string;
+  createdAt: Date;
+  likes: number;
 }
 
 export interface UserPortfolio {

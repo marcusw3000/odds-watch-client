@@ -92,6 +92,17 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
         </div>
       </div>
 
+      {/* View Details Button */}
+      {onViewDetails && (
+        <button
+          className="w-full py-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-accent/50 transition-colors flex items-center justify-center gap-1 border-t border-border"
+          onClick={() => onViewDetails(event.id)}
+        >
+          Ver detalhes
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+
       {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-0 border-t border-border">
         <Button
@@ -121,16 +132,6 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
           Comprar NÃO
         </Button>
       </div>
-
-      {/* View Details Link */}
-      {onViewDetails && (
-        <button
-          className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onViewDetails(event.id)}
-        >
-          <ChevronRight className="h-5 w-5 text-muted-foreground hover:text-foreground" />
-        </button>
-      )}
     </div>
   );
 }

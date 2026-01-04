@@ -42,6 +42,10 @@ export function PortfolioPage() {
     fetchPortfolio(false);
   };
 
+  const handleContractSold = () => {
+    fetchPortfolio(false);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -126,7 +130,11 @@ export function PortfolioPage() {
         </TabsList>
 
         <TabsContent value="active" className="mt-6">
-          <ContractsList contracts={portfolio.contracts} type="active" />
+          <ContractsList 
+            contracts={portfolio.contracts} 
+            type="active" 
+            onContractSold={handleContractSold}
+          />
         </TabsContent>
 
         <TabsContent value="settled" className="mt-6">

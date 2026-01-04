@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import MarketDataProvider from '@/services/MarketDataProvider';
@@ -10,11 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
-interface MarketsPageProps {
+interface LayoutContext {
   userBalance: number;
+  setUserBalance: (balance: number) => void;
 }
 
-export function MarketsPage({ userBalance }: MarketsPageProps) {
+export function MarketsPage() {
+  const { userBalance } = useOutletContext<LayoutContext>();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<MarketEvent[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -62,6 +66,10 @@ export function MarketsPage({ userBalance }: MarketsPageProps) {
       setSelectedEvent(event);
       setSelectedOutcome(outcome);
     }
+  };
+
+  const handleViewDetails = (eventId: string) => {
+    navigate(`/market/${eventId}`);
   };
 
   const handleCloseModal = () => {
@@ -173,7 +181,11 @@ export function MarketsPage({ userBalance }: MarketsPageProps) {
               className="animate-fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <MarketCard event={event} onBuy={handleBuy} />
+              <MarketCard 
+                event={event} 
+                onBuy={handleBuy}
+                onViewDetails={handleViewDetails}
+              />
             </div>
           ))}
         </div>

@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingDown, Calculator } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Clock, TrendingDown, Calculator, Zap } from 'lucide-react';
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
 import { cn } from '@/lib/utils';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
+import { TradeQuote } from '@/services/LMSRCalculator';
 
 interface SellModalProps {
   contract: UserContract;
   currentMarketPrice: number;
   onClose: () => void;
-  onConfirm: (currentPrice: number) => Promise<void>;
+  onConfirm: (minValue: number) => Promise<void>;
   onRefreshPrice: () => Promise<number>;
 }
 
@@ -22,7 +24,7 @@ export function SellModal({
   onConfirm,
   onRefreshPrice,
 }: SellModalProps) {
-  const [lockedPrice, setLockedPrice] = useState(currentMarketPrice);
+  const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(PRICE_VALIDITY_SECONDS);
   const [priceExpired, setPriceExpired] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -31,9 +33,24 @@ export function SellModal({
 
   const isYes = contract.outcome === 'YES';
   const purchaseCost = (contract.priceAtPurchase / 100) * contract.quantity;
-  const saleValue = (lockedPrice / 100) * contract.quantity;
+
+  // Fetch sell quote on mount and when refreshing
+  const fetchQuote = useCallback(async () => {
+    const newQuote = await MarketDataProvider.getSellQuote(
+      contract.eventId,
+      contract.outcome,
+      contract.quantity
+    );
+    setQuote(newQuote);
+  }, [contract.eventId, contract.outcome, contract.quantity]);
+
+  useEffect(() => {
+    fetchQuote();
+  }, [fetchQuote]);
+
+  const saleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
   const profitLoss = saleValue - purchaseCost;
-  const profitLossPercent = ((profitLoss / purchaseCost) * 100).toFixed(1);
+  const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(1) : '0.0';
 
   // Timer countdown
   useEffect(() => {
@@ -57,8 +74,8 @@ export function SellModal({
     setError(null);
     
     try {
-      const newPrice = await onRefreshPrice();
-      setLockedPrice(newPrice);
+      await onRefreshPrice();
+      await fetchQuote();
       setTimeRemaining(PRICE_VALIDITY_SECONDS);
       setPriceExpired(false);
     } catch {
@@ -66,7 +83,7 @@ export function SellModal({
     } finally {
       setIsRefreshing(false);
     }
-  }, [onRefreshPrice]);
+  }, [onRefreshPrice, fetchQuote]);
 
   const handleConfirm = async () => {
     if (priceExpired) {
@@ -74,11 +91,16 @@ export function SellModal({
       return;
     }
 
+    if (!quote) {
+      setError('Erro ao calcular valor. Tente atualizar.');
+      return;
+    }
+
     setIsConfirming(true);
     setError(null);
 
     try {
-      await onConfirm(lockedPrice);
+      await onConfirm(quote.cost);
     } catch {
       setError('Erro ao processar venda. Tente novamente.');
     } finally {
@@ -123,8 +145,8 @@ export function SellModal({
               <p className="text-sm text-muted-foreground mb-1">Preço de mercado</p>
               <OddsBadge
                 type={contract.outcome}
-                price={lockedPrice}
-                probability={lockedPrice}
+                price={currentMarketPrice}
+                probability={currentMarketPrice}
                 size="md"
                 animated={isRefreshing}
               />
@@ -175,10 +197,44 @@ export function SellModal({
                 <span className="text-muted-foreground">Custo de compra</span>
                 <span className="font-mono font-medium">R${purchaseCost.toFixed(2)}</span>
               </div>
+              {quote && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Preço médio de venda</span>
+                  <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Valor de venda</span>
                 <span className="font-mono font-medium">R${saleValue.toFixed(2)}</span>
               </div>
+
+              {/* Price Impact Warning */}
+              {quote && Math.abs(quote.priceImpact) > 0.5 && (
+                <div className={cn(
+                  "flex items-center gap-2 p-2 rounded-md mt-2",
+                  Math.abs(quote.priceImpact) > 5 
+                    ? "bg-warning/20 text-warning" 
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  <Zap className="h-3.5 w-3.5" />
+                  <span className="text-xs">
+                    Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(1)}%
+                  </span>
+                </div>
+              )}
+
+              {/* New prices after trade */}
+              {quote && (
+                <div className="pt-2 border-t border-border text-xs text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Preço após venda:</span>
+                    <span className="font-mono">
+                      SIM: {quote.newYesPrice}¢ | NÃO: {quote.newNoPrice}¢
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <TrendingDown className="h-3.5 w-3.5" />
@@ -210,7 +266,7 @@ export function SellModal({
             size="lg"
             className="w-full"
             onClick={handleConfirm}
-            disabled={priceExpired || isConfirming}
+            disabled={priceExpired || isConfirming || !quote}
           >
             {isConfirming ? (
               <>

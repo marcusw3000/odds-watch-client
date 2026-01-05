@@ -88,22 +88,24 @@ export function MarketsPage() {
     return updatedEvent;
   };
 
-  const handleConfirmPurchase = async (quantity: number, lockedPrice: number) => {
+  const handleConfirmPurchase = async (shares: number, maxCost: number) => {
     if (!selectedEvent) return;
 
     const result = await MarketDataProvider.purchaseContract(
       selectedEvent.id,
       selectedOutcome,
-      quantity,
-      lockedPrice
+      shares,
+      maxCost
     );
 
     if (result.success) {
       toast({
         title: 'Compra realizada!',
-        description: `Você comprou ${quantity} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'}.`,
+        description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
       });
       handleCloseModal();
+      // Refresh events to show updated odds
+      fetchData(false);
     } else {
       throw new Error(result.message);
     }

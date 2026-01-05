@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, Zap } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { OddsBadge } from './OddsBadge';
 import { cn } from '@/lib/utils';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
+import { TradeQuote } from '@/services/LMSRCalculator';
 
 interface PurchaseModalProps {
   event: MarketEvent;
   selectedOutcome: 'YES' | 'NO';
   userBalance: number;
   onClose: () => void;
-  onConfirm: (quantity: number, lockedPrice: number) => Promise<void>;
+  onConfirm: (shares: number, maxCost: number) => Promise<void>;
   onRefreshPrice: () => Promise<MarketEvent | null>;
 }
 
@@ -25,8 +27,8 @@ export function PurchaseModal({
   onConfirm,
   onRefreshPrice,
 }: PurchaseModalProps) {
-  const [quantity, setQuantity] = useState<string>('');
-  const [lockedPrice, setLockedPrice] = useState(event.outcomes[selectedOutcome].price);
+  const [shares, setShares] = useState<string>('');
+  const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(PRICE_VALIDITY_SECONDS);
   const [priceExpired, setPriceExpired] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -34,10 +36,23 @@ export function PurchaseModal({
   const [error, setError] = useState<string | null>(null);
 
   const isYes = selectedOutcome === 'YES';
-  const quantityNum = parseFloat(quantity) || 0;
-  const totalCost = (lockedPrice / 100) * quantityNum;
-  const potentialProfit = quantityNum - totalCost;
-  const contracts = Math.floor((quantityNum * 100) / lockedPrice);
+  const sharesNum = parseFloat(shares) || 0;
+  const currentPrice = event.outcomes[selectedOutcome].price;
+
+  // Fetch quote when shares change
+  useEffect(() => {
+    if (sharesNum <= 0) {
+      setQuote(null);
+      return;
+    }
+
+    const fetchQuote = async () => {
+      const newQuote = await MarketDataProvider.getQuote(event.id, selectedOutcome, sharesNum);
+      setQuote(newQuote);
+    };
+
+    fetchQuote();
+  }, [sharesNum, event.id, selectedOutcome]);
 
   // Timer countdown
   useEffect(() => {
@@ -61,18 +76,20 @@ export function PurchaseModal({
     setError(null);
     
     try {
-      const updatedEvent = await onRefreshPrice();
-      if (updatedEvent) {
-        setLockedPrice(updatedEvent.outcomes[selectedOutcome].price);
-        setTimeRemaining(PRICE_VALIDITY_SECONDS);
-        setPriceExpired(false);
+      await onRefreshPrice();
+      // Re-fetch quote with new prices
+      if (sharesNum > 0) {
+        const newQuote = await MarketDataProvider.getQuote(event.id, selectedOutcome, sharesNum);
+        setQuote(newQuote);
       }
+      setTimeRemaining(PRICE_VALIDITY_SECONDS);
+      setPriceExpired(false);
     } catch {
       setError('Erro ao atualizar preço. Tente novamente.');
     } finally {
       setIsRefreshing(false);
     }
-  }, [onRefreshPrice, selectedOutcome]);
+  }, [onRefreshPrice, event.id, selectedOutcome, sharesNum]);
 
   const handleConfirm = async () => {
     if (priceExpired) {
@@ -80,17 +97,22 @@ export function PurchaseModal({
       return;
     }
 
-    if (quantityNum < event.limits.minBuy) {
+    if (!quote || sharesNum <= 0) {
+      setError('Insira uma quantidade válida.');
+      return;
+    }
+
+    if (quote.cost < event.limits.minBuy) {
       setError(`Valor mínimo: R$${event.limits.minBuy}`);
       return;
     }
 
-    if (quantityNum > event.limits.maxBuy) {
+    if (quote.cost > event.limits.maxBuy) {
       setError(`Valor máximo: R$${event.limits.maxBuy}`);
       return;
     }
 
-    if (totalCost > userBalance) {
+    if (quote.cost > userBalance) {
       setError('Saldo insuficiente.');
       return;
     }
@@ -99,7 +121,7 @@ export function PurchaseModal({
     setError(null);
 
     try {
-      await onConfirm(quantityNum, lockedPrice);
+      await onConfirm(sharesNum, quote.cost);
     } catch {
       setError('Erro ao processar compra. Tente novamente.');
     } finally {
@@ -107,7 +129,7 @@ export function PurchaseModal({
     }
   };
 
-  const quickAmounts = [50, 100, 250, 500];
+  const quickShares = [10, 25, 50, 100];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
@@ -145,8 +167,8 @@ export function PurchaseModal({
               <p className="text-sm text-muted-foreground mb-1">Preço atual</p>
               <OddsBadge
                 type={selectedOutcome}
-                price={lockedPrice}
-                probability={lockedPrice}
+                price={currentPrice}
+                probability={currentPrice}
                 size="md"
                 animated={isRefreshing}
               />
@@ -185,38 +207,38 @@ export function PurchaseModal({
             </Button>
           </div>
 
-          {/* Quantity Input */}
+          {/* Shares Input */}
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">
-              Valor a investir (R$)
+              Quantidade de contratos
             </label>
             <Input
               type="number"
-              value={quantity}
+              value={shares}
               onChange={(e) => {
-                setQuantity(e.target.value);
+                setShares(e.target.value);
                 setError(null);
               }}
-              placeholder={`Mín: R$${event.limits.minBuy} | Máx: R$${event.limits.maxBuy}`}
+              placeholder="Quantos contratos deseja comprar?"
               className="h-12 text-lg font-mono"
             />
             <div className="flex gap-2 mt-3">
-              {quickAmounts.map((amt) => (
+              {quickShares.map((amt) => (
                 <Button
                   key={amt}
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => setQuantity(String(amt))}
+                  onClick={() => setShares(String(amt))}
                 >
-                  R${amt}
+                  {amt}
                 </Button>
               ))}
             </div>
           </div>
 
-          {/* Summary */}
-          {quantityNum > 0 && (
+          {/* Summary with LMSR data */}
+          {quote && sharesNum > 0 && (
             <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Calculator className="h-4 w-4" />
@@ -226,19 +248,49 @@ export function PurchaseModal({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Contratos</span>
-                  <span className="font-mono font-medium">{contracts}</span>
+                  <span className="font-mono font-medium">{sharesNum}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Preço médio</span>
+                  <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Custo total</span>
-                  <span className="font-mono font-medium">R${totalCost.toFixed(2)}</span>
+                  <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
                 </div>
+                
+                {/* Price Impact Warning */}
+                {Math.abs(quote.priceImpact) > 0.5 && (
+                  <div className={cn(
+                    "flex items-center gap-2 p-2 rounded-md mt-2",
+                    quote.priceImpact > 5 
+                      ? "bg-warning/20 text-warning" 
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    <Zap className="h-3.5 w-3.5" />
+                    <span className="text-xs">
+                      Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+
+                {/* New prices after trade */}
+                <div className="pt-2 border-t border-border text-xs text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Preço após compra:</span>
+                    <span className="font-mono">
+                      SIM: {quote.newYesPrice}¢ | NÃO: {quote.newNoPrice}¢
+                    </span>
+                  </div>
+                </div>
+
                 <div className="flex justify-between pt-2 border-t border-border">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <TrendingUp className="h-3.5 w-3.5" />
                     Lucro potencial
                   </span>
                   <span className="font-mono font-bold text-success">
-                    +R${potentialProfit.toFixed(2)}
+                    +R${(sharesNum - quote.cost).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -265,15 +317,17 @@ export function PurchaseModal({
             size="lg"
             className="w-full"
             onClick={handleConfirm}
-            disabled={priceExpired || isConfirming || quantityNum <= 0}
+            disabled={priceExpired || isConfirming || !quote || sharesNum <= 0}
           >
             {isConfirming ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                 Processando...
               </>
+            ) : quote ? (
+              <>Confirmar Compra - R${quote.cost.toFixed(2)}</>
             ) : (
-              <>Confirmar Compra - R${totalCost.toFixed(2)}</>
+              <>Insira quantidade</>
             )}
           </Button>
           

@@ -1,17 +1,56 @@
-import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment } from '@/types/market';
+import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, LMSRState } from '@/types/market';
+import { 
+  getPriceYes, 
+  getPriceNo, 
+  getQuote, 
+  getSellQuote, 
+  executeBuy, 
+  executeSell,
+  initializeLMSR,
+  TradeQuote,
+} from './LMSRCalculator';
+
+// Helper to create initial LMSR state with target price
+function createLMSRState(initialYesPrice: number, liquidity: number = 100): LMSRState {
+  return initializeLMSR(initialYesPrice, liquidity);
+}
+
+// Store LMSR states separately to allow mutations
+const lmsrStates: Record<string, LMSRState> = {
+  'evt-001': createLMSRState(65, 100),
+  'evt-002': createLMSRState(50, 100),
+  'evt-003': createLMSRState(35, 80),
+  'evt-004': createLMSRState(72, 120),
+  'evt-005': createLMSRState(42, 150),
+};
+
+// Get current prices from LMSR state
+function getOutcomesFromLMSR(eventId: string): { YES: { price: number; probability: number }; NO: { price: number; probability: number } } {
+  const state = lmsrStates[eventId];
+  if (!state) {
+    return {
+      YES: { price: 50, probability: 50 },
+      NO: { price: 50, probability: 50 },
+    };
+  }
+  
+  const yesPrice = getPriceYes(state);
+  const noPrice = getPriceNo(state);
+  
+  return {
+    YES: { price: yesPrice, probability: yesPrice },
+    NO: { price: noPrice, probability: noPrice },
+  };
+}
 
 // Mock data - simula dados que virão de uma API/dashboard admin
-const mockEvents: MarketEvent[] = [
+const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
   {
     id: 'evt-001',
     title: 'O Banco Central vai reduzir a taxa Selic até dezembro?',
     category: 'Economia',
     expiryAt: new Date('2024-12-31T23:59:59'),
     status: 'OPEN',
-    outcomes: {
-      YES: { price: 65, probability: 65 },
-      NO: { price: 35, probability: 35 },
-    },
     limits: { minBuy: 10, maxBuy: 5000 },
     lastUpdatedAt: new Date(),
     volume: 125430,
@@ -29,10 +68,6 @@ const mockEvents: MarketEvent[] = [
     category: 'Câmbio',
     expiryAt: new Date('2024-12-31T23:59:59'),
     status: 'OPEN',
-    outcomes: {
-      YES: { price: 50, probability: 50 },
-      NO: { price: 50, probability: 50 },
-    },
     limits: { minBuy: 10, maxBuy: 10000 },
     lastUpdatedAt: new Date(),
     volume: 89750,
@@ -50,10 +85,6 @@ const mockEvents: MarketEvent[] = [
     category: 'Esportes',
     expiryAt: new Date('2024-08-11T23:59:59'),
     status: 'OPEN',
-    outcomes: {
-      YES: { price: 35, probability: 35 },
-      NO: { price: 65, probability: 65 },
-    },
     limits: { minBuy: 5, maxBuy: 2000 },
     lastUpdatedAt: new Date(),
     volume: 45200,
@@ -71,10 +102,6 @@ const mockEvents: MarketEvent[] = [
     category: 'Economia',
     expiryAt: new Date('2025-01-15T23:59:59'),
     status: 'OPEN',
-    outcomes: {
-      YES: { price: 72, probability: 72 },
-      NO: { price: 28, probability: 28 },
-    },
     limits: { minBuy: 10, maxBuy: 8000 },
     lastUpdatedAt: new Date(),
     volume: 203100,
@@ -92,10 +119,6 @@ const mockEvents: MarketEvent[] = [
     category: 'Mercado',
     expiryAt: new Date('2024-12-30T18:00:00'),
     status: 'OPEN',
-    outcomes: {
-      YES: { price: 42, probability: 42 },
-      NO: { price: 58, probability: 58 },
-    },
     limits: { minBuy: 10, maxBuy: 15000 },
     lastUpdatedAt: new Date(),
     volume: 312500,
@@ -109,35 +132,56 @@ const mockEvents: MarketEvent[] = [
   },
 ];
 
-// Mock histórico de odds (últimos 30 dias)
+// Build full events with dynamic LMSR-based outcomes
+function buildMarketEvents(): MarketEvent[] {
+  return mockEventsBase.map(base => ({
+    ...base,
+    outcomes: getOutcomesFromLMSR(base.id),
+    lmsr: lmsrStates[base.id] || createLMSRState(50),
+    lastUpdatedAt: new Date(),
+  }));
+}
+
+// Mock histórico de odds (últimos 30 dias) - now simulates LMSR trades
 function generateOddsHistory(eventId: string): OddsHistoryPoint[] {
-  const event = mockEvents.find(e => e.id === eventId);
-  if (!event) return [];
+  const state = lmsrStates[eventId];
+  if (!state) return [];
 
   const history: OddsHistoryPoint[] = [];
   const now = new Date();
-  let yesPrice = event.outcomes.YES.price;
-
+  
+  // Simulate historical state evolution
+  let simState = { ...state };
+  const currentYes = getPriceYes(simState);
+  
+  // Start from a random point and evolve to current
+  let historicalYes = currentYes + (Math.random() - 0.5) * 30;
+  historicalYes = Math.max(10, Math.min(90, historicalYes));
+  
   for (let i = 30; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
     
-    // Simula variação natural
-    const variation = (Math.random() - 0.5) * 8;
-    yesPrice = Math.max(10, Math.min(90, yesPrice + variation));
+    // Gradually move towards current price
+    const progress = 1 - (i / 30);
+    const targetYes = historicalYes + (currentYes - historicalYes) * progress;
+    
+    // Add some noise
+    const noise = (Math.random() - 0.5) * 5;
+    const yesPrice = Math.max(5, Math.min(95, Math.round(targetYes + noise)));
     
     history.push({
       timestamp: date,
-      yesPrice: Math.round(yesPrice),
-      noPrice: 100 - Math.round(yesPrice),
+      yesPrice,
+      noPrice: 100 - yesPrice,
     });
   }
 
-  // Último ponto é o preço atual
+  // Last point is exactly current price
   history[history.length - 1] = {
     timestamp: now,
-    yesPrice: event.outcomes.YES.price,
-    noPrice: event.outcomes.NO.price,
+    yesPrice: getPriceYes(state),
+    noPrice: getPriceNo(state),
   };
 
   return history;
@@ -224,76 +268,39 @@ let mockUserPortfolio: UserPortfolio = {
   ],
 };
 
-// Simula variação natural de odds (±1-3 pontos)
-function simulateOddsVariation(event: MarketEvent): MarketEvent {
-  const variation = (Math.random() - 0.5) * 6; // -3 a +3
-  let newYesPrice = Math.round(event.outcomes.YES.price + variation);
-  
-  // Mantém odds entre 5 e 95
-  newYesPrice = Math.max(5, Math.min(95, newYesPrice));
-  const newNoPrice = 100 - newYesPrice;
-  
-  return {
-    ...event,
-    outcomes: {
-      YES: { price: newYesPrice, probability: newYesPrice },
-      NO: { price: newNoPrice, probability: newNoPrice },
-    },
-    lastUpdatedAt: new Date(),
-  };
-}
-
 // Provider público - cliente só pode LER dados
 export const MarketDataProvider = {
   // Busca todos os eventos
   async getEvents(): Promise<MarketEvent[]> {
-    // Simula latência de rede
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Retorna eventos com pequena variação para simular mercado dinâmico
-    return mockEvents.map(event => ({
-      ...event,
-      lastUpdatedAt: new Date(),
-    }));
+    return buildMarketEvents();
   },
 
   // Busca evento específico por ID
   async getEventById(id: string): Promise<MarketEvent | null> {
     await new Promise(resolve => setTimeout(resolve, 200));
-    
-    const event = mockEvents.find(e => e.id === id);
-    if (!event) return null;
-    
-    return simulateOddsVariation(event);
+    const events = buildMarketEvents();
+    return events.find(e => e.id === id) || null;
   },
 
   // Busca odds atualizadas (simula refresh)
   async refreshOdds(eventId: string): Promise<MarketEvent | null> {
     await new Promise(resolve => setTimeout(resolve, 150));
-    
-    const event = mockEvents.find(e => e.id === eventId);
-    if (!event) return null;
-    
-    return simulateOddsVariation(event);
+    const events = buildMarketEvents();
+    return events.find(e => e.id === eventId) || null;
   },
 
   // Busca eventos por categoria
   async getEventsByCategory(category: string): Promise<MarketEvent[]> {
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return mockEvents
-      .filter(e => e.category.toLowerCase() === category.toLowerCase())
-      .map(event => ({
-        ...event,
-        lastUpdatedAt: new Date(),
-      }));
+    return buildMarketEvents()
+      .filter(e => e.category.toLowerCase() === category.toLowerCase());
   },
 
   // Busca categorias disponíveis
   async getCategories(): Promise<string[]> {
     await new Promise(resolve => setTimeout(resolve, 100));
-    
-    const categories = [...new Set(mockEvents.map(e => e.category))];
+    const categories = [...new Set(mockEventsBase.map(e => e.category))];
     return categories;
   },
 
@@ -312,11 +319,10 @@ export const MarketDataProvider = {
   // Busca mercados para autocomplete
   async searchEvents(query: string): Promise<MarketEvent[]> {
     await new Promise(resolve => setTimeout(resolve, 100));
-    
     if (!query.trim()) return [];
     
     const lowerQuery = query.toLowerCase();
-    return mockEvents.filter(e => 
+    return buildMarketEvents().filter(e => 
       e.title.toLowerCase().includes(lowerQuery) ||
       e.category.toLowerCase().includes(lowerQuery)
     );
@@ -328,16 +334,49 @@ export const MarketDataProvider = {
     return { ...mockUserPortfolio };
   },
 
-  // Simula compra de contrato (retorna sucesso/falha)
+  // Get quote for buying shares (LMSR-based)
+  async getQuote(
+    eventId: string,
+    outcome: 'YES' | 'NO',
+    shares: number
+  ): Promise<TradeQuote | null> {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const state = lmsrStates[eventId];
+    if (!state) return null;
+    
+    return getQuote(state, outcome, shares);
+  },
+
+  // Get quote for selling shares (LMSR-based)
+  async getSellQuote(
+    eventId: string,
+    outcome: 'YES' | 'NO',
+    shares: number
+  ): Promise<TradeQuote | null> {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const state = lmsrStates[eventId];
+    if (!state) return null;
+    
+    return getSellQuote(state, outcome, shares);
+  },
+
+  // Compra de contrato usando LMSR
   async purchaseContract(
     eventId: string,
     outcome: 'YES' | 'NO',
-    quantity: number,
-    lockedPrice: number
-  ): Promise<{ success: boolean; message: string; contract?: UserContract }> {
+    shares: number,
+    maxCost: number // Maximum the user is willing to pay
+  ): Promise<{ success: boolean; message: string; contract?: UserContract; quote?: TradeQuote }> {
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const event = mockEvents.find(e => e.id === eventId);
+    const state = lmsrStates[eventId];
+    if (!state) {
+      return { success: false, message: 'Evento não encontrado.' };
+    }
+    
+    const event = buildMarketEvents().find(e => e.id === eventId);
     if (!event) {
       return { success: false, message: 'Evento não encontrado.' };
     }
@@ -346,41 +385,43 @@ export const MarketDataProvider = {
       return { success: false, message: 'Este mercado não está aberto para negociação.' };
     }
     
-    const currentPrice = event.outcomes[outcome].price;
-    const priceDiff = Math.abs(currentPrice - lockedPrice);
+    // Get fresh quote
+    const quote = getQuote(state, outcome, shares);
     
-    // Se preço mudou mais de 5 pontos, rejeita
-    if (priceDiff > 5) {
+    // Check if cost is within tolerance (5% slippage protection)
+    if (quote.cost > maxCost * 1.05) {
       return { 
         success: false, 
-        message: 'O preço mudou significativamente. Por favor, atualize e tente novamente.' 
+        message: 'O preço mudou significativamente. Por favor, atualize e tente novamente.',
+        quote,
       };
     }
     
-    const totalCost = (lockedPrice / 100) * quantity;
-    
-    if (totalCost > mockUserPortfolio.balance) {
-      return { success: false, message: 'Saldo insuficiente.' };
+    if (quote.cost > mockUserPortfolio.balance) {
+      return { success: false, message: 'Saldo insuficiente.', quote };
     }
+    
+    // Execute the trade - update LMSR state
+    lmsrStates[eventId] = executeBuy(state, outcome, shares);
     
     const newContract: UserContract = {
       id: `ctr-${Date.now()}`,
       eventId,
       eventTitle: event.title,
       outcome,
-      quantity,
-      priceAtPurchase: lockedPrice,
+      quantity: shares,
+      priceAtPurchase: quote.avgPrice,
       purchasedAt: new Date(),
       status: 'ACTIVE',
     };
 
-    // Atualiza portfolio mock
-    mockUserPortfolio.balance -= totalCost;
+    // Update portfolio
+    mockUserPortfolio.balance -= quote.cost;
     mockUserPortfolio.contracts.push(newContract);
     mockUserPortfolio.transactions.push({
       id: `tx-${Date.now()}`,
       type: 'BUY',
-      amount: -totalCost,
+      amount: -quote.cost,
       eventTitle: event.title,
       outcome,
       createdAt: new Date(),
@@ -390,14 +431,15 @@ export const MarketDataProvider = {
       success: true,
       message: 'Compra realizada com sucesso!',
       contract: newContract,
+      quote,
     };
   },
 
-  // Simula venda de contrato
+  // Venda de contrato usando LMSR
   async sellContract(
     contractId: string,
-    currentMarketPrice: number
-  ): Promise<{ success: boolean; message: string; saleValue?: number }> {
+    minValue: number // Minimum the user is willing to accept
+  ): Promise<{ success: boolean; message: string; saleValue?: number; quote?: TradeQuote }> {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const contractIndex = mockUserPortfolio.contracts.findIndex(c => c.id === contractId);
@@ -410,10 +452,29 @@ export const MarketDataProvider = {
       return { success: false, message: 'Este contrato não está ativo.' };
     }
 
-    // Valor de venda baseado no preço de mercado atual
-    const saleValue = (currentMarketPrice / 100) * contract.quantity;
+    const state = lmsrStates[contract.eventId];
+    if (!state) {
+      return { success: false, message: 'Evento não encontrado.' };
+    }
 
-    // Atualiza portfolio mock
+    // Get fresh quote
+    const quote = getSellQuote(state, contract.outcome, contract.quantity);
+    
+    // Check if value is within tolerance (5% slippage protection)
+    if (quote.cost < minValue * 0.95) {
+      return { 
+        success: false, 
+        message: 'O preço mudou significativamente. Por favor, atualize e tente novamente.',
+        quote,
+      };
+    }
+
+    // Execute the trade - update LMSR state
+    lmsrStates[contract.eventId] = executeSell(state, contract.outcome, contract.quantity);
+
+    const saleValue = quote.cost;
+
+    // Update portfolio
     mockUserPortfolio.balance += saleValue;
     mockUserPortfolio.contracts.splice(contractIndex, 1);
     mockUserPortfolio.transactions.push({
@@ -429,15 +490,17 @@ export const MarketDataProvider = {
       success: true,
       message: 'Contrato vendido com sucesso!',
       saleValue,
+      quote,
     };
   },
 
   // Busca preço atual de mercado para um contrato
   async getCurrentPriceForContract(contract: UserContract): Promise<number> {
     await new Promise(resolve => setTimeout(resolve, 100));
-    const event = mockEvents.find(e => e.id === contract.eventId);
-    if (!event) return contract.priceAtPurchase;
-    return event.outcomes[contract.outcome].price;
+    const state = lmsrStates[contract.eventId];
+    if (!state) return contract.priceAtPurchase;
+    
+    return contract.outcome === 'YES' ? getPriceYes(state) : getPriceNo(state);
   },
 };
 

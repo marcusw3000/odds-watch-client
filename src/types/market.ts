@@ -1,9 +1,13 @@
+import { LMSRState } from '@/services/LMSRCalculator';
+
 export type MarketStatus = 'OPEN' | 'CLOSED' | 'SETTLED';
 
 export interface Outcome {
   price: number; // em centavos (ex: 65 = R$0.65)
   probability: number; // percentual (ex: 65 = 65%)
 }
+
+export type { LMSRState };
 
 export interface MarketLimits {
   minBuy: number;
@@ -31,6 +35,7 @@ export interface MarketEvent {
   volume?: number;
   description?: string;
   settlementRules?: string[];
+  lmsr: LMSRState;
 }
 
 export interface UserContract {

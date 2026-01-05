@@ -98,25 +98,29 @@ export function MarketDetailPage() {
     return updatedEvent;
   };
 
-  const handleConfirmPurchase = async (quantity: number, lockedPrice: number) => {
+  const handleConfirmPurchase = async (shares: number, maxCost: number) => {
     if (!event || !selectedOutcome) return;
 
     const result = await MarketDataProvider.purchaseContract(
       event.id,
       selectedOutcome,
-      quantity,
-      lockedPrice
+      shares,
+      maxCost
     );
 
     if (result.success) {
       toast({
         title: 'Compra realizada!',
-        description: `Você comprou ${quantity} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'}.`,
+        description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
       });
       setSelectedOutcome(null);
-      // Refresh balance
-      const portfolio = await MarketDataProvider.getUserPortfolio();
+      // Refresh balance and event
+      const [portfolio, updatedEvent] = await Promise.all([
+        MarketDataProvider.getUserPortfolio(),
+        MarketDataProvider.getEventById(id!),
+      ]);
       setUserBalance(portfolio.balance);
+      if (updatedEvent) setEvent(updatedEvent);
     } else {
       throw new Error(result.message);
     }

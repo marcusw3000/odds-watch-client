@@ -53,6 +53,117 @@ function transformDbMarket(dbMarket: DbMarket): MarketEvent {
 // Mock comments (will be moved to Supabase later)
 const mockComments: Record<string, Comment[]> = {};
 
+// Mock markets for development
+const mockMarkets: MarketEvent[] = [
+  {
+    id: 'mock-selic-2026',
+    title: 'Taxa SELIC ficará acima de 14% em março de 2026?',
+    category: 'Política Monetária',
+    description: 'Mercado sobre a decisão do COPOM para a taxa SELIC meta em março de 2026.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'SELIC_META' as SettlementType,
+    settlementConfig: { threshold: 14, operator: 'gt' as const },
+    expiryAt: new Date('2026-03-20'),
+    tradingHaltAt: new Date('2026-03-19T18:00:00'),
+    eventAt: new Date('2026-03-20'),
+    limits: { minBuy: 10, maxBuy: 5000 },
+    lastUpdatedAt: new Date(),
+    volume: 125430,
+    outcomes: { YES: { price: 65, probability: 65 }, NO: { price: 35, probability: 35 } },
+    lmsr: { b: 100, qYes: 120, qNo: 80 },
+    contractUnitCost: 100,
+  },
+  {
+    id: 'mock-dolar-jan',
+    title: 'Dólar fechará acima de R$6,20 em janeiro de 2026?',
+    category: 'Câmbio',
+    description: 'Previsão para a cotação do dólar PTAX no último dia útil de janeiro.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'PTAX_USD' as SettlementType,
+    settlementConfig: { threshold: 6.20, operator: 'gt' as const },
+    expiryAt: new Date('2026-01-31'),
+    tradingHaltAt: new Date('2026-01-31T12:00:00'),
+    eventAt: new Date('2026-01-31'),
+    limits: { minBuy: 10, maxBuy: 5000 },
+    lastUpdatedAt: new Date(),
+    volume: 89200,
+    outcomes: { YES: { price: 72, probability: 72 }, NO: { price: 28, probability: 28 } },
+    lmsr: { b: 100, qYes: 150, qNo: 70 },
+    contractUnitCost: 100,
+  },
+  {
+    id: 'mock-euro-jan',
+    title: 'Euro fechará acima de R$6,50 em janeiro de 2026?',
+    category: 'Câmbio',
+    description: 'Previsão para a cotação do euro PTAX no último dia útil de janeiro.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'PTAX_EUR' as SettlementType,
+    settlementConfig: { threshold: 6.50, operator: 'gt' as const },
+    expiryAt: new Date('2026-01-31'),
+    tradingHaltAt: new Date('2026-01-31T12:00:00'),
+    eventAt: new Date('2026-01-31'),
+    limits: { minBuy: 10, maxBuy: 5000 },
+    lastUpdatedAt: new Date(),
+    volume: 45600,
+    outcomes: { YES: { price: 58, probability: 58 }, NO: { price: 42, probability: 42 } },
+    lmsr: { b: 100, qYes: 110, qNo: 90 },
+    contractUnitCost: 100,
+  },
+  {
+    id: 'mock-ipca-2025',
+    title: 'IPCA acumulado de 2025 ficará acima de 5%?',
+    category: 'Inflação',
+    description: 'Inflação oficial medida pelo IBGE para o ano de 2025.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'IPCA_12M' as SettlementType,
+    settlementConfig: { threshold: 5, operator: 'gt' as const },
+    expiryAt: new Date('2026-01-10'),
+    tradingHaltAt: new Date('2026-01-09T18:00:00'),
+    eventAt: new Date('2026-01-10'),
+    limits: { minBuy: 10, maxBuy: 5000 },
+    lastUpdatedAt: new Date(),
+    volume: 234500,
+    outcomes: { YES: { price: 82, probability: 82 }, NO: { price: 18, probability: 18 } },
+    lmsr: { b: 100, qYes: 200, qNo: 50 },
+    contractUnitCost: 100,
+  },
+  {
+    id: 'mock-pib-2026',
+    title: 'PIB do Brasil crescerá mais de 2% em 2026?',
+    category: 'Economia',
+    description: 'Crescimento do Produto Interno Bruto brasileiro em 2026.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'PIB' as SettlementType,
+    settlementConfig: { threshold: 2, operator: 'gt' as const },
+    expiryAt: new Date('2027-03-01'),
+    tradingHaltAt: new Date('2027-02-28T18:00:00'),
+    eventAt: new Date('2027-03-01'),
+    limits: { minBuy: 10, maxBuy: 10000 },
+    lastUpdatedAt: new Date(),
+    volume: 312000,
+    outcomes: { YES: { price: 45, probability: 45 }, NO: { price: 55, probability: 55 } },
+    lmsr: { b: 150, qYes: 90, qNo: 110 },
+    contractUnitCost: 100,
+  },
+  {
+    id: 'mock-recessao-2026',
+    title: 'Haverá recessão técnica no Brasil em 2026?',
+    category: 'Economia',
+    description: 'Recessão técnica = dois trimestres consecutivos de queda no PIB.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'MANUAL' as SettlementType,
+    expiryAt: new Date('2027-01-15'),
+    tradingHaltAt: new Date('2027-01-14T18:00:00'),
+    eventAt: new Date('2027-01-15'),
+    limits: { minBuy: 10, maxBuy: 5000 },
+    lastUpdatedAt: new Date(),
+    volume: 178900,
+    outcomes: { YES: { price: 22, probability: 22 }, NO: { price: 78, probability: 78 } },
+    lmsr: { b: 100, qYes: 40, qNo: 160 },
+    contractUnitCost: 100,
+  },
+];
+
 // Provider público - cliente só pode LER dados
 export const MarketDataProvider = {
   // Busca todos os eventos
@@ -64,10 +175,15 @@ export const MarketDataProvider = {
 
     if (error) {
       console.error('Error fetching markets:', error);
-      return [];
+      return mockMarkets;
     }
 
-    return (data || []).map(m => transformDbMarket(m as unknown as DbMarket));
+    // Return mocks if no data in DB
+    if (!data || data.length === 0) {
+      return mockMarkets;
+    }
+
+    return data.map(m => transformDbMarket(m as unknown as DbMarket));
   },
 
   // Busca evento específico por ID

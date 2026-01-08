@@ -31,6 +31,9 @@ export function AdminMarketForm() {
     settlementType: 'MANUAL',
     settlementConfig: undefined,
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
+    options: [],
   });
 
   useEffect(() => {
@@ -46,6 +49,15 @@ export function AdminMarketForm() {
             settlementType: m.settlementType || 'MANUAL',
             settlementConfig: m.settlementConfig,
             contractUnitCost: m.contractUnitCost,
+            marketType: m.marketType || 'BINARY',
+            optionsExclusive: m.optionsExclusive ?? true,
+            options: m.options?.map(opt => ({
+              id: opt.id,
+              label: opt.label,
+              description: opt.description,
+              imageUrl: opt.imageUrl,
+              displayOrder: opt.displayOrder,
+            })) || [],
           });
         }
         setLoading(false);
@@ -137,8 +149,55 @@ export function AdminMarketForm() {
               <div><Label>Título</Label><Input value={formData.title} onChange={(e) => updateField('title', e.target.value)} required /></div>
               <div><Label>Categoria</Label><Input value={formData.category} onChange={(e) => updateField('category', e.target.value)} required /></div>
               <div><Label>Descrição</Label><Textarea value={formData.description} onChange={(e) => updateField('description', e.target.value)} /></div>
+              <div>
+                <Label>Tipo de Mercado</Label>
+                <Select value={formData.marketType} onValueChange={(v) => updateField('marketType', v as 'BINARY' | 'MULTIPLE')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BINARY">Binário (SIM/NÃO)</SelectItem>
+                    <SelectItem value="MULTIPLE">Múltiplas Opções</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.marketType === 'MULTIPLE' && (
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="exclusive" checked={formData.optionsExclusive} onChange={(e) => updateField('optionsExclusive', e.target.checked)} className="rounded" />
+                  <Label htmlFor="exclusive">Opções mutuamente exclusivas (apenas uma pode vencer)</Label>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {formData.marketType === 'MULTIPLE' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Opções do Mercado</CardTitle>
+                <CardDescription>Adicione até 20 opções para este mercado</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {formData.options.map((opt, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input value={opt.label} onChange={(e) => {
+                      const newOptions = [...formData.options];
+                      newOptions[i] = { ...newOptions[i], label: e.target.value };
+                      updateField('options', newOptions);
+                    }} placeholder={`Opção ${i + 1}`} className="flex-1" />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => updateField('options', formData.options.filter((_, idx) => idx !== i))} disabled={formData.options.length <= 2}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {formData.options.length < 20 && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => updateField('options', [...formData.options, { label: '', displayOrder: formData.options.length }])}>
+                    <Plus className="mr-2 h-4 w-4" />Adicionar Opção
+                  </Button>
+                )}
+                {formData.options.length < 2 && (
+                  <p className="text-xs text-destructive">Mínimo de 2 opções necessárias</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

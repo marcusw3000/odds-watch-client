@@ -85,6 +85,9 @@ export interface MarketEvent {
   // Image
   imageUrl?: string;
   haltReason?: string;
+  
+  // Contract cost
+  contractUnitCost: number;  // Value paid per winning contract (default R$100)
 }
 
 // Database market type (from Supabase)
@@ -111,6 +114,7 @@ export interface DbMarket {
   halt_reason: string | null;
   created_at: string;
   updated_at: string;
+  contract_unit_cost: number;
 }
 
 export interface UserContract {

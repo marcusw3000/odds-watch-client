@@ -37,6 +37,7 @@ function transformDbMarket(dbMarket: DbMarket): MarketEvent {
     result: dbMarket.result as 'YES' | 'NO' | undefined,
     resultSource: dbMarket.result_source || undefined,
     haltReason: dbMarket.halt_reason || undefined,
+    contractUnitCost: dbMarket.contract_unit_cost ?? 100,
   };
 }
 
@@ -98,6 +99,7 @@ export const AdminDataProvider = {
         current_no_price: noPrice / 100,
         total_volume: 0,
         liquidity_pool: formData.liquidity * 100,
+        contract_unit_cost: formData.contractUnitCost || 100,
       }])
       .select()
       .single();
@@ -121,6 +123,7 @@ export const AdminDataProvider = {
     if (formData.eventAt) updates.settlement_date = formData.eventAt.toISOString();
     if (formData.settlementType) updates.settlement_type = formData.settlementType;
     if (formData.settlementConfig) updates.settlement_config = formData.settlementConfig;
+    if (formData.contractUnitCost !== undefined) updates.contract_unit_cost = formData.contractUnitCost;
     
     if (formData.liquidity) {
       updates.lmsr_b = formData.liquidity;
@@ -280,9 +283,10 @@ export const AdminDataProvider = {
 
     const payouts: Array<{ userId: string; amount: number }> = [];
 
-    // Process payouts
+    // Process payouts using contract_unit_cost
+    const unitCost = market.contract_unit_cost ?? 100;
     for (const contract of contracts || []) {
-      const payout = contract.shares * 1; // $1 per winning share
+      const payout = contract.shares * unitCost;
 
       // Update balance
       const { data: balance } = await supabase

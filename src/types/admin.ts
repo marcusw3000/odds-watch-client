@@ -14,6 +14,7 @@ export interface MarketFormData {
   liquidity: number;           // LMSR b parameter
   settlementType: SettlementType;
   settlementConfig?: SettlementConfig;
+  contractUnitCost: number;    // Cost per winning contract (e.g., R$100)
 }
 
 // Market status action

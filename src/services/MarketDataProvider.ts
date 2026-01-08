@@ -43,10 +43,12 @@ function transformDbMarket(dbMarket: DbMarket): MarketEvent {
       NO: { price: noPrice, probability: noPrice },
     },
     lmsr,
-    result: dbMarket.result as 'YES' | 'NO' | undefined,
+    result: dbMarket.result || undefined,
     resultSource: dbMarket.result_source || undefined,
     haltReason: dbMarket.halt_reason || undefined,
     contractUnitCost: dbMarket.contract_unit_cost ?? 100,
+    marketType: (dbMarket.market_type as 'BINARY' | 'MULTIPLE') || 'BINARY',
+    optionsExclusive: dbMarket.options_exclusive ?? true,
   };
 }
 
@@ -72,6 +74,8 @@ const mockMarkets: MarketEvent[] = [
     outcomes: { YES: { price: 65, probability: 65 }, NO: { price: 35, probability: 35 } },
     lmsr: { b: 100, qYes: 120, qNo: 80 },
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
   },
   {
     id: 'mock-dolar-jan',
@@ -90,6 +94,8 @@ const mockMarkets: MarketEvent[] = [
     outcomes: { YES: { price: 72, probability: 72 }, NO: { price: 28, probability: 28 } },
     lmsr: { b: 100, qYes: 150, qNo: 70 },
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
   },
   {
     id: 'mock-euro-jan',
@@ -108,6 +114,8 @@ const mockMarkets: MarketEvent[] = [
     outcomes: { YES: { price: 58, probability: 58 }, NO: { price: 42, probability: 42 } },
     lmsr: { b: 100, qYes: 110, qNo: 90 },
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
   },
   {
     id: 'mock-ipca-2025',
@@ -126,6 +134,8 @@ const mockMarkets: MarketEvent[] = [
     outcomes: { YES: { price: 82, probability: 82 }, NO: { price: 18, probability: 18 } },
     lmsr: { b: 100, qYes: 200, qNo: 50 },
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
   },
   {
     id: 'mock-pib-2026',
@@ -144,6 +154,8 @@ const mockMarkets: MarketEvent[] = [
     outcomes: { YES: { price: 45, probability: 45 }, NO: { price: 55, probability: 55 } },
     lmsr: { b: 150, qYes: 90, qNo: 110 },
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
   },
   {
     id: 'mock-recessao-2026',
@@ -161,6 +173,36 @@ const mockMarkets: MarketEvent[] = [
     outcomes: { YES: { price: 22, probability: 22 }, NO: { price: 78, probability: 78 } },
     lmsr: { b: 100, qYes: 40, qNo: 160 },
     contractUnitCost: 100,
+    marketType: 'BINARY',
+    optionsExclusive: true,
+  },
+  // Mock market with multiple options
+  {
+    id: 'mock-campeao-brasileiro',
+    title: 'Quem será o campeão do Brasileirão 2026?',
+    category: 'Esportes',
+    description: 'Campeão do Campeonato Brasileiro Série A 2026.',
+    status: 'OPEN' as MarketStatus,
+    settlementType: 'MANUAL' as SettlementType,
+    expiryAt: new Date('2026-12-15'),
+    tradingHaltAt: new Date('2026-12-14T18:00:00'),
+    eventAt: new Date('2026-12-15'),
+    limits: { minBuy: 10, maxBuy: 5000 },
+    lastUpdatedAt: new Date(),
+    volume: 450000,
+    outcomes: { YES: { price: 50, probability: 50 }, NO: { price: 50, probability: 50 } },
+    lmsr: { b: 200, qYes: 100, qNo: 100 },
+    contractUnitCost: 100,
+    marketType: 'MULTIPLE',
+    optionsExclusive: true,
+    options: [
+      { id: 'opt-flamengo', label: 'Flamengo', shares: 180, currentPrice: 25, displayOrder: 0 },
+      { id: 'opt-palmeiras', label: 'Palmeiras', shares: 150, currentPrice: 22, displayOrder: 1 },
+      { id: 'opt-saopaulo', label: 'São Paulo', shares: 100, currentPrice: 15, displayOrder: 2 },
+      { id: 'opt-corinthians', label: 'Corinthians', shares: 80, currentPrice: 12, displayOrder: 3 },
+      { id: 'opt-botafogo', label: 'Botafogo', shares: 70, currentPrice: 10, displayOrder: 4 },
+      { id: 'opt-outros', label: 'Outro time', shares: 120, currentPrice: 16, displayOrder: 5 },
+    ],
   },
 ];
 

@@ -1,6 +1,7 @@
 import { LMSRState } from '@/services/LMSRCalculator';
 
 export type MarketStatus = 'OPEN' | 'HALTED' | 'PENDING' | 'CONTESTED' | 'SETTLED';
+export type MarketType = 'BINARY' | 'MULTIPLE';
 export type SettlementType = 
   | 'MANUAL'
   | 'SELIC'
@@ -23,6 +24,17 @@ export interface SettlementConfig {
 export interface Outcome {
   price: number; // em centavos (ex: 65 = R$0.65)
   probability: number; // percentual (ex: 65 = 65%)
+}
+
+// Market option for multiple-choice markets
+export interface MarketOption {
+  id: string;
+  label: string;
+  description?: string;
+  imageUrl?: string;
+  shares: number;
+  currentPrice: number;
+  displayOrder: number;
 }
 
 export type { LMSRState };
@@ -66,6 +78,11 @@ export interface MarketEvent {
   settlementRules?: string[];
   lmsr: LMSRState;
   
+  // Market type - BINARY (yes/no) or MULTIPLE (multiple options)
+  marketType: MarketType;
+  optionsExclusive: boolean;  // For MULTIPLE: true = only one can win
+  options?: MarketOption[];   // Options for MULTIPLE type markets
+  
   // Settlement type
   settlementType?: SettlementType;
   settlementConfig?: SettlementConfig;
@@ -77,7 +94,7 @@ export interface MarketEvent {
   settledAt?: Date;       // When market was settled
   
   // Result and contestation
-  result?: 'YES' | 'NO';           // Official result
+  result?: 'YES' | 'NO' | string;  // Can be YES/NO for binary or option id for multiple
   resultSource?: string;           // Source of result (API, admin)
   resultSubmittedAt?: Date;        // When result was submitted
   contestations?: Contestation[];  // List of contestations
@@ -107,7 +124,7 @@ export interface DbMarket {
   lmsr_b: number;
   yes_shares: number;
   no_shares: number;
-  result: 'YES' | 'NO' | null;
+  result: string | null;
   result_source: string | null;
   close_date: string | null;
   settlement_date: string | null;
@@ -115,6 +132,22 @@ export interface DbMarket {
   created_at: string;
   updated_at: string;
   contract_unit_cost: number;
+  market_type: string;
+  options_exclusive: boolean;
+}
+
+// Database market option type
+export interface DbMarketOption {
+  id: string;
+  market_id: string;
+  label: string;
+  description: string | null;
+  image_url: string | null;
+  shares: number;
+  current_price: number;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UserContract {

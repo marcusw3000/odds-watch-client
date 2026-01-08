@@ -8,7 +8,7 @@ interface MarketStatusBadgeProps {
   timeToHalt?: number | null;
   timeToEvent?: number | null;
   contestTimeRemaining?: number | null;
-  result?: 'YES' | 'NO';
+  result?: string;  // Can be 'YES', 'NO', or option id for multiple-choice markets
   size?: 'sm' | 'md' | 'lg';
   showCountdown?: boolean;
   isUrgent?: boolean;

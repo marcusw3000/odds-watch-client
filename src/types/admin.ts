@@ -1,4 +1,13 @@
-import { MarketStatus, Contestation, MarketEvent, SettlementType, SettlementConfig } from './market';
+import { MarketStatus, Contestation, MarketEvent, SettlementType, SettlementConfig, MarketType, MarketOption } from './market';
+
+// Form data for market options
+export interface MarketOptionFormData {
+  id?: string;
+  label: string;
+  description?: string;
+  imageUrl?: string;
+  displayOrder: number;
+}
 
 // Form data for creating/editing markets
 export interface MarketFormData {
@@ -15,6 +24,9 @@ export interface MarketFormData {
   settlementType: SettlementType;
   settlementConfig?: SettlementConfig;
   contractUnitCost: number;    // Cost per winning contract (e.g., R$100)
+  marketType: MarketType;      // BINARY or MULTIPLE
+  optionsExclusive: boolean;   // For MULTIPLE: true = only one can win
+  options: MarketOptionFormData[];  // Options for MULTIPLE type markets
 }
 
 // Market status action

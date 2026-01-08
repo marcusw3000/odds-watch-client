@@ -34,10 +34,12 @@ function transformDbMarket(dbMarket: DbMarket): MarketEvent {
       NO: { price: noPrice, probability: noPrice },
     },
     lmsr,
-    result: dbMarket.result as 'YES' | 'NO' | undefined,
+    result: dbMarket.result || undefined,
     resultSource: dbMarket.result_source || undefined,
     haltReason: dbMarket.halt_reason || undefined,
     contractUnitCost: dbMarket.contract_unit_cost ?? 100,
+    marketType: (dbMarket.market_type as 'BINARY' | 'MULTIPLE') || 'BINARY',
+    optionsExclusive: dbMarket.options_exclusive ?? true,
   };
 }
 

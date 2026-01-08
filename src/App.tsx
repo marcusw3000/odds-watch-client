@@ -9,6 +9,13 @@ import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import NotFound from "./pages/NotFound";
 
+// Admin imports
+import { AdminLayout } from "./components/admin/AdminLayout";
+import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { AdminMarketsPage } from "./pages/admin/AdminMarketsPage";
+import { AdminMarketForm } from "./pages/admin/AdminMarketForm";
+import { AdminContestationsPage } from "./pages/admin/AdminContestationsPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -24,6 +31,16 @@ const App = () => (
             <Route path="/market/:id" element={<MarketDetailPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
           </Route>
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="markets" element={<AdminMarketsPage />} />
+            <Route path="markets/new" element={<AdminMarketForm />} />
+            <Route path="markets/:id" element={<AdminMarketForm />} />
+            <Route path="contestations" element={<AdminContestationsPage />} />
+          </Route>
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface HeaderProps {
   balance?: number;
@@ -12,6 +21,7 @@ interface HeaderProps {
 export function Header({ balance = 2500 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, isAdmin, signOut, loading } = useAuth();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -30,6 +40,15 @@ export function Header({ balance = 2500 }: HeaderProps) {
       return location.pathname === '/' || location.pathname === '/markets' || location.pathname.startsWith('/market/');
     }
     return location.pathname === path;
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const getUserInitials = () => {
+    if (!user?.email) return 'U';
+    return user.email.charAt(0).toUpperCase();
   };
 
   return (
@@ -70,17 +89,64 @@ export function Header({ balance = 2500 }: HeaderProps) {
           ))}
         </nav>
 
-        {/* Balance & Actions */}
+        {/* Balance & User Actions */}
         <div className="hidden md:flex items-center gap-4">
-          <div className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2">
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono font-semibold text-foreground">
-              {formatCurrency(balance)}
-            </span>
-          </div>
-          <Button variant="premium" size="sm">
-            Depositar
-          </Button>
+          {user && (
+            <div className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              <span className="font-mono font-semibold text-foreground">
+                {formatCurrency(balance)}
+              </span>
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="h-9 w-9 rounded-full bg-secondary animate-pulse" />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <div className="flex flex-col space-y-1 p-2">
+                  <p className="text-sm font-medium leading-none">{user.email}</p>
+                  {isAdmin && (
+                    <p className="text-xs leading-none text-primary">Administrador</p>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">Painel Admin</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/portfolio">Meu Portfólio</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button asChild>
+              <Link to="/auth">
+                <LogIn className="mr-2 h-4 w-4" />
+                Entrar
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -101,13 +167,15 @@ export function Header({ balance = 2500 }: HeaderProps) {
             {/* Mobile Search */}
             <HeaderSearch className="w-full" />
 
-            <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Saldo</span>
+            {user && (
+              <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Saldo</span>
+                </div>
+                <span className="font-mono font-semibold">{formatCurrency(balance)}</span>
               </div>
-              <span className="font-mono font-semibold">{formatCurrency(balance)}</span>
-            </div>
+            )}
             
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => (
@@ -124,11 +192,44 @@ export function Header({ balance = 2500 }: HeaderProps) {
                   </Link>
                 </Button>
               ))}
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="justify-start gap-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                  asChild
+                >
+                  <Link to="/admin">
+                    <User className="h-4 w-4" />
+                    Painel Admin
+                  </Link>
+                </Button>
+              )}
             </nav>
 
-            <Button variant="premium" className="w-full">
-              Depositar
-            </Button>
+            {user ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground truncate">{user.email}</span>
+                </div>
+                <Button variant="outline" className="w-full" onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </Button>
+              </div>
+            ) : (
+              <Button className="w-full" asChild>
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Entrar
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       )}

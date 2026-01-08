@@ -8,6 +8,7 @@ import { MarketsPage } from "./pages/MarketsPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import NotFound from "./pages/NotFound";
+import { AuthPage } from "./pages/AuthPage";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/markets" element={<MarketsPage />} />
             <Route path="/market/:id" element={<MarketDetailPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/auth" element={<AuthPage />} />
           </Route>
           
           {/* Admin Routes */}

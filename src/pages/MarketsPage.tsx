@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
-import MarketDataProvider from '@/services/MarketDataProvider';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { MarketCard } from '@/components/market/MarketCard';
 import { MarketCardSkeleton } from '@/components/market/MarketCardSkeleton';
 import { CategoryFilter } from '@/components/market/CategoryFilter';

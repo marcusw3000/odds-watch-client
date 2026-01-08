@@ -321,9 +321,6 @@ export const MarketDataProvider = {
         total_volume: market.volume + quote.cost,
       })
       .eq('id', eventId);
-        total_volume: market.volume + quote.cost,
-      })
-      .eq('id', eventId);
 
     if (marketError) {
       console.error('Error updating market:', marketError);

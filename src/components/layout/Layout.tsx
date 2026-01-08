@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
-import MarketDataProvider from '@/services/MarketDataProvider';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
 
 export function Layout() {
   const [userBalance, setUserBalance] = useState(0);

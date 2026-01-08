@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Briefcase, RefreshCw } from 'lucide-react';
 import { UserPortfolio } from '@/types/market';
-import MarketDataProvider from '@/services/MarketDataProvider';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { PortfolioOverview } from '@/components/portfolio/PortfolioOverview';
 import { ContractsList } from '@/components/portfolio/ContractsList';
 import { TransactionHistory } from '@/components/portfolio/TransactionHistory';

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Store, AlertTriangle, Clock, TrendingUp, Users, DollarSign, Plus } from 'lucide-react';
+import { Store, AlertTriangle, Clock, TrendingUp, Users, DollarSign, Plus, Bot, Zap } from 'lucide-react';
 import { AdminMetricsCard } from '@/components/admin/AdminMetricsCard';
 import { AdminDataProvider } from '@/services/AdminDataProvider';
 import { AdminMetrics } from '@/types/admin';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 export function AdminDashboard() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
@@ -50,7 +51,7 @@ export function AdminDashboard() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <AdminMetricsCard
           title="Mercados Abertos"
           value={metrics?.openMarkets || 0}
@@ -77,9 +78,16 @@ export function AdminDashboard() {
           icon={DollarSign}
           variant="default"
         />
+        <AdminMetricsCard
+          title="Automáticos"
+          value={metrics?.automaticMarkets || 0}
+          icon={Bot}
+          description="Liquidação via BCB"
+          variant="default"
+        />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="text-lg">Ações Rápidas</CardTitle>
@@ -131,6 +139,41 @@ export function AdminDashboard() {
                 <span className="text-sm text-muted-foreground">Liquidados</span>
                 <span className="font-medium">{metrics?.settledMarkets}</span>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">Liquidação Automática</CardTitle>
+              <Badge variant="secondary" className="gap-1">
+                <Zap className="h-3 w-3" />
+                BCB API
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Mercados automáticos</span>
+                </div>
+                <span className="font-medium">{metrics?.automaticMarkets || 0}</span>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">APIs Suportadas:</p>
+                <ul className="space-y-1">
+                  <li>• SELIC / SELIC Meta (COPOM)</li>
+                  <li>• IPCA (Inflação)</li>
+                  <li>• CDI</li>
+                  <li>• PTAX (Dólar)</li>
+                </ul>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Verificação automática diária às 18h (dias úteis)
+              </p>
             </div>
           </CardContent>
         </Card>

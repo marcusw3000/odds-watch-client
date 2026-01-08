@@ -478,12 +478,17 @@ export const AdminDataProvider = {
 
     let totalVolume = 0;
     let pendingContestations = 0;
+    let automaticMarkets = 0;
 
     for (const market of mockMarkets) {
       statusCounts[market.status]++;
       totalVolume += market.volume || 0;
       if (market.contestations) {
         pendingContestations += market.contestations.filter(c => c.status === 'OPEN').length;
+      }
+      // Count markets with automatic settlement
+      if (market.settlementType && market.settlementType !== 'MANUAL') {
+        automaticMarkets++;
       }
     }
 
@@ -497,6 +502,7 @@ export const AdminDataProvider = {
       totalVolume,
       totalUsers: 156, // Mock
       pendingContestations,
+      automaticMarkets,
     };
   },
 

@@ -136,6 +136,7 @@ export type Database = {
         Row: {
           category: string
           close_date: string | null
+          contract_unit_cost: number
           created_at: string
           current_no_price: number
           current_yes_price: number
@@ -160,6 +161,7 @@ export type Database = {
         Insert: {
           category?: string
           close_date?: string | null
+          contract_unit_cost?: number
           created_at?: string
           current_no_price?: number
           current_yes_price?: number
@@ -184,6 +186,7 @@ export type Database = {
         Update: {
           category?: string
           close_date?: string | null
+          contract_unit_cost?: number
           created_at?: string
           current_no_price?: number
           current_yes_price?: number

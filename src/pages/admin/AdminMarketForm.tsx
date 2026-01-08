@@ -30,6 +30,7 @@ export function AdminMarketForm() {
     limits: { minBuy: 10, maxBuy: 5000 }, initialYesOdds: 50, liquidity: 100,
     settlementType: 'MANUAL',
     settlementConfig: undefined,
+    contractUnitCost: 100,
   });
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export function AdminMarketForm() {
             initialYesOdds: m.outcomes.YES.price, liquidity: m.lmsr.b,
             settlementType: m.settlementType || 'MANUAL',
             settlementConfig: m.settlementConfig,
+            contractUnitCost: m.contractUnitCost,
           });
         }
         setLoading(false);
@@ -215,12 +217,26 @@ export function AdminMarketForm() {
             </CardContent>
           </Card>
 
-          <Card><CardHeader><CardTitle>Datas e Limites</CardTitle></CardHeader>
+          <Card><CardHeader><CardTitle>Datas, Limites e Contratos</CardTitle></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div><Label>Data do Evento</Label><Input type="datetime-local" value={formData.eventAt.toISOString().slice(0, 16)} onChange={(e) => updateField('eventAt', new Date(e.target.value))} /></div>
               <div><Label>Trading Halt</Label><Input type="datetime-local" value={formData.tradingHaltAt.toISOString().slice(0, 16)} onChange={(e) => updateField('tradingHaltAt', new Date(e.target.value))} /></div>
               <div><Label>Compra Mínima (R$)</Label><Input type="number" value={formData.limits.minBuy} onChange={(e) => updateField('limits', { ...formData.limits, minBuy: +e.target.value })} /></div>
               <div><Label>Compra Máxima (R$)</Label><Input type="number" value={formData.limits.maxBuy} onChange={(e) => updateField('limits', { ...formData.limits, maxBuy: +e.target.value })} /></div>
+              <div className="sm:col-span-2">
+                <Label>Valor por Contrato Vencedor (R$)</Label>
+                <Input 
+                  type="number" 
+                  min="1"
+                  step="1"
+                  value={formData.contractUnitCost} 
+                  onChange={(e) => updateField('contractUnitCost', Math.max(1, +e.target.value))}
+                  placeholder="100"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Valor pago por cada contrato vencedor na liquidação (padrão: R$100)
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

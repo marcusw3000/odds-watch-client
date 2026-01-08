@@ -46,6 +46,7 @@ function transformDbMarket(dbMarket: DbMarket): MarketEvent {
     result: dbMarket.result as 'YES' | 'NO' | undefined,
     resultSource: dbMarket.result_source || undefined,
     haltReason: dbMarket.halt_reason || undefined,
+    contractUnitCost: dbMarket.contract_unit_cost ?? 100,
   };
 }
 

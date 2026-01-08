@@ -41,10 +41,30 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
     <div className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-300 hover:border-primary/30 hover:shadow-elevated">
       {/* Header */}
       <div className="p-5 pb-4">
-        <div className="flex items-start justify-between gap-4 mb-3">
+        {/* Tags Row */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
           <span className={cn('px-2.5 py-1 rounded-md text-xs font-medium', getCategoryColor(event.category))}>
             {event.category}
           </span>
+          {event.marketType === 'MULTIPLE' && (
+            <span className="px-2 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground">
+              Múltiplas opções
+            </span>
+          )}
+          {statusInfo.isUrgent && (
+            <span className="px-2 py-1 rounded-md text-xs font-medium bg-destructive/20 text-destructive animate-pulse">
+              Urgente
+            </span>
+          )}
+          {event.volume && event.volume >= 50000 && (
+            <span className="px-2 py-1 rounded-md text-xs font-medium bg-success/20 text-success">
+              Popular
+            </span>
+          )}
+        </div>
+        
+        {/* Status Badge */}
+        <div className="flex justify-end mb-2">
           <MarketStatusBadge
             status={statusInfo.status}
             timeToHalt={statusInfo.timeToHalt}

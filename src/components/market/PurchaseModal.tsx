@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, Zap } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -259,20 +259,6 @@ export function PurchaseModal({
                   <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
                 </div>
                 
-                {/* Price Impact Warning */}
-                {Math.abs(quote.priceImpact) > 0.5 && (
-                  <div className={cn(
-                    "flex items-center gap-2 p-2 rounded-md mt-2",
-                    quote.priceImpact > 5 
-                      ? "bg-warning/20 text-warning" 
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    <Zap className="h-3.5 w-3.5" />
-                    <span className="text-xs">
-                      Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(1)}%
-                    </span>
-                  </div>
-                )}
 
                 {/* New prices after trade */}
                 <div className="pt-2 border-t border-border text-xs text-muted-foreground">

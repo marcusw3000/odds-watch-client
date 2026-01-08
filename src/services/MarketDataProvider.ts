@@ -433,21 +433,47 @@ export const MarketDataProvider = {
     const newYesPrice = getPriceYes(newState);
     const newNoPrice = getPriceNo(newState);
 
-    // Update market in database
-    const { error: marketError } = await supabase
-      .from('markets')
-      .update({
-        yes_shares: newState.qYes,
-        no_shares: newState.qNo,
-        current_yes_price: newYesPrice / 100,
-        current_no_price: newNoPrice / 100,
-        total_volume: market.volume + quote.cost,
-      })
-      .eq('id', eventId);
+    // Check if this is a mock market (non-UUID ID)
+    const isMockMarket = eventId.startsWith('mock-');
 
-    if (marketError) {
-      console.error('Error updating market:', marketError);
-      return { success: false, message: 'Erro ao processar compra.' };
+    // Update market in database (skip for mock markets)
+    if (!isMockMarket) {
+      const { error: marketError } = await supabase
+        .from('markets')
+        .update({
+          yes_shares: newState.qYes,
+          no_shares: newState.qNo,
+          current_yes_price: newYesPrice / 100,
+          current_no_price: newNoPrice / 100,
+          total_volume: market.volume + quote.cost,
+        })
+        .eq('id', eventId);
+
+      if (marketError) {
+        console.error('Error updating market:', marketError);
+        return { success: false, message: 'Erro ao processar compra.' };
+      }
+    }
+
+    // For mock markets, simulate success without DB operations
+    if (isMockMarket) {
+      const newContract: UserContract = {
+        id: `ctr-${Date.now()}`,
+        eventId,
+        eventTitle: market.title,
+        outcome,
+        quantity: shares,
+        priceAtPurchase: quote.avgPrice,
+        purchasedAt: new Date(),
+        status: 'ACTIVE',
+      };
+      
+      return {
+        success: true,
+        message: 'Compra simulada realizada com sucesso!',
+        contract: newContract,
+        quote,
+      };
     }
 
     // Deduct balance

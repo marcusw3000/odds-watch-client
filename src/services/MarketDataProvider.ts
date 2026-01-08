@@ -188,6 +188,12 @@ export const MarketDataProvider = {
 
   // Busca evento específico por ID
   async getEventById(id: string): Promise<MarketEvent | null> {
+    // Check if it's a mock ID first
+    const mockMarket = mockMarkets.find(m => m.id === id);
+    if (mockMarket) {
+      return mockMarket;
+    }
+
     const { data, error } = await supabase
       .from('markets')
       .select('*')

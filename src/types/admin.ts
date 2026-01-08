@@ -1,4 +1,4 @@
-import { MarketStatus, Contestation, MarketEvent } from './market';
+import { MarketStatus, Contestation, MarketEvent, SettlementType, SettlementConfig } from './market';
 
 // Form data for creating/editing markets
 export interface MarketFormData {
@@ -12,6 +12,8 @@ export interface MarketFormData {
   limits: { minBuy: number; maxBuy: number };
   initialYesOdds: number;      // Initial odds (1-99)
   liquidity: number;           // LMSR b parameter
+  settlementType: SettlementType;
+  settlementConfig?: SettlementConfig;
 }
 
 // Market status action
@@ -33,6 +35,7 @@ export interface AdminMetrics {
   totalVolume: number;
   totalUsers: number;
   pendingContestations: number;
+  automaticMarkets?: number;
 }
 
 // Contestation review
@@ -56,4 +59,24 @@ export interface AuditLogEntry {
 // Extended contestation with event info
 export interface ContestationWithEvent extends Contestation {
   event: MarketEvent;
+}
+
+// BCB data point
+export interface BCBDataPoint {
+  indicator: string;
+  value: number;
+  date: string;
+  fromCache: boolean;
+}
+
+// Market settlement record
+export interface MarketSettlement {
+  id: string;
+  marketId: string;
+  result: 'YES' | 'NO';
+  source: string;
+  apiValue: number | null;
+  apiResponse: unknown;
+  settledAt: Date;
+  isAutomatic: boolean;
 }

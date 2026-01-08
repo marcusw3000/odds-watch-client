@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminDataProvider } from '@/services/AdminDataProvider';
 import { MarketFormData } from '@/types/admin';
-import { MarketEvent } from '@/types/market';
+import { MarketEvent, SettlementType, SETTLEMENT_TYPE_LABELS, OPERATOR_LABELS, SettlementConfig } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LMSRConfigurator } from '@/components/admin/LMSRConfigurator';
 import { StatusController } from '@/components/admin/StatusController';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Zap, Bot } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export function AdminMarketForm() {
   const { id } = useParams();
@@ -26,6 +28,8 @@ export function AdminMarketForm() {
     title: '', category: '', description: '', settlementRules: [''],
     expiryAt: new Date(), tradingHaltAt: new Date(), eventAt: new Date(),
     limits: { minBuy: 10, maxBuy: 5000 }, initialYesOdds: 50, liquidity: 100,
+    settlementType: 'MANUAL',
+    settlementConfig: undefined,
   });
 
   useEffect(() => {
@@ -38,6 +42,8 @@ export function AdminMarketForm() {
             settlementRules: m.settlementRules || [''], expiryAt: m.expiryAt,
             tradingHaltAt: m.tradingHaltAt, eventAt: m.eventAt, limits: m.limits,
             initialYesOdds: m.outcomes.YES.price, liquidity: m.lmsr.b,
+            settlementType: m.settlementType || 'MANUAL',
+            settlementConfig: m.settlementConfig,
           });
         }
         setLoading(false);
@@ -73,11 +79,55 @@ export function AdminMarketForm() {
     updateField('settlementRules', rules);
   };
 
+  const updateSettlementConfig = (field: keyof SettlementConfig, value: string | number) => {
+    const current = formData.settlementConfig || { threshold: 0, operator: 'lt' as const };
+    updateField('settlementConfig', { ...current, [field]: value });
+  };
+
+  const isAutomatic = formData.settlementType !== 'MANUAL';
+
+  const getThresholdLabel = () => {
+    switch (formData.settlementType) {
+      case 'SELIC':
+      case 'SELIC_META':
+      case 'CDI':
+      case 'IPCA':
+        return 'Taxa (%)';
+      case 'PTAX':
+        return 'Valor (R$)';
+      default:
+        return 'Valor';
+    }
+  };
+
+  const getThresholdPlaceholder = () => {
+    switch (formData.settlementType) {
+      case 'SELIC':
+      case 'SELIC_META':
+      case 'CDI':
+        return 'Ex: 10.5';
+      case 'IPCA':
+        return 'Ex: 4.5';
+      case 'PTAX':
+        return 'Ex: 4.80';
+      default:
+        return '0';
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{isEditing ? 'Editar Mercado' : 'Novo Mercado'}</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold">{isEditing ? 'Editar Mercado' : 'Novo Mercado'}</h1>
+        {isAutomatic && (
+          <Badge variant="secondary" className="gap-1">
+            <Bot className="h-3 w-3" />
+            Automático
+          </Badge>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
@@ -86,6 +136,85 @@ export function AdminMarketForm() {
               <div><Label>Título</Label><Input value={formData.title} onChange={(e) => updateField('title', e.target.value)} required /></div>
               <div><Label>Categoria</Label><Input value={formData.category} onChange={(e) => updateField('category', e.target.value)} required /></div>
               <div><Label>Descrição</Label><Textarea value={formData.description} onChange={(e) => updateField('description', e.target.value)} /></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CardTitle>Tipo de Liquidação</CardTitle>
+                <Zap className="h-4 w-4 text-warning" />
+              </div>
+              <CardDescription>
+                Escolha se a liquidação será manual ou automática via API do BCB
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Fonte de Dados</Label>
+                <Select 
+                  value={formData.settlementType} 
+                  onValueChange={(v) => {
+                    updateField('settlementType', v as SettlementType);
+                    if (v !== 'MANUAL' && !formData.settlementConfig) {
+                      updateField('settlementConfig', { threshold: 0, operator: 'lt' });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SETTLEMENT_TYPE_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                        {key !== 'MANUAL' && <span className="ml-2 text-xs text-muted-foreground">(BCB API)</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isAutomatic && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label>Condição</Label>
+                      <Select 
+                        value={formData.settlementConfig?.operator || 'lt'} 
+                        onValueChange={(v) => updateSettlementConfig('operator', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(OPERATOR_LABELS).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>{getThresholdLabel()}</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.settlementConfig?.threshold || ''} 
+                        onChange={(e) => updateSettlementConfig('threshold', parseFloat(e.target.value) || 0)}
+                        placeholder={getThresholdPlaceholder()}
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                    <p className="font-medium">Condição de liquidação:</p>
+                    <p className="text-muted-foreground">
+                      O mercado será liquidado como <strong>SIM</strong> se {SETTLEMENT_TYPE_LABELS[formData.settlementType]} for{' '}
+                      <strong>{OPERATOR_LABELS[formData.settlementConfig?.operator || 'lt']}</strong>{' '}
+                      <strong>{formData.settlementConfig?.threshold || 0}{formData.settlementType === 'PTAX' ? '' : '%'}</strong>
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

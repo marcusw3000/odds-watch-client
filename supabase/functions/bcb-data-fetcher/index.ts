@@ -6,12 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// BCB API endpoints
+// BCB API endpoints (SGS - Sistema Gerenciador de Séries)
 const BCB_ENDPOINTS: Record<string, string> = {
   SELIC: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/1?formato=json",
   SELIC_META: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json",
   IPCA: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/1?formato=json",
+  IPCA_12M: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json",
   CDI: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/1?formato=json",
+  PIB: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.7326/dados/ultimos/1?formato=json",
 };
 
 interface BCBDataResponse {
@@ -27,43 +29,133 @@ function parseBCBDate(dateStr: string): string {
   return `${year}-${month}-${day}`;
 }
 
-// Fetch PTAX (different API structure)
-async function fetchPTAX(): Promise<BCBDataResponse> {
-  // Get yesterday's date (PTAX is published next day)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const dateStr = yesterday.toISOString().split("T")[0].replace(/-/g, "-");
-  const formattedDate = `'${dateStr.substring(5, 7)}-${dateStr.substring(8, 10)}-${dateStr.substring(0, 4)}'`;
+// Get business day for PTAX query (skip weekends)
+function getLastBusinessDay(): Date {
+  const date = new Date();
+  date.setDate(date.getDate() - 1); // Yesterday
+  
+  const dayOfWeek = date.getDay();
+  if (dayOfWeek === 0) date.setDate(date.getDate() - 2); // Sunday -> Friday
+  if (dayOfWeek === 6) date.setDate(date.getDate() - 1); // Saturday -> Friday
+  
+  return date;
+}
+
+// Format date for PTAX API (MM-DD-YYYY)
+function formatPTAXDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  return `'${month}-${day}-${year}'`;
+}
+
+// Fetch USD PTAX
+async function fetchPTAXUSD(): Promise<BCBDataResponse> {
+  const businessDay = getLastBusinessDay();
+  const formattedDate = formatPTAXDate(businessDay);
   
   const url = `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao=${formattedDate}&$format=json`;
   
-  console.log("Fetching PTAX from:", url);
+  console.log("Fetching PTAX USD from:", url);
   
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`PTAX API error: ${response.status}`);
+    throw new Error(`PTAX USD API error: ${response.status}`);
   }
   
   const data = await response.json();
   
   if (!data.value || data.value.length === 0) {
-    throw new Error("No PTAX data available");
+    // Try previous business day
+    businessDay.setDate(businessDay.getDate() - 1);
+    const prevDate = formatPTAXDate(businessDay);
+    const retryUrl = url.replace(formattedDate, prevDate);
+    
+    console.log("Retrying PTAX USD with:", retryUrl);
+    const retryResponse = await fetch(retryUrl);
+    const retryData = await retryResponse.json();
+    
+    if (!retryData.value || retryData.value.length === 0) {
+      throw new Error("No PTAX USD data available");
+    }
+    
+    const cotacao = retryData.value[retryData.value.length - 1];
+    return {
+      indicator: "PTAX_USD",
+      value: cotacao.cotacaoVenda,
+      date: businessDay.toISOString().split("T")[0],
+      rawResponse: retryData,
+    };
   }
   
-  const cotacao = data.value[0];
+  const cotacao = data.value[data.value.length - 1]; // Last quote of the day
   
   return {
-    indicator: "PTAX",
+    indicator: "PTAX_USD",
     value: cotacao.cotacaoVenda,
-    date: dateStr,
+    date: businessDay.toISOString().split("T")[0],
+    rawResponse: data,
+  };
+}
+
+// Fetch EUR PTAX
+async function fetchPTAXEUR(): Promise<BCBDataResponse> {
+  const businessDay = getLastBusinessDay();
+  const formattedDate = formatPTAXDate(businessDay);
+  
+  // EUR uses different endpoint
+  const url = `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='EUR'&@dataCotacao=${formattedDate}&$format=json`;
+  
+  console.log("Fetching PTAX EUR from:", url);
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`PTAX EUR API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  if (!data.value || data.value.length === 0) {
+    // Try previous business day
+    businessDay.setDate(businessDay.getDate() - 1);
+    const prevDate = formatPTAXDate(businessDay);
+    const retryUrl = url.replace(formattedDate, prevDate);
+    
+    console.log("Retrying PTAX EUR with:", retryUrl);
+    const retryResponse = await fetch(retryUrl);
+    const retryData = await retryResponse.json();
+    
+    if (!retryData.value || retryData.value.length === 0) {
+      throw new Error("No PTAX EUR data available");
+    }
+    
+    const cotacao = retryData.value[retryData.value.length - 1];
+    return {
+      indicator: "PTAX_EUR",
+      value: cotacao.cotacaoVenda,
+      date: businessDay.toISOString().split("T")[0],
+      rawResponse: retryData,
+    };
+  }
+  
+  const cotacao = data.value[data.value.length - 1];
+  
+  return {
+    indicator: "PTAX_EUR",
+    value: cotacao.cotacaoVenda,
+    date: businessDay.toISOString().split("T")[0],
     rawResponse: data,
   };
 }
 
 // Fetch data from BCB API
 async function fetchBCBData(indicator: string): Promise<BCBDataResponse> {
-  if (indicator === "PTAX") {
-    return fetchPTAX();
+  // Handle PTAX currencies specially
+  if (indicator === "PTAX" || indicator === "PTAX_USD") {
+    return fetchPTAXUSD();
+  }
+  if (indicator === "PTAX_EUR") {
+    return fetchPTAXEUR();
   }
   
   const endpoint = BCB_ENDPOINTS[indicator];

@@ -369,6 +369,10 @@ export type Database = {
         | "IPCA"
         | "CDI"
         | "PTAX"
+        | "PTAX_USD"
+        | "PTAX_EUR"
+        | "IPCA_12M"
+        | "PIB"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -498,7 +502,18 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       market_status: ["OPEN", "HALTED", "PENDING", "CONTESTED", "SETTLED"],
-      settlement_type: ["MANUAL", "SELIC", "SELIC_META", "IPCA", "CDI", "PTAX"],
+      settlement_type: [
+        "MANUAL",
+        "SELIC",
+        "SELIC_META",
+        "IPCA",
+        "CDI",
+        "PTAX",
+        "PTAX_USD",
+        "PTAX_EUR",
+        "IPCA_12M",
+        "PIB",
+      ],
     },
   },
 } as const

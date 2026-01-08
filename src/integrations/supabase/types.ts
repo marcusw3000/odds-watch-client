@@ -14,6 +14,317 @@ export type Database = {
   }
   public: {
     Tables: {
+      bcb_data_cache: {
+        Row: {
+          fetched_at: string
+          id: string
+          indicator: string
+          raw_response: Json | null
+          reference_date: string
+          value: number
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          indicator: string
+          raw_response?: Json | null
+          reference_date: string
+          value: number
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          indicator?: string
+          raw_response?: Json | null
+          reference_date?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      contestations: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          evidence_url: string | null
+          id: string
+          market_id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          market_id: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          market_id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contestations_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_settlements: {
+        Row: {
+          api_response: Json | null
+          api_value: number | null
+          id: string
+          is_automatic: boolean
+          market_id: string
+          result: string
+          settled_at: string
+          settled_by: string | null
+          source: string
+        }
+        Insert: {
+          api_response?: Json | null
+          api_value?: number | null
+          id?: string
+          is_automatic?: boolean
+          market_id: string
+          result: string
+          settled_at?: string
+          settled_by?: string | null
+          source: string
+        }
+        Update: {
+          api_response?: Json | null
+          api_value?: number | null
+          id?: string
+          is_automatic?: boolean
+          market_id?: string
+          result?: string
+          settled_at?: string
+          settled_by?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_settlements_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      markets: {
+        Row: {
+          category: string
+          close_date: string | null
+          created_at: string
+          current_no_price: number
+          current_yes_price: number
+          description: string | null
+          halt_reason: string | null
+          id: string
+          image_url: string | null
+          liquidity_pool: number
+          lmsr_b: number
+          no_shares: number
+          result: string | null
+          result_source: string | null
+          settlement_config: Json | null
+          settlement_date: string | null
+          settlement_type: Database["public"]["Enums"]["settlement_type"]
+          status: Database["public"]["Enums"]["market_status"]
+          title: string
+          total_volume: number
+          updated_at: string
+          yes_shares: number
+        }
+        Insert: {
+          category?: string
+          close_date?: string | null
+          created_at?: string
+          current_no_price?: number
+          current_yes_price?: number
+          description?: string | null
+          halt_reason?: string | null
+          id?: string
+          image_url?: string | null
+          liquidity_pool?: number
+          lmsr_b?: number
+          no_shares?: number
+          result?: string | null
+          result_source?: string | null
+          settlement_config?: Json | null
+          settlement_date?: string | null
+          settlement_type?: Database["public"]["Enums"]["settlement_type"]
+          status?: Database["public"]["Enums"]["market_status"]
+          title: string
+          total_volume?: number
+          updated_at?: string
+          yes_shares?: number
+        }
+        Update: {
+          category?: string
+          close_date?: string | null
+          created_at?: string
+          current_no_price?: number
+          current_yes_price?: number
+          description?: string | null
+          halt_reason?: string | null
+          id?: string
+          image_url?: string | null
+          liquidity_pool?: number
+          lmsr_b?: number
+          no_shares?: number
+          result?: string | null
+          result_source?: string | null
+          settlement_config?: Json | null
+          settlement_date?: string | null
+          settlement_type?: Database["public"]["Enums"]["settlement_type"]
+          status?: Database["public"]["Enums"]["market_status"]
+          title?: string
+          total_volume?: number
+          updated_at?: string
+          yes_shares?: number
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          created_at: string
+          id: string
+          market_id: string
+          position: string | null
+          price_per_share: number | null
+          shares: number | null
+          total_amount: number
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          market_id: string
+          position?: string | null
+          price_per_share?: number | null
+          shares?: number | null
+          total_amount: number
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          market_id?: string
+          position?: string | null
+          price_per_share?: number | null
+          shares?: number | null
+          total_amount?: number
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_balances: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          total_deposited: number
+          total_withdrawn: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          total_deposited?: number
+          total_withdrawn?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          total_deposited?: number
+          total_withdrawn?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_contracts: {
+        Row: {
+          average_price: number
+          created_at: string
+          id: string
+          market_id: string
+          position: string
+          shares: number
+          total_invested: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_price: number
+          created_at?: string
+          id?: string
+          market_id: string
+          position: string
+          shares: number
+          total_invested: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_price?: number
+          created_at?: string
+          id?: string
+          market_id?: string
+          position?: string
+          shares?: number
+          total_invested?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contracts_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -50,6 +361,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      market_status: "OPEN" | "HALTED" | "PENDING" | "CONTESTED" | "SETTLED"
+      settlement_type:
+        | "MANUAL"
+        | "SELIC"
+        | "SELIC_META"
+        | "IPCA"
+        | "CDI"
+        | "PTAX"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -178,6 +497,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      market_status: ["OPEN", "HALTED", "PENDING", "CONTESTED", "SETTLED"],
+      settlement_type: ["MANUAL", "SELIC", "SELIC_META", "IPCA", "CDI", "PTAX"],
     },
   },
 } as const

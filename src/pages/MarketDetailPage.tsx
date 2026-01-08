@@ -436,9 +436,9 @@ export function MarketDetailPage() {
               <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">
                 <p className="font-medium">Como funciona?</p>
                 <ul className="space-y-1 text-muted-foreground text-xs">
-                  <li>• Contrato vencedor paga R$1,00</li>
+                  <li>• Contrato vencedor paga <span className="font-semibold text-foreground">R${event.contractUnitCost.toFixed(2)}</span></li>
                   <li>• Contrato perdedor paga R$0,00</li>
-                  <li>• Lucro = R$1,00 - preço de compra</li>
+                  <li>• Lucro = R${event.contractUnitCost.toFixed(2)} - preço de compra</li>
                 </ul>
               </div>
 

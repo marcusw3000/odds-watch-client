@@ -1,4 +1,5 @@
-import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, LMSRState } from '@/types/market';
+import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, MarketStatus, SettlementType, SettlementConfig } from '@/types/market';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   getPriceYes, 
   getPriceNo, 
@@ -8,345 +9,234 @@ import {
   executeSell,
   initializeLMSR,
   TradeQuote,
+  LMSRState,
 } from './LMSRCalculator';
 
-// Helper to create initial LMSR state with target price
-function createLMSRState(initialYesPrice: number, liquidity: number = 100): LMSRState {
-  return initializeLMSR(initialYesPrice, liquidity);
-}
+// Transform DB market to frontend MarketEvent
+function transformDbMarket(dbMarket: DbMarket): MarketEvent {
+  const lmsr: LMSRState = {
+    b: dbMarket.lmsr_b,
+    qYes: dbMarket.yes_shares,
+    qNo: dbMarket.no_shares,
+  };
 
-// Store LMSR states separately to allow mutations
-const lmsrStates: Record<string, LMSRState> = {
-  'evt-001': createLMSRState(65, 100),
-  'evt-002': createLMSRState(50, 100),
-  'evt-003': createLMSRState(35, 80),
-  'evt-004': createLMSRState(72, 120),
-  'evt-005': createLMSRState(42, 150),
-};
+  const yesPrice = getPriceYes(lmsr);
+  const noPrice = getPriceNo(lmsr);
 
-// Get current prices from LMSR state
-function getOutcomesFromLMSR(eventId: string): { YES: { price: number; probability: number }; NO: { price: number; probability: number } } {
-  const state = lmsrStates[eventId];
-  if (!state) {
-    return {
-      YES: { price: 50, probability: 50 },
-      NO: { price: 50, probability: 50 },
-    };
-  }
-  
-  const yesPrice = getPriceYes(state);
-  const noPrice = getPriceNo(state);
-  
   return {
-    YES: { price: yesPrice, probability: yesPrice },
-    NO: { price: noPrice, probability: noPrice },
-  };
-}
-
-// Helper to create dates relative to now for demo
-function hoursFromNow(hours: number): Date {
-  return new Date(Date.now() + hours * 60 * 60 * 1000);
-}
-
-// Mock data - simula dados que virão de uma API/dashboard admin
-const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
-  {
-    id: 'evt-001',
-    title: 'O Banco Central vai reduzir a taxa Selic até dezembro?',
-    category: 'Economia',
-    expiryAt: new Date('2024-12-31T23:59:59'),
-    status: 'OPEN',
+    id: dbMarket.id,
+    title: dbMarket.title,
+    category: dbMarket.category,
+    description: dbMarket.description || undefined,
+    imageUrl: dbMarket.image_url || undefined,
+    status: dbMarket.status as MarketStatus,
+    settlementType: dbMarket.settlement_type as SettlementType,
+    settlementConfig: dbMarket.settlement_config as SettlementConfig | undefined,
+    expiryAt: dbMarket.settlement_date ? new Date(dbMarket.settlement_date) : new Date(),
+    tradingHaltAt: dbMarket.close_date ? new Date(dbMarket.close_date) : new Date(),
+    eventAt: dbMarket.settlement_date ? new Date(dbMarket.settlement_date) : new Date(),
     limits: { minBuy: 10, maxBuy: 5000 },
-    lastUpdatedAt: new Date(),
-    volume: 125430,
-    description: 'Este mercado será liquidado com base na decisão oficial do COPOM sobre a taxa Selic.',
-    settlementRules: [
-      'Fonte oficial: Comunicado do COPOM publicado no site do Banco Central',
-      'Considera-se redução qualquer corte de 0,25 p.p. ou mais na taxa Selic',
-      'Data limite: última reunião do COPOM de 2024 (10-11 de dezembro)',
-      'Em caso de reunião extraordinária, esta será considerada na liquidação',
-    ],
-    tradingHaltAt: hoursFromNow(2),      // Halt in 2 hours
-    eventAt: hoursFromNow(3),            // Event in 3 hours
-  },
-  {
-    id: 'evt-002',
-    title: 'O dólar ficará abaixo de R$4,80 até o fim do ano?',
-    category: 'Câmbio',
-    expiryAt: new Date('2024-12-31T23:59:59'),
-    status: 'OPEN',
-    limits: { minBuy: 10, maxBuy: 10000 },
-    lastUpdatedAt: new Date(),
-    volume: 89750,
-    description: 'Baseado na cotação oficial do dólar comercial PTAX no último dia útil do ano.',
-    settlementRules: [
-      'Fonte oficial: Taxa PTAX de venda divulgada pelo Banco Central',
-      'Considera-se a cotação de fechamento do último dia útil de 2024',
-      'Valor de referência: R$4,80 (exatamente)',
-      'Se igual a R$4,80, o mercado será liquidado como NÃO',
-    ],
-    tradingHaltAt: hoursFromNow(48),     // Halt in 48 hours
-    eventAt: hoursFromNow(50),           // Event in 50 hours
-  },
-  {
-    id: 'evt-003',
-    title: 'O Brasil ganhará mais de 10 medalhas de ouro nas próximas Olimpíadas?',
-    category: 'Esportes',
-    expiryAt: new Date('2024-08-11T23:59:59'),
-    status: 'OPEN',
-    limits: { minBuy: 5, maxBuy: 2000 },
-    lastUpdatedAt: new Date(),
-    volume: 45200,
-    description: 'Contabiliza medalhas de ouro oficiais reconhecidas pelo COB.',
-    settlementRules: [
-      'Fonte oficial: Quadro de medalhas do Comitê Olímpico Internacional (COI)',
-      'Considera-se apenas medalhas de ouro (não prata ou bronze)',
-      'Número mínimo para SIM: 11 medalhas de ouro ou mais',
-      'Medalhas conquistadas em equipe contam como uma única medalha',
-    ],
-    tradingHaltAt: hoursFromNow(0.05),   // Halt in 3 min (urgent demo)
-    eventAt: hoursFromNow(0.1),          // Event in 6 min
-  },
-  {
-    id: 'evt-004',
-    title: 'A inflação IPCA ficará abaixo de 5% em 2024?',
-    category: 'Economia',
-    expiryAt: new Date('2025-01-15T23:59:59'),
-    status: 'OPEN',
-    limits: { minBuy: 10, maxBuy: 8000 },
-    lastUpdatedAt: new Date(),
-    volume: 203100,
-    description: 'Baseado no IPCA acumulado de 12 meses divulgado pelo IBGE.',
-    settlementRules: [
-      'Fonte oficial: IPCA divulgado pelo IBGE',
-      'Considera-se o acumulado de janeiro a dezembro de 2024',
-      'Valor de referência: 5,00% (exatamente)',
-      'Liquidação ocorre após divulgação do IPCA de dezembro (meados de janeiro 2025)',
-    ],
-    tradingHaltAt: hoursFromNow(168),    // Halt in 1 week
-    eventAt: hoursFromNow(170),          // Event in 1 week + 2h
-  },
-  {
-    id: 'evt-005',
-    title: 'O Ibovespa fechará acima de 140.000 pontos em 2024?',
-    category: 'Mercado',
-    expiryAt: new Date('2024-12-30T18:00:00'),
-    status: 'OPEN',
-    limits: { minBuy: 10, maxBuy: 15000 },
-    lastUpdatedAt: new Date(),
-    volume: 312500,
-    description: 'Baseado no fechamento oficial do índice Ibovespa na B3.',
-    settlementRules: [
-      'Fonte oficial: Ibovespa divulgado pela B3',
-      'Considera-se o fechamento do último pregão de 2024',
-      'Valor de referência: 140.000 pontos (exatamente)',
-      'Se igual a 140.000, o mercado será liquidado como NÃO',
-    ],
-    tradingHaltAt: hoursFromNow(24),     // Halt in 24 hours
-    eventAt: hoursFromNow(26),           // Event in 26 hours
-  },
-];
-
-// Build full events with dynamic LMSR-based outcomes
-function buildMarketEvents(): MarketEvent[] {
-  return mockEventsBase.map(base => ({
-    ...base,
-    outcomes: getOutcomesFromLMSR(base.id),
-    lmsr: lmsrStates[base.id] || createLMSRState(50),
-    lastUpdatedAt: new Date(),
-  }));
-}
-
-// Mock histórico de odds (últimos 30 dias) - now simulates LMSR trades
-function generateOddsHistory(eventId: string): OddsHistoryPoint[] {
-  const state = lmsrStates[eventId];
-  if (!state) return [];
-
-  const history: OddsHistoryPoint[] = [];
-  const now = new Date();
-  
-  // Simulate historical state evolution
-  let simState = { ...state };
-  const currentYes = getPriceYes(simState);
-  
-  // Start from a random point and evolve to current
-  let historicalYes = currentYes + (Math.random() - 0.5) * 30;
-  historicalYes = Math.max(10, Math.min(90, historicalYes));
-  
-  for (let i = 30; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    
-    // Gradually move towards current price
-    const progress = 1 - (i / 30);
-    const targetYes = historicalYes + (currentYes - historicalYes) * progress;
-    
-    // Add some noise
-    const noise = (Math.random() - 0.5) * 5;
-    const yesPrice = Math.max(5, Math.min(95, Math.round(targetYes + noise)));
-    
-    history.push({
-      timestamp: date,
-      yesPrice,
-      noPrice: 100 - yesPrice,
-    });
-  }
-
-  // Last point is exactly current price
-  history[history.length - 1] = {
-    timestamp: now,
-    yesPrice: getPriceYes(state),
-    noPrice: getPriceNo(state),
+    lastUpdatedAt: new Date(dbMarket.updated_at),
+    volume: dbMarket.total_volume,
+    outcomes: {
+      YES: { price: yesPrice, probability: yesPrice },
+      NO: { price: noPrice, probability: noPrice },
+    },
+    lmsr,
+    result: dbMarket.result as 'YES' | 'NO' | undefined,
+    resultSource: dbMarket.result_source || undefined,
+    haltReason: dbMarket.halt_reason || undefined,
   };
-
-  return history;
 }
 
-// Mock comentários
-const mockComments: Record<string, Comment[]> = {
-  'evt-001': [
-    { id: 'c1', author: 'MarketAnalyst', content: 'COPOM deve manter postura cautelosa. Inflação ainda preocupa.', createdAt: new Date('2024-11-20'), likes: 24 },
-    { id: 'c2', author: 'EconBR', content: 'Mercado precificando corte de 0,25 p.p. na última reunião.', createdAt: new Date('2024-11-22'), likes: 18 },
-    { id: 'c3', author: 'TraderPro', content: 'Atenção para dados do IPCA de novembro antes de entrar.', createdAt: new Date('2024-11-25'), likes: 12 },
-  ],
-  'evt-002': [
-    { id: 'c4', author: 'FXTrader', content: 'Dólar sob pressão com commodities em alta. Chance real de ficar abaixo de 4,80.', createdAt: new Date('2024-11-21'), likes: 31 },
-    { id: 'c5', author: 'MacroView', content: 'Cenário externo vai definir. Fed mais dovish ajuda Real.', createdAt: new Date('2024-11-23'), likes: 15 },
-  ],
-  'evt-004': [
-    { id: 'c6', author: 'InflationWatch', content: 'Núcleos de inflação melhorando. Acho que fica abaixo de 5%.', createdAt: new Date('2024-11-19'), likes: 42 },
-  ],
-};
-
-let mockUserPortfolio: UserPortfolio = {
-  balance: 2500.00,
-  totalProfit: 340.50,
-  contracts: [
-    {
-      id: 'ctr-001',
-      eventId: 'evt-001',
-      eventTitle: 'O Banco Central vai reduzir a taxa Selic até dezembro?',
-      outcome: 'YES',
-      quantity: 50,
-      priceAtPurchase: 62,
-      purchasedAt: new Date('2024-01-15T10:30:00'),
-      status: 'ACTIVE',
-    },
-    {
-      id: 'ctr-002',
-      eventId: 'evt-004',
-      eventTitle: 'A inflação IPCA ficará abaixo de 5% em 2024?',
-      outcome: 'NO',
-      quantity: 30,
-      priceAtPurchase: 32,
-      purchasedAt: new Date('2024-02-20T14:45:00'),
-      status: 'ACTIVE',
-    },
-  ],
-  transactions: [
-    {
-      id: 'tx-001',
-      type: 'DEPOSIT',
-      amount: 1000,
-      createdAt: new Date('2024-01-10T09:00:00'),
-    },
-    {
-      id: 'tx-002',
-      type: 'BUY',
-      amount: -310,
-      eventTitle: 'O Banco Central vai reduzir a taxa Selic até dezembro?',
-      outcome: 'YES',
-      createdAt: new Date('2024-01-15T10:30:00'),
-    },
-    {
-      id: 'tx-003',
-      type: 'DEPOSIT',
-      amount: 2000,
-      createdAt: new Date('2024-02-01T11:00:00'),
-    },
-    {
-      id: 'tx-004',
-      type: 'BUY',
-      amount: -96,
-      eventTitle: 'A inflação IPCA ficará abaixo de 5% em 2024?',
-      outcome: 'NO',
-      createdAt: new Date('2024-02-20T14:45:00'),
-    },
-    {
-      id: 'tx-005',
-      type: 'PAYOUT',
-      amount: 250,
-      eventTitle: 'PIB vai crescer mais de 2% no 1º trimestre?',
-      outcome: 'YES',
-      createdAt: new Date('2024-03-01T12:00:00'),
-    },
-  ],
-};
+// Mock comments (will be moved to Supabase later)
+const mockComments: Record<string, Comment[]> = {};
 
 // Provider público - cliente só pode LER dados
 export const MarketDataProvider = {
   // Busca todos os eventos
   async getEvents(): Promise<MarketEvent[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return buildMarketEvents();
+    const { data, error } = await supabase
+      .from('markets')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching markets:', error);
+      return [];
+    }
+
+    return (data || []).map(m => transformDbMarket(m as unknown as DbMarket));
   },
 
   // Busca evento específico por ID
   async getEventById(id: string): Promise<MarketEvent | null> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const events = buildMarketEvents();
-    return events.find(e => e.id === id) || null;
+    const { data, error } = await supabase
+      .from('markets')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('Error fetching market:', error);
+      return null;
+    }
+
+    return transformDbMarket(data as unknown as DbMarket);
   },
 
   // Busca odds atualizadas (simula refresh)
   async refreshOdds(eventId: string): Promise<MarketEvent | null> {
-    await new Promise(resolve => setTimeout(resolve, 150));
-    const events = buildMarketEvents();
-    return events.find(e => e.id === eventId) || null;
+    return this.getEventById(eventId);
   },
 
   // Busca eventos por categoria
   async getEventsByCategory(category: string): Promise<MarketEvent[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return buildMarketEvents()
-      .filter(e => e.category.toLowerCase() === category.toLowerCase());
+    const { data, error } = await supabase
+      .from('markets')
+      .select('*')
+      .ilike('category', category)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching markets by category:', error);
+      return [];
+    }
+
+    return (data || []).map(m => transformDbMarket(m as unknown as DbMarket));
   },
 
   // Busca categorias disponíveis
   async getCategories(): Promise<string[]> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const categories = [...new Set(mockEventsBase.map(e => e.category))];
+    const { data, error } = await supabase
+      .from('markets')
+      .select('category');
+
+    if (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
+
+    const categories = [...new Set((data || []).map(m => m.category))];
     return categories;
   },
 
-  // Busca histórico de odds
+  // Busca histórico de odds (mock for now)
   async getOddsHistory(eventId: string): Promise<OddsHistoryPoint[]> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return generateOddsHistory(eventId);
+    const market = await this.getEventById(eventId);
+    if (!market) return [];
+
+    // Generate mock history based on current price
+    const history: OddsHistoryPoint[] = [];
+    const now = new Date();
+    const currentYes = market.outcomes.YES.price;
+    
+    let historicalYes = currentYes + (Math.random() - 0.5) * 30;
+    historicalYes = Math.max(10, Math.min(90, historicalYes));
+    
+    for (let i = 30; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      
+      const progress = 1 - (i / 30);
+      const targetYes = historicalYes + (currentYes - historicalYes) * progress;
+      const noise = (Math.random() - 0.5) * 5;
+      const yesPrice = Math.max(5, Math.min(95, Math.round(targetYes + noise)));
+      
+      history.push({
+        timestamp: date,
+        yesPrice,
+        noPrice: 100 - yesPrice,
+      });
+    }
+
+    history[history.length - 1] = {
+      timestamp: now,
+      yesPrice: currentYes,
+      noPrice: 100 - currentYes,
+    };
+
+    return history;
   },
 
   // Busca comentários do evento
   async getEventComments(eventId: string): Promise<Comment[]> {
-    await new Promise(resolve => setTimeout(resolve, 150));
     return mockComments[eventId] || [];
   },
 
   // Busca mercados para autocomplete
   async searchEvents(query: string): Promise<MarketEvent[]> {
-    await new Promise(resolve => setTimeout(resolve, 100));
     if (!query.trim()) return [];
     
-    const lowerQuery = query.toLowerCase();
-    return buildMarketEvents().filter(e => 
-      e.title.toLowerCase().includes(lowerQuery) ||
-      e.category.toLowerCase().includes(lowerQuery)
-    );
+    const { data, error } = await supabase
+      .from('markets')
+      .select('*')
+      .or(`title.ilike.%${query}%,category.ilike.%${query}%`)
+      .limit(10);
+
+    if (error) {
+      console.error('Error searching markets:', error);
+      return [];
+    }
+
+    return (data || []).map(m => transformDbMarket(m as unknown as DbMarket));
   },
 
   // Busca portfolio do usuário
   async getUserPortfolio(): Promise<UserPortfolio> {
-    await new Promise(resolve => setTimeout(resolve, 250));
-    return { ...mockUserPortfolio };
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return { balance: 0, totalProfit: 0, contracts: [], transactions: [] };
+    }
+
+    // Get balance
+    const { data: balanceData } = await supabase
+      .from('user_balances')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Get contracts
+    const { data: contractsData } = await supabase
+      .from('user_contracts')
+      .select('*, markets(title)')
+      .eq('user_id', user.id);
+
+    // Get transactions
+    const { data: transactionsData } = await supabase
+      .from('transactions')
+      .select('*, markets(title)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const contracts: UserContract[] = (contractsData || []).map((c: any) => ({
+      id: c.id,
+      eventId: c.market_id,
+      eventTitle: c.markets?.title || 'Unknown',
+      outcome: c.position as 'YES' | 'NO',
+      quantity: c.shares,
+      priceAtPurchase: c.average_price * 100,
+      purchasedAt: new Date(c.created_at),
+      status: 'ACTIVE' as const,
+    }));
+
+    const transactions: Transaction[] = (transactionsData || []).map((t: any) => ({
+      id: t.id,
+      type: t.type as 'BUY' | 'SELL' | 'PAYOUT' | 'DEPOSIT',
+      amount: t.total_amount,
+      eventTitle: t.markets?.title,
+      outcome: t.position as 'YES' | 'NO' | undefined,
+      createdAt: new Date(t.created_at),
+    }));
+
+    return {
+      balance: balanceData?.balance || 0,
+      totalProfit: (balanceData?.balance || 0) - (balanceData?.total_deposited || 0),
+      contracts,
+      transactions,
+    };
   },
 
   // Get quote for buying shares (LMSR-based)
@@ -355,12 +245,10 @@ export const MarketDataProvider = {
     outcome: 'YES' | 'NO',
     shares: number
   ): Promise<TradeQuote | null> {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    const market = await this.getEventById(eventId);
+    if (!market) return null;
     
-    const state = lmsrStates[eventId];
-    if (!state) return null;
-    
-    return getQuote(state, outcome, shares);
+    return getQuote(market.lmsr, outcome, shares);
   },
 
   // Get quote for selling shares (LMSR-based)
@@ -369,12 +257,10 @@ export const MarketDataProvider = {
     outcome: 'YES' | 'NO',
     shares: number
   ): Promise<TradeQuote | null> {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    const market = await this.getEventById(eventId);
+    if (!market) return null;
     
-    const state = lmsrStates[eventId];
-    if (!state) return null;
-    
-    return getSellQuote(state, outcome, shares);
+    return getSellQuote(market.lmsr, outcome, shares);
   },
 
   // Compra de contrato usando LMSR
@@ -382,28 +268,24 @@ export const MarketDataProvider = {
     eventId: string,
     outcome: 'YES' | 'NO',
     shares: number,
-    maxCost: number // Maximum the user is willing to pay
+    maxCost: number
   ): Promise<{ success: boolean; message: string; contract?: UserContract; quote?: TradeQuote }> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const state = lmsrStates[eventId];
-    if (!state) {
-      return { success: false, message: 'Evento não encontrado.' };
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: 'Usuário não autenticado.' };
+    }
+
+    const market = await this.getEventById(eventId);
+    if (!market) {
+      return { success: false, message: 'Mercado não encontrado.' };
     }
     
-    const event = buildMarketEvents().find(e => e.id === eventId);
-    if (!event) {
-      return { success: false, message: 'Evento não encontrado.' };
-    }
-    
-    if (event.status !== 'OPEN') {
+    if (market.status !== 'OPEN') {
       return { success: false, message: 'Este mercado não está aberto para negociação.' };
     }
     
-    // Get fresh quote
-    const quote = getQuote(state, outcome, shares);
+    const quote = getQuote(market.lmsr, outcome, shares);
     
-    // Check if cost is within tolerance (5% slippage protection)
     if (quote.cost > maxCost * 1.05) {
       return { 
         success: false, 
@@ -411,36 +293,113 @@ export const MarketDataProvider = {
         quote,
       };
     }
-    
-    if (quote.cost > mockUserPortfolio.balance) {
+
+    // Get user balance
+    const { data: balanceData } = await supabase
+      .from('user_balances')
+      .select('balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!balanceData || balanceData.balance < quote.cost) {
       return { success: false, message: 'Saldo insuficiente.', quote };
     }
-    
-    // Execute the trade - update LMSR state
-    lmsrStates[eventId] = executeBuy(state, outcome, shares);
-    
+
+    // Execute trade - update market LMSR state
+    const newState = executeBuy(market.lmsr, outcome, shares);
+    const newYesPrice = getPriceYes(newState);
+    const newNoPrice = getPriceNo(newState);
+
+    // Update market in database
+    const { error: marketError } = await supabase
+      .from('markets')
+      .update({
+        yes_shares: newState.qYes,
+        no_shares: newState.qNo,
+        current_yes_price: newYesPrice / 100,
+        current_no_price: newNoPrice / 100,
+        total_volume: market.volume + quote.cost,
+      })
+      .eq('id', eventId);
+        total_volume: market.volume + quote.cost,
+      })
+      .eq('id', eventId);
+
+    if (marketError) {
+      console.error('Error updating market:', marketError);
+      return { success: false, message: 'Erro ao processar compra.' };
+    }
+
+    // Deduct balance
+    const { error: balanceError } = await supabase
+      .from('user_balances')
+      .update({ balance: balanceData.balance - quote.cost })
+      .eq('user_id', user.id);
+
+    if (balanceError) {
+      console.error('Error updating balance:', balanceError);
+    }
+
+    // Create or update contract
+    const { data: existingContract } = await supabase
+      .from('user_contracts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('market_id', eventId)
+      .eq('position', outcome)
+      .maybeSingle();
+
+    if (existingContract) {
+      // Update existing contract
+      const newShares = existingContract.shares + shares;
+      const newTotalInvested = existingContract.total_invested + quote.cost;
+      const newAvgPrice = newTotalInvested / newShares;
+
+      await supabase
+        .from('user_contracts')
+        .update({
+          shares: newShares,
+          total_invested: newTotalInvested,
+          average_price: newAvgPrice,
+        })
+        .eq('id', existingContract.id);
+    } else {
+      // Create new contract
+      await supabase
+        .from('user_contracts')
+        .insert({
+          user_id: user.id,
+          market_id: eventId,
+          position: outcome,
+          shares,
+          average_price: quote.avgPrice / 100,
+          total_invested: quote.cost,
+        });
+    }
+
+    // Record transaction
+    await supabase
+      .from('transactions')
+      .insert({
+        user_id: user.id,
+        market_id: eventId,
+        type: 'BUY',
+        position: outcome,
+        shares,
+        price_per_share: quote.avgPrice / 100,
+        total_amount: -quote.cost,
+      });
+
     const newContract: UserContract = {
       id: `ctr-${Date.now()}`,
       eventId,
-      eventTitle: event.title,
+      eventTitle: market.title,
       outcome,
       quantity: shares,
       priceAtPurchase: quote.avgPrice,
       purchasedAt: new Date(),
       status: 'ACTIVE',
     };
-
-    // Update portfolio
-    mockUserPortfolio.balance -= quote.cost;
-    mockUserPortfolio.contracts.push(newContract);
-    mockUserPortfolio.transactions.push({
-      id: `tx-${Date.now()}`,
-      type: 'BUY',
-      amount: -quote.cost,
-      eventTitle: event.title,
-      outcome,
-      createdAt: new Date(),
-    });
     
     return {
       success: true,
@@ -450,32 +409,41 @@ export const MarketDataProvider = {
     };
   },
 
-  // Venda de contrato usando LMSR
+  // Venda de contrato
   async sellContract(
     contractId: string,
-    minValue: number // Minimum the user is willing to accept
+    minValue: number
   ): Promise<{ success: boolean; message: string; saleValue?: number; quote?: TradeQuote }> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const contractIndex = mockUserPortfolio.contracts.findIndex(c => c.id === contractId);
-    if (contractIndex === -1) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: 'Usuário não autenticado.' };
+    }
+
+    // Get contract
+    const { data: contract } = await supabase
+      .from('user_contracts')
+      .select('*, markets(title, yes_shares, no_shares, lmsr_b, status)')
+      .eq('id', contractId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!contract) {
       return { success: false, message: 'Contrato não encontrado.' };
     }
 
-    const contract = mockUserPortfolio.contracts[contractIndex];
-    if (contract.status !== 'ACTIVE') {
-      return { success: false, message: 'Este contrato não está ativo.' };
+    const market = contract.markets as any;
+    if (market.status !== 'OPEN') {
+      return { success: false, message: 'Este mercado não está aberto para negociação.' };
     }
 
-    const state = lmsrStates[contract.eventId];
-    if (!state) {
-      return { success: false, message: 'Evento não encontrado.' };
-    }
+    const lmsr: LMSRState = {
+      b: market.lmsr_b,
+      qYes: market.yes_shares,
+      qNo: market.no_shares,
+    };
 
-    // Get fresh quote
-    const quote = getSellQuote(state, contract.outcome, contract.quantity);
+    const quote = getSellQuote(lmsr, contract.position as 'YES' | 'NO', contract.shares);
     
-    // Check if value is within tolerance (5% slippage protection)
     if (quote.cost < minValue * 0.95) {
       return { 
         success: false, 
@@ -484,39 +452,68 @@ export const MarketDataProvider = {
       };
     }
 
-    // Execute the trade - update LMSR state
-    lmsrStates[contract.eventId] = executeSell(state, contract.outcome, contract.quantity);
+    // Execute sell
+    const newState = executeSell(lmsr, contract.position as 'YES' | 'NO', contract.shares);
+    const newYesPrice = getPriceYes(newState);
+    const newNoPrice = getPriceNo(newState);
 
-    const saleValue = quote.cost;
+    // Update market
+    await supabase
+      .from('markets')
+      .update({
+        yes_shares: newState.qYes,
+        no_shares: newState.qNo,
+        current_yes_price: newYesPrice / 100,
+        current_no_price: newNoPrice / 100,
+      })
+      .eq('id', contract.market_id);
 
-    // Update portfolio
-    mockUserPortfolio.balance += saleValue;
-    mockUserPortfolio.contracts.splice(contractIndex, 1);
-    mockUserPortfolio.transactions.push({
-      id: `tx-${Date.now()}`,
-      type: 'SELL',
-      amount: saleValue,
-      eventTitle: contract.eventTitle,
-      outcome: contract.outcome,
-      createdAt: new Date(),
-    });
+    // Add balance
+    const { data: balanceData } = await supabase
+      .from('user_balances')
+      .select('balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    await supabase
+      .from('user_balances')
+      .update({ balance: (balanceData?.balance || 0) + quote.cost })
+      .eq('user_id', user.id);
+
+    // Delete contract
+    await supabase
+      .from('user_contracts')
+      .delete()
+      .eq('id', contractId);
+
+    // Record transaction
+    await supabase
+      .from('transactions')
+      .insert({
+        user_id: user.id,
+        market_id: contract.market_id,
+        type: 'SELL',
+        position: contract.position,
+        shares: contract.shares,
+        price_per_share: quote.avgPrice / 100,
+        total_amount: quote.cost,
+      });
 
     return {
       success: true,
-      message: 'Contrato vendido com sucesso!',
-      saleValue,
+      message: 'Venda realizada com sucesso!',
+      saleValue: quote.cost,
       quote,
     };
   },
 
-  // Busca preço atual de mercado para um contrato
+  // Get current price for contract
   async getCurrentPriceForContract(contract: UserContract): Promise<number> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const state = lmsrStates[contract.eventId];
-    if (!state) return contract.priceAtPurchase;
-    
-    return contract.outcome === 'YES' ? getPriceYes(state) : getPriceNo(state);
+    const market = await this.getEventById(contract.eventId);
+    if (!market) return contract.priceAtPurchase;
+
+    return contract.outcome === 'YES' 
+      ? market.outcomes.YES.price 
+      : market.outcomes.NO.price;
   },
 };
-
-export default MarketDataProvider;

@@ -1,12 +1,23 @@
 import { LMSRState } from '@/services/LMSRCalculator';
 
 export type MarketStatus = 'OPEN' | 'HALTED' | 'PENDING' | 'CONTESTED' | 'SETTLED';
-export type SettlementType = 'MANUAL' | 'SELIC' | 'SELIC_META' | 'IPCA' | 'CDI' | 'PTAX';
+export type SettlementType = 
+  | 'MANUAL'
+  | 'SELIC'
+  | 'SELIC_META'
+  | 'IPCA'
+  | 'IPCA_12M'
+  | 'CDI'
+  | 'PTAX'
+  | 'PTAX_USD'
+  | 'PTAX_EUR'
+  | 'PIB';
 
 export interface SettlementConfig {
   threshold: number;
   operator: 'lt' | 'gt' | 'lte' | 'gte' | 'eq';
   description?: string;
+  unit?: 'percent' | 'currency' | 'points';
 }
 
 export interface Outcome {
@@ -141,11 +152,15 @@ export interface UserPortfolio {
 // Settlement type labels for UI
 export const SETTLEMENT_TYPE_LABELS: Record<SettlementType, string> = {
   MANUAL: 'Manual (Admin)',
-  SELIC: 'Taxa SELIC',
+  SELIC: 'Taxa SELIC (Mensal)',
   SELIC_META: 'Meta SELIC (COPOM)',
-  IPCA: 'IPCA (Inflação)',
+  IPCA: 'IPCA (Mensal)',
+  IPCA_12M: 'IPCA Acumulado 12 meses',
   CDI: 'Taxa CDI',
-  PTAX: 'Dólar PTAX',
+  PTAX: 'Dólar PTAX (Legacy)',
+  PTAX_USD: 'Dólar PTAX',
+  PTAX_EUR: 'Euro PTAX',
+  PIB: 'PIB (Anual)',
 };
 
 export const OPERATOR_LABELS: Record<string, string> = {
@@ -154,4 +169,18 @@ export const OPERATOR_LABELS: Record<string, string> = {
   lte: 'menor ou igual a',
   gte: 'maior ou igual a',
   eq: 'igual a',
+};
+
+// Units for each settlement type
+export const SETTLEMENT_TYPE_UNITS: Record<SettlementType, { unit: string; placeholder: string }> = {
+  MANUAL: { unit: '', placeholder: '0' },
+  SELIC: { unit: '%', placeholder: 'Ex: 10.5' },
+  SELIC_META: { unit: '%', placeholder: 'Ex: 10.5' },
+  IPCA: { unit: '%', placeholder: 'Ex: 0.5' },
+  IPCA_12M: { unit: '%', placeholder: 'Ex: 4.5' },
+  CDI: { unit: '%', placeholder: 'Ex: 10.4' },
+  PTAX: { unit: 'R$', placeholder: 'Ex: 5.80' },
+  PTAX_USD: { unit: 'R$', placeholder: 'Ex: 5.80' },
+  PTAX_EUR: { unit: 'R$', placeholder: 'Ex: 6.30' },
+  PIB: { unit: '%', placeholder: 'Ex: 2.5' },
 };

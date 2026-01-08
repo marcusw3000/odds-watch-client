@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminDataProvider } from '@/services/AdminDataProvider';
 import { MarketFormData } from '@/types/admin';
-import { MarketEvent, SettlementType, SETTLEMENT_TYPE_LABELS, OPERATOR_LABELS, SettlementConfig } from '@/types/market';
+import { MarketEvent, SettlementType, SETTLEMENT_TYPE_LABELS, OPERATOR_LABELS, SETTLEMENT_TYPE_UNITS, SettlementConfig } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,32 +87,17 @@ export function AdminMarketForm() {
   const isAutomatic = formData.settlementType !== 'MANUAL';
 
   const getThresholdLabel = () => {
-    switch (formData.settlementType) {
-      case 'SELIC':
-      case 'SELIC_META':
-      case 'CDI':
-      case 'IPCA':
-        return 'Taxa (%)';
-      case 'PTAX':
-        return 'Valor (R$)';
-      default:
-        return 'Valor';
-    }
+    const unitInfo = SETTLEMENT_TYPE_UNITS[formData.settlementType];
+    return unitInfo?.unit ? `Valor (${unitInfo.unit})` : 'Valor';
   };
 
   const getThresholdPlaceholder = () => {
-    switch (formData.settlementType) {
-      case 'SELIC':
-      case 'SELIC_META':
-      case 'CDI':
-        return 'Ex: 10.5';
-      case 'IPCA':
-        return 'Ex: 4.5';
-      case 'PTAX':
-        return 'Ex: 4.80';
-      default:
-        return '0';
-    }
+    return SETTLEMENT_TYPE_UNITS[formData.settlementType]?.placeholder || '0';
+  };
+
+  const getUnitSuffix = () => {
+    const unitInfo = SETTLEMENT_TYPE_UNITS[formData.settlementType];
+    return unitInfo?.unit || '';
   };
 
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -210,7 +195,7 @@ export function AdminMarketForm() {
                     <p className="text-muted-foreground">
                       O mercado será liquidado como <strong>SIM</strong> se {SETTLEMENT_TYPE_LABELS[formData.settlementType]} for{' '}
                       <strong>{OPERATOR_LABELS[formData.settlementConfig?.operator || 'lt']}</strong>{' '}
-                      <strong>{formData.settlementConfig?.threshold || 0}{formData.settlementType === 'PTAX' ? '' : '%'}</strong>
+                      <strong>{getUnitSuffix() === 'R$' ? 'R$ ' : ''}{formData.settlementConfig?.threshold || 0}{getUnitSuffix() === '%' ? '%' : ''}</strong>
                     </p>
                   </div>
                 </>

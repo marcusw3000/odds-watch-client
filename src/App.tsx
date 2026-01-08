@@ -15,6 +15,7 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminMarketsPage } from "./pages/admin/AdminMarketsPage";
 import { AdminMarketForm } from "./pages/admin/AdminMarketForm";
 import { AdminContestationsPage } from "./pages/admin/AdminContestationsPage";
+import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           </Route>
           
           {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="markets" element={<AdminMarketsPage />} />

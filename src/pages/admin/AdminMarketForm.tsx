@@ -73,6 +73,20 @@ export function AdminMarketForm() {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleDateChange = (field: 'eventAt' | 'tradingHaltAt' | 'expiryAt', value: string) => {
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) {
+      updateField(field, date);
+    }
+  };
+
+  const formatDateForInput = (date: Date): string => {
+    if (!date || isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toISOString().slice(0, 16);
+  };
+
   const addRule = () => updateField('settlementRules', [...formData.settlementRules, '']);
   const removeRule = (i: number) => updateField('settlementRules', formData.settlementRules.filter((_, idx) => idx !== i));
   const updateRule = (i: number, val: string) => {
@@ -219,8 +233,8 @@ export function AdminMarketForm() {
 
           <Card><CardHeader><CardTitle>Datas, Limites e Contratos</CardTitle></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
-              <div><Label>Data do Evento</Label><Input type="datetime-local" value={formData.eventAt.toISOString().slice(0, 16)} onChange={(e) => updateField('eventAt', new Date(e.target.value))} /></div>
-              <div><Label>Trading Halt</Label><Input type="datetime-local" value={formData.tradingHaltAt.toISOString().slice(0, 16)} onChange={(e) => updateField('tradingHaltAt', new Date(e.target.value))} /></div>
+              <div><Label>Data do Evento</Label><Input type="datetime-local" value={formatDateForInput(formData.eventAt)} onChange={(e) => handleDateChange('eventAt', e.target.value)} /></div>
+              <div><Label>Trading Halt</Label><Input type="datetime-local" value={formatDateForInput(formData.tradingHaltAt)} onChange={(e) => handleDateChange('tradingHaltAt', e.target.value)} /></div>
               <div><Label>Compra Mínima (R$)</Label><Input type="number" value={formData.limits.minBuy} onChange={(e) => updateField('limits', { ...formData.limits, minBuy: +e.target.value })} /></div>
               <div><Label>Compra Máxima (R$)</Label><Input type="number" value={formData.limits.maxBuy} onChange={(e) => updateField('limits', { ...formData.limits, maxBuy: +e.target.value })} /></div>
               <div className="sm:col-span-2">

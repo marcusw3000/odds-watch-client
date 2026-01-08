@@ -82,13 +82,13 @@ export const AdminDataProvider = {
 
     const { data, error } = await supabase
       .from('markets')
-      .insert({
+      .insert([{
         title: formData.title,
         category: formData.category,
         description: formData.description || null,
-        status: 'OPEN',
-        settlement_type: formData.settlementType || 'MANUAL',
-        settlement_config: formData.settlementConfig || null,
+        status: 'OPEN' as const,
+        settlement_type: (formData.settlementType || 'MANUAL') as any,
+        settlement_config: (formData.settlementConfig || null) as any,
         close_date: formData.tradingHaltAt.toISOString(),
         settlement_date: formData.eventAt.toISOString(),
         lmsr_b: formData.liquidity,
@@ -98,7 +98,7 @@ export const AdminDataProvider = {
         current_no_price: noPrice / 100,
         total_volume: 0,
         liquidity_pool: formData.liquidity * 100,
-      })
+      }])
       .select()
       .single();
 

@@ -5,7 +5,7 @@ import { TrendingUp, Clock, CheckCircle, XCircle, ArrowRightLeft } from 'lucide-
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { SellModal } from '@/components/market/SellModal';
-import MarketDataProvider from '@/services/MarketDataProvider';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 

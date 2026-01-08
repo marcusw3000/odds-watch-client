@@ -16,7 +16,7 @@ import {
   Scale
 } from 'lucide-react';
 import { MarketEvent, OddsHistoryPoint, Comment } from '@/types/market';
-import MarketDataProvider from '@/services/MarketDataProvider';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
 import { PurchaseModal } from '@/components/market/PurchaseModal';
 import { OddsChart } from '@/components/market/OddsChart';

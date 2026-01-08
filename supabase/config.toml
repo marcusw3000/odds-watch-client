@@ -1,1 +1,7 @@
 project_id = "nfwxyftsdhgxfrnrvsdo"
+
+[functions.bcb-data-fetcher]
+verify_jwt = false
+
+[functions.check-economic-events]
+verify_jwt = false

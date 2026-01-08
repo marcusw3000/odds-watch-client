@@ -43,6 +43,11 @@ function getOutcomesFromLMSR(eventId: string): { YES: { price: number; probabili
   };
 }
 
+// Helper to create dates relative to now for demo
+function hoursFromNow(hours: number): Date {
+  return new Date(Date.now() + hours * 60 * 60 * 1000);
+}
+
 // Mock data - simula dados que virão de uma API/dashboard admin
 const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
   {
@@ -61,6 +66,8 @@ const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
       'Data limite: última reunião do COPOM de 2024 (10-11 de dezembro)',
       'Em caso de reunião extraordinária, esta será considerada na liquidação',
     ],
+    tradingHaltAt: hoursFromNow(2),      // Halt in 2 hours
+    eventAt: hoursFromNow(3),            // Event in 3 hours
   },
   {
     id: 'evt-002',
@@ -78,6 +85,8 @@ const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
       'Valor de referência: R$4,80 (exatamente)',
       'Se igual a R$4,80, o mercado será liquidado como NÃO',
     ],
+    tradingHaltAt: hoursFromNow(48),     // Halt in 48 hours
+    eventAt: hoursFromNow(50),           // Event in 50 hours
   },
   {
     id: 'evt-003',
@@ -95,6 +104,8 @@ const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
       'Número mínimo para SIM: 11 medalhas de ouro ou mais',
       'Medalhas conquistadas em equipe contam como uma única medalha',
     ],
+    tradingHaltAt: hoursFromNow(0.05),   // Halt in 3 min (urgent demo)
+    eventAt: hoursFromNow(0.1),          // Event in 6 min
   },
   {
     id: 'evt-004',
@@ -112,6 +123,8 @@ const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
       'Valor de referência: 5,00% (exatamente)',
       'Liquidação ocorre após divulgação do IPCA de dezembro (meados de janeiro 2025)',
     ],
+    tradingHaltAt: hoursFromNow(168),    // Halt in 1 week
+    eventAt: hoursFromNow(170),          // Event in 1 week + 2h
   },
   {
     id: 'evt-005',
@@ -129,6 +142,8 @@ const mockEventsBase: Omit<MarketEvent, 'outcomes' | 'lmsr'>[] = [
       'Valor de referência: 140.000 pontos (exatamente)',
       'Se igual a 140.000, o mercado será liquidado como NÃO',
     ],
+    tradingHaltAt: hoursFromNow(24),     // Halt in 24 hours
+    eventAt: hoursFromNow(26),           // Event in 26 hours
   },
 ];
 

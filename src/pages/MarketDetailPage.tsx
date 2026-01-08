@@ -12,18 +12,23 @@ import {
   FileText,
   MessageSquare,
   ThumbsUp,
-  AlertTriangle
+  AlertTriangle,
+  Scale
 } from 'lucide-react';
 import { MarketEvent, OddsHistoryPoint, Comment } from '@/types/market';
 import MarketDataProvider from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
 import { PurchaseModal } from '@/components/market/PurchaseModal';
 import { OddsChart } from '@/components/market/OddsChart';
+import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
+import { TradingHaltBanner } from '@/components/market/TradingHaltBanner';
+import { ContestationPanel } from '@/components/market/ContestationPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
 export function MarketDetailPage() {
@@ -38,6 +43,8 @@ export function MarketDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
+  
+  const statusInfo = useMarketStatus(event);
 
   const fetchData = async () => {
     if (!id) return;
@@ -178,14 +185,14 @@ export function MarketDetailPage() {
             <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
               {event.category}
             </span>
-            <span className={cn(
-              "px-2 py-0.5 text-xs font-medium rounded-full",
-              event.status === 'OPEN' 
-                ? "bg-success/10 text-success" 
-                : "bg-muted text-muted-foreground"
-            )}>
-              {event.status === 'OPEN' ? 'Aberto' : event.status === 'CLOSED' ? 'Fechado' : 'Liquidado'}
-            </span>
+            <MarketStatusBadge
+              status={statusInfo.status}
+              timeToHalt={statusInfo.timeToHalt}
+              timeToEvent={statusInfo.timeToEvent}
+              contestTimeRemaining={statusInfo.contestTimeRemaining}
+              result={event.result}
+              isUrgent={statusInfo.isUrgent}
+            />
           </div>
           <h1 className="text-2xl md:text-3xl font-bold leading-tight">
             {event.title}
@@ -205,16 +212,37 @@ export function MarketDetailPage() {
         </Button>
       </div>
 
+      {/* Trading Halt Banner */}
+      <TradingHaltBanner
+        status={statusInfo.status}
+        timeToHalt={statusInfo.timeToHalt}
+        timeToEvent={statusInfo.timeToEvent}
+        contestTimeRemaining={statusInfo.contestTimeRemaining}
+        result={event.result}
+        isUrgent={statusInfo.isUrgent}
+      />
+
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-              <Calendar className="h-4 w-4" />
-              Expira em
+              <Clock className="h-4 w-4" />
+              Halt de Trading
             </div>
             <p className="font-semibold">
-              {format(event.expiryAt, "dd MMM yyyy", { locale: ptBR })}
+              {format(event.tradingHaltAt, "dd MMM 'às' HH:mm", { locale: ptBR })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <Calendar className="h-4 w-4" />
+              Evento
+            </div>
+            <p className="font-semibold">
+              {format(event.eventAt, "dd MMM 'às' HH:mm", { locale: ptBR })}
             </p>
           </CardContent>
         </Card>
@@ -235,17 +263,6 @@ export function MarketDetailPage() {
             </div>
             <p className="font-semibold font-mono">
               R${event.limits.minBuy} - R${event.limits.maxBuy}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-              <Clock className="h-4 w-4" />
-              Atualizado
-            </div>
-            <p className="font-semibold">
-              {format(event.lastUpdatedAt, "HH:mm", { locale: ptBR })}
             </p>
           </CardContent>
         </Card>
@@ -284,6 +301,13 @@ export function MarketDetailPage() {
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Análises ({comments.length})
+              </TabsTrigger>
+              <TabsTrigger
+                value="contestations"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              >
+                <Scale className="h-4 w-4 mr-2" />
+                Contestações ({event.contestations?.length || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -346,6 +370,17 @@ export function MarketDetailPage() {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="contestations" className="mt-6">
+              <ContestationPanel
+                event={event}
+                contestTimeRemaining={statusInfo.contestTimeRemaining}
+                onSubmitContestation={async (reason, evidence) => {
+                  // Mock implementation
+                  console.log('Contestation submitted:', { reason, evidence });
+                }}
+              />
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -371,7 +406,7 @@ export function MarketDetailPage() {
                   <Button 
                     variant="yes" 
                     onClick={() => setSelectedOutcome('YES')}
-                    disabled={event.status !== 'OPEN'}
+                    disabled={!statusInfo.canTrade}
                   >
                     Comprar SIM
                   </Button>
@@ -390,7 +425,7 @@ export function MarketDetailPage() {
                   <Button 
                     variant="no" 
                     onClick={() => setSelectedOutcome('NO')}
-                    disabled={event.status !== 'OPEN'}
+                    disabled={!statusInfo.canTrade}
                   >
                     Comprar NÃO
                   </Button>

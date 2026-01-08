@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Clock, TrendingUp, ChevronRight } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
+import { MarketStatusBadge } from './MarketStatusBadge';
+import { useMarketStatus, formatCountdown } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
 interface MarketCardProps {
@@ -15,6 +17,7 @@ interface MarketCardProps {
 
 export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
   const [hoveredOutcome, setHoveredOutcome] = useState<'YES' | 'NO' | null>(null);
+  const statusInfo = useMarketStatus(event);
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
@@ -22,11 +25,6 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
     if (vol >= 1000) return `R$${(vol / 1000).toFixed(0)}k`;
     return `R$${vol}`;
   };
-
-  const timeUntilExpiry = formatDistanceToNow(event.expiryAt, {
-    locale: ptBR,
-    addSuffix: true,
-  });
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
@@ -47,10 +45,14 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
           <span className={cn('px-2.5 py-1 rounded-md text-xs font-medium', getCategoryColor(event.category))}>
             {event.category}
           </span>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{timeUntilExpiry}</span>
-          </div>
+          <MarketStatusBadge
+            status={statusInfo.status}
+            timeToHalt={statusInfo.timeToHalt}
+            result={event.result}
+            size="sm"
+            showCountdown={statusInfo.isUrgent}
+            isUrgent={statusInfo.isUrgent}
+          />
         </div>
 
         <h3 className="text-lg font-semibold leading-snug mb-4 group-hover:text-primary transition-colors">
@@ -104,7 +106,10 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-0 border-t border-border">
+      <div className={cn(
+        "grid grid-cols-2 gap-0 border-t border-border",
+        !statusInfo.canTrade && "opacity-50 pointer-events-none"
+      )}>
         <Button
           variant="ghost"
           className={cn(
@@ -114,6 +119,7 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
           onMouseEnter={() => setHoveredOutcome('YES')}
           onMouseLeave={() => setHoveredOutcome(null)}
           onClick={() => onBuy(event.id, 'YES')}
+          disabled={!statusInfo.canTrade}
         >
           <span className="text-yes mr-2">●</span>
           Comprar SIM
@@ -127,6 +133,7 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
           onMouseEnter={() => setHoveredOutcome('NO')}
           onMouseLeave={() => setHoveredOutcome(null)}
           onClick={() => onBuy(event.id, 'NO')}
+          disabled={!statusInfo.canTrade}
         >
           <span className="text-no mr-2">●</span>
           Comprar NÃO

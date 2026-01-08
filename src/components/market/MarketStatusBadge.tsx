@@ -1,0 +1,121 @@
+import { Clock, Pause, HelpCircle, AlertTriangle, CheckCircle } from 'lucide-react';
+import { MarketStatus } from '@/types/market';
+import { formatCountdown, getStatusColor } from '@/hooks/useMarketStatus';
+import { cn } from '@/lib/utils';
+
+interface MarketStatusBadgeProps {
+  status: MarketStatus;
+  timeToHalt?: number | null;
+  timeToEvent?: number | null;
+  contestTimeRemaining?: number | null;
+  result?: 'YES' | 'NO';
+  size?: 'sm' | 'md' | 'lg';
+  showCountdown?: boolean;
+  isUrgent?: boolean;
+}
+
+export function MarketStatusBadge({
+  status,
+  timeToHalt,
+  timeToEvent,
+  contestTimeRemaining,
+  result,
+  size = 'sm',
+  showCountdown = true,
+  isUrgent = false,
+}: MarketStatusBadgeProps) {
+  const colors = getStatusColor(status);
+  
+  const getIcon = () => {
+    switch (status) {
+      case 'OPEN':
+        return <Clock className={cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4')} />;
+      case 'HALTED':
+        return <Pause className={cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4')} />;
+      case 'PENDING':
+        return <HelpCircle className={cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4')} />;
+      case 'CONTESTED':
+        return <AlertTriangle className={cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4')} />;
+      case 'SETTLED':
+        return <CheckCircle className={cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4')} />;
+      default:
+        return null;
+    }
+  };
+
+  const getLabel = () => {
+    switch (status) {
+      case 'OPEN':
+        return 'Aberto';
+      case 'HALTED':
+        return 'Pausado';
+      case 'PENDING':
+        return 'Aguardando';
+      case 'CONTESTED':
+        return 'Contestação';
+      case 'SETTLED':
+        return result === 'YES' ? 'Resultado: SIM' : result === 'NO' ? 'Resultado: NÃO' : 'Liquidado';
+      default:
+        return status;
+    }
+  };
+
+  const getCountdown = () => {
+    if (!showCountdown) return null;
+    
+    switch (status) {
+      case 'OPEN':
+        if (timeToHalt && timeToHalt > 0) {
+          return (
+            <span className="font-mono text-xs opacity-80">
+              Halt em {formatCountdown(timeToHalt)}
+            </span>
+          );
+        }
+        return null;
+      case 'HALTED':
+        if (timeToEvent && timeToEvent > 0) {
+          return (
+            <span className="font-mono text-xs opacity-80">
+              Evento em {formatCountdown(timeToEvent)}
+            </span>
+          );
+        }
+        return null;
+      case 'CONTESTED':
+        if (contestTimeRemaining && contestTimeRemaining > 0) {
+          return (
+            <span className="font-mono text-xs opacity-80">
+              Encerra em {formatCountdown(contestTimeRemaining)}
+            </span>
+          );
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const sizeClasses = {
+    sm: 'px-2 py-0.5 text-xs gap-1',
+    md: 'px-3 py-1 text-sm gap-1.5',
+    lg: 'px-4 py-2 text-base gap-2',
+  };
+
+  return (
+    <div
+      className={cn(
+        'inline-flex items-center rounded-full font-medium border',
+        colors.bg,
+        colors.text,
+        colors.border,
+        sizeClasses[size],
+        isUrgent && status === 'OPEN' && 'animate-pulse'
+      )}
+    >
+      {getIcon()}
+      <span>{getLabel()}</span>
+      {getCountdown()}
+    </div>
+  );
+}

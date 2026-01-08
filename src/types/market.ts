@@ -1,6 +1,6 @@
 import { LMSRState } from '@/services/LMSRCalculator';
 
-export type MarketStatus = 'OPEN' | 'CLOSED' | 'SETTLED';
+export type MarketStatus = 'OPEN' | 'HALTED' | 'PENDING' | 'CONTESTED' | 'SETTLED';
 
 export interface Outcome {
   price: number; // em centavos (ex: 65 = R$0.65)
@@ -20,6 +20,17 @@ export interface OddsHistoryPoint {
   noPrice: number;
 }
 
+export interface Contestation {
+  id: string;
+  userId: string;
+  reason: string;
+  evidence?: string;
+  submittedAt: Date;
+  status: 'OPEN' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED';
+  reviewedAt?: Date;
+  reviewNotes?: string;
+}
+
 export interface MarketEvent {
   id: string;
   title: string;
@@ -36,6 +47,18 @@ export interface MarketEvent {
   description?: string;
   settlementRules?: string[];
   lmsr: LMSRState;
+  
+  // Lifecycle timestamps
+  tradingHaltAt: Date;    // When trading stops
+  eventAt: Date;          // When the actual event occurs
+  contestEndAt?: Date;    // End of contestation period
+  settledAt?: Date;       // When market was settled
+  
+  // Result and contestation
+  result?: 'YES' | 'NO';           // Official result
+  resultSource?: string;           // Source of result (API, admin)
+  resultSubmittedAt?: Date;        // When result was submitted
+  contestations?: Contestation[];  // List of contestations
 }
 
 export interface UserContract {

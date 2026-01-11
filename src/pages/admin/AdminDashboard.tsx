@@ -1,183 +1,229 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Store, AlertTriangle, Clock, TrendingUp, Users, DollarSign, Plus, Bot, Zap } from 'lucide-react';
-import { AdminMetricsCard } from '@/components/admin/AdminMetricsCard';
-import { AdminDataProvider } from '@/services/AdminDataProvider';
-import { AdminMetrics } from '@/types/admin';
-import { Button } from '@/components/ui/button';
+import { 
+  Calendar, 
+  Play, 
+  Pause, 
+  Scale, 
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  TrendingUp
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AdminRepository } from '@/services/AdminRepository';
+import { AdminMetrics, MarketEvent } from '@/types/admin';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export function AdminDashboard() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [expiringEvents, setExpiringEvents] = useState<MarketEvent[]>([]);
+  const [recentEvents, setRecentEvents] = useState<MarketEvent[]>([]);
 
   useEffect(() => {
-    AdminDataProvider.getMetrics().then((data) => {
-      setMetrics(data);
-      setLoading(false);
-    });
+    setMetrics(AdminRepository.getMetrics());
+    setExpiringEvents(AdminRepository.getExpiringEvents(7));
+    setRecentEvents(AdminRepository.getRecentlyUpdatedEvents(5));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-36" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const metricCards = [
+    { 
+      label: 'Total de Eventos', 
+      value: metrics?.totalEvents ?? 0, 
+      icon: Calendar,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
+    },
+    { 
+      label: 'Eventos Abertos', 
+      value: metrics?.openEvents ?? 0, 
+      icon: Play,
+      color: 'text-success',
+      bgColor: 'bg-success/10',
+    },
+    { 
+      label: 'Eventos Pausados', 
+      value: metrics?.pausedEvents ?? 0, 
+      icon: Pause,
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
+    },
+    { 
+      label: 'Aguardando Liquidação', 
+      value: metrics?.awaitingSettlement ?? 0, 
+      icon: Scale,
+      color: 'text-accent-foreground',
+      bgColor: 'bg-accent',
+    },
+    { 
+      label: 'Eventos Liquidados', 
+      value: metrics?.settledEvents ?? 0, 
+      icon: CheckCircle2,
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted',
+    },
+  ];
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+      DRAFT: { variant: 'outline', label: 'Rascunho' },
+      OPEN: { variant: 'default', label: 'Aberto' },
+      PAUSED: { variant: 'secondary', label: 'Pausado' },
+      CLOSED: { variant: 'destructive', label: 'Fechado' },
+      SETTLED: { variant: 'outline', label: 'Liquidado' },
+    };
+    const { variant, label } = variants[status] || { variant: 'outline', label: status };
+    return <Badge variant={variant}>{label}</Badge>;
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do sistema</p>
-        </div>
-        <Button asChild>
-          <Link to="/admin/markets/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Mercado
-          </Link>
-        </Button>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
+          Visão geral do sistema de mercados preditivos
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <AdminMetricsCard
-          title="Mercados Abertos"
-          value={metrics?.openMarkets || 0}
-          icon={Store}
-          description={`${metrics?.totalMarkets || 0} total`}
-          variant="success"
-        />
-        <AdminMetricsCard
-          title="Aguardando Resultado"
-          value={metrics?.pendingMarkets || 0}
-          icon={Clock}
-          variant="default"
-        />
-        <AdminMetricsCard
-          title="Contestações"
-          value={metrics?.pendingContestations || 0}
-          icon={AlertTriangle}
-          description="Pendentes de revisão"
-          variant={metrics?.pendingContestations ? 'warning' : 'default'}
-        />
-        <AdminMetricsCard
-          title="Volume Total"
-          value={`R$ ${((metrics?.totalVolume || 0) / 1000).toFixed(0)}k`}
-          icon={DollarSign}
-          variant="default"
-        />
-        <AdminMetricsCard
-          title="Automáticos"
-          value={metrics?.automaticMarkets || 0}
-          icon={Bot}
-          description="Liquidação via BCB"
-          variant="default"
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Ações Rápidas</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            <Button variant="outline" className="justify-start" asChild>
-              <Link to="/admin/markets">
-                <Store className="mr-2 h-4 w-4" />
-                Gerenciar Mercados
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start" asChild>
-              <Link to="/admin/contestations">
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Revisar Contestações
-                {metrics?.pendingContestations ? (
-                  <span className="ml-auto rounded-full bg-warning px-2 py-0.5 text-xs text-warning-foreground">
-                    {metrics.pendingContestations}
-                  </span>
-                ) : null}
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Status dos Mercados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Abertos</span>
-                <span className="font-medium text-success">{metrics?.openMarkets}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Pausados</span>
-                <span className="font-medium text-warning">{metrics?.haltedMarkets}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Aguardando</span>
-                <span className="font-medium text-primary">{metrics?.pendingMarkets}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Contestados</span>
-                <span className="font-medium text-destructive">{metrics?.contestedMarkets}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Liquidados</span>
-                <span className="font-medium">{metrics?.settledMarkets}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">Liquidação Automática</CardTitle>
-              <Badge variant="secondary" className="gap-1">
-                <Zap className="h-3 w-3" />
-                BCB API
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Mercados automáticos</span>
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {metricCards.map((card) => (
+          <Card key={card.label}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg ${card.bgColor}`}>
+                  <card.icon className={`h-5 w-5 ${card.color}`} />
                 </div>
-                <span className="font-medium">{metrics?.automaticMarkets || 0}</span>
+                <div>
+                  <p className="text-2xl font-bold">{card.value}</p>
+                  <p className="text-xs text-muted-foreground">{card.label}</p>
+                </div>
               </div>
-              <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground mb-1">APIs Suportadas:</p>
-                <ul className="space-y-1">
-                  <li>• SELIC / SELIC Meta (COPOM)</li>
-                  <li>• IPCA (Inflação)</li>
-                  <li>• CDI</li>
-                  <li>• PTAX (Dólar)</li>
-                </ul>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Verificação automática diária às 18h (dias úteis)
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Expiring Soon */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-warning" />
+              Próximos da Expiração
+            </CardTitle>
+            <Link to="/admin/events">
+              <Button variant="ghost" size="sm">
+                Ver todos <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {expiringEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum evento próximo da expiração
               </p>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                {expiringEvents.map((event) => (
+                  <Link
+                    key={event.id}
+                    to={`/admin/events/${event.id}`}
+                    className="block p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{event.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Expira em {format(event.expiryAt, "dd 'de' MMMM", { locale: ptBR })}
+                        </p>
+                      </div>
+                      {getStatusBadge(event.status)}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recently Updated */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Atualizados Recentemente
+            </CardTitle>
+            <Link to="/admin/events">
+              <Button variant="ghost" size="sm">
+                Ver todos <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum evento recente
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {recentEvents.map((event) => (
+                  <Link
+                    key={event.id}
+                    to={`/admin/events/${event.id}`}
+                    className="block p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{event.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            SIM: {event.odds.yes}% / NÃO: {event.odds.no}%
+                          </span>
+                        </div>
+                      </div>
+                      {getStatusBadge(event.status)}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ações Rápidas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/admin/events/new">
+              <Button>
+                <Calendar className="h-4 w-4 mr-2" />
+                Criar Novo Evento
+              </Button>
+            </Link>
+            <Link to="/admin/settlements">
+              <Button variant="outline">
+                <Scale className="h-4 w-4 mr-2" />
+                Ver Liquidações Pendentes
+              </Button>
+            </Link>
+            <Link to="/admin/audit">
+              <Button variant="outline">
+                <Clock className="h-4 w-4 mr-2" />
+                Ver Auditoria
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

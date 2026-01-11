@@ -1,95 +1,114 @@
-import { MarketStatus, Contestation, MarketEvent, SettlementType, SettlementConfig, MarketType, MarketOption } from './market';
+// ============= Admin Types for Prediction Market =============
 
-// Form data for market options
-export interface MarketOptionFormData {
-  id?: string;
-  label: string;
-  description?: string;
-  imageUrl?: string;
-  displayOrder: number;
+// Event Status
+export type EventStatus = 'DRAFT' | 'OPEN' | 'PAUSED' | 'CLOSED' | 'SETTLED';
+
+// Odds Configuration
+export type OddsMode = 'MANUAL_PRICE' | 'MANUAL_PROBABILITY';
+export type SpreadPolicy = 'AUTO_COMPLEMENT' | 'MANUAL_BOTH';
+
+// Resolution Source Types
+export type ResolutionSourceType = 'API' | 'DATASET' | 'MANUAL';
+
+// Resolution Source
+export interface ResolutionSource {
+  type: ResolutionSourceType;
+  name: string;
+  url: string;
+  rule: string;
 }
 
-// Form data for creating/editing markets
-export interface MarketFormData {
-  title: string;
-  category: string;
-  description: string;
-  settlementRules: string[];
-  expiryAt: Date;
-  tradingHaltAt: Date;
-  eventAt: Date;
-  limits: { minBuy: number; maxBuy: number };
-  initialYesOdds: number;      // Initial odds (1-99)
-  liquidity: number;           // LMSR b parameter
-  settlementType: SettlementType;
-  settlementConfig?: SettlementConfig;
-  contractUnitCost: number;    // Cost per winning contract (e.g., R$100)
-  marketType: MarketType;      // BINARY or MULTIPLE
-  optionsExclusive: boolean;   // For MULTIPLE: true = only one can win
-  options: MarketOptionFormData[];  // Options for MULTIPLE type markets
+// Odds Configuration
+export interface OddsConfig {
+  mode: OddsMode;
+  spreadPolicy: SpreadPolicy;
 }
 
-// Market status action
-export interface StatusAction {
-  action: 'HALT' | 'RESUME' | 'PENDING' | 'SETTLE';
-  reason?: string;
-  result?: 'YES' | 'NO';
-  source?: string;
+// Odds
+export interface Odds {
+  yes: number;
+  no: number;
 }
 
-// Dashboard metrics
-export interface AdminMetrics {
-  totalMarkets: number;
-  openMarkets: number;
-  haltedMarkets: number;
-  pendingMarkets: number;
-  contestedMarkets: number;
-  settledMarkets: number;
-  totalVolume: number;
-  totalUsers: number;
-  pendingContestations: number;
-  automaticMarkets?: number;
-}
-
-// Contestation review
-export interface ContestationReviewData {
-  contestationId: string;
+// Audit Log Entry
+export interface AuditLog {
+  id: string;
   eventId: string;
-  status: 'ACCEPTED' | 'REJECTED';
-  reviewNotes: string;
-}
-
-// Audit log entry
-export interface AuditLogEntry {
-  id: string;
-  action: string;
-  timestamp: Date;
+  action: 'CREATED' | 'ODDS_CHANGED' | 'STATUS_CHANGED' | 'PAUSED' | 'RESUMED' | 'CLOSED' | 'SETTLED' | 'EDITED';
+  previousValue: string | null;
+  newValue: string;
   admin: string;
-  eventId?: string;
-  details: string;
+  reason?: string;
+  timestamp: Date;
 }
 
-// Extended contestation with event info
-export interface ContestationWithEvent extends Contestation {
-  event: MarketEvent;
-}
-
-// BCB data point
-export interface BCBDataPoint {
-  indicator: string;
-  value: number;
-  date: string;
-  fromCache: boolean;
-}
-
-// Market settlement record
-export interface MarketSettlement {
+// Market Event (Admin Model)
+export interface MarketEvent {
   id: string;
-  marketId: string;
-  result: 'YES' | 'NO';
-  source: string;
-  apiValue: number | null;
-  apiResponse: unknown;
-  settledAt: Date;
-  isAutomatic: boolean;
+  title: string;
+  description: string;
+  category: string;
+  status: EventStatus;
+  expiryAt: Date;
+
+  odds: Odds;
+  oddsConfig: OddsConfig;
+
+  resolutionSource: ResolutionSource;
+
+  settlementResult?: 'YES' | 'NO';
+  settlementEvidence?: string;
+  settledAt?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  updatedBy: string;
 }
+
+// Form data for creating/editing events
+export interface EventFormData {
+  title: string;
+  description: string;
+  category: string;
+  expiryAt: Date;
+  
+  resolutionSource: ResolutionSource;
+  
+  oddsConfig: OddsConfig;
+  oddsYes: number;
+  oddsNo: number;
+  
+  oddsChangeReason?: string;
+}
+
+// Dashboard Metrics
+export interface AdminMetrics {
+  totalEvents: number;
+  openEvents: number;
+  pausedEvents: number;
+  closedEvents: number;
+  awaitingSettlement: number;
+  settledEvents: number;
+}
+
+// Categories
+export const EVENT_CATEGORIES = [
+  'Economia',
+  'Política',
+  'Esportes',
+  'Tecnologia',
+  'Entretenimento',
+  'Internacional',
+  'Clima',
+  'Outros',
+] as const;
+
+export type EventCategory = typeof EVENT_CATEGORIES[number];
+
+// Mock Admin User
+export const MOCK_ADMIN = {
+  id: 'admin-001',
+  name: 'Administrador',
+  email: 'admin@predictionmarket.br',
+};

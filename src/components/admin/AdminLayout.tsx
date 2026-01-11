@@ -1,136 +1,137 @@
-import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
-import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
-import { AdminSidebar } from './AdminSidebar';
-import { Separator } from '@/components/ui/separator';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import { useAuth } from '@/hooks/useAuth';
-import { Loader2, LogOut, ShieldAlert } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Calendar, 
+  Scale, 
+  FileText, 
+  LogOut,
+  Menu,
+  X,
+  ChevronRight
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { AdminRepository } from '@/services/AdminRepository';
+import { MOCK_ADMIN } from '@/types/admin';
 
-function getBreadcrumbs(pathname: string) {
-  const paths = pathname.split('/').filter(Boolean);
-  const breadcrumbs: { label: string; path: string; isLast: boolean }[] = [];
-
-  const labels: Record<string, string> = {
-    admin: 'Admin',
-    markets: 'Mercados',
-    contestations: 'Contestações',
-    new: 'Novo',
-    settle: 'Liquidar',
-  };
-
-  paths.forEach((segment, index) => {
-    const path = '/' + paths.slice(0, index + 1).join('/');
-    const label = labels[segment] || segment;
-    breadcrumbs.push({
-      label,
-      path,
-      isLast: index === paths.length - 1,
-    });
-  });
-
-  return breadcrumbs;
-}
+const navItems = [
+  { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { path: '/admin/events', label: 'Eventos', icon: Calendar },
+  { path: '/admin/settlements', label: 'Liquidações', icon: Scale },
+  { path: '/admin/audit', label: 'Auditoria', icon: FileText },
+];
 
 export function AdminLayout() {
+  const navigate = useNavigate();
   const location = useLocation();
-  const breadcrumbs = getBreadcrumbs(location.pathname);
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Show loading while checking auth
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Verificando acesso...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const auth = AdminRepository.isAuthenticated();
+    setIsAuthenticated(auth);
+    
+    if (!auth) {
+      navigate('/admin/login');
+    }
+  }, [navigate]);
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    return <Navigate to="/admin/login" state={{ from: location }} replace />;
-  }
-
-  // Show access denied if authenticated but not admin
-  if (!isAdmin) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4 text-center p-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-            <ShieldAlert className="h-8 w-8 text-destructive" />
-          </div>
-          <h1 className="text-2xl font-bold">Acesso Negado</h1>
-          <p className="text-muted-foreground max-w-md">
-            Você não tem permissão de administrador para acessar esta área.
-            Entre em contato com um administrador se precisar de acesso.
-          </p>
-          <div className="flex gap-2 mt-4">
-            <Button variant="outline" asChild>
-              <Link to="/">Voltar ao Início</Link>
-            </Button>
-            <Button variant="destructive" onClick={() => signOut()}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const handleSignOut = async () => {
-    await signOut();
+  const handleLogout = () => {
+    AdminRepository.logout();
+    navigate('/admin/login');
   };
 
+  const isActive = (path: string, exact?: boolean) => {
+    if (exact) return location.pathname === path;
+    return location.pathname.startsWith(path);
+  };
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
-        <AdminSidebar />
-        <SidebarInset className="flex-1">
-          <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-6">
-            <SidebarTrigger className="-ml-2" />
-            <Separator orientation="vertical" className="h-6" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                {breadcrumbs.map((crumb, index) => (
-                  <BreadcrumbItem key={crumb.path}>
-                    {index > 0 && <BreadcrumbSeparator />}
-                    {crumb.isLast ? (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link to={crumb.path}>{crumb.label}</Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                ))}
-              </BreadcrumbList>
-            </Breadcrumb>
-            <div className="ml-auto flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">{user.email}</span>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                ADMIN
-              </span>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4" />
-              </Button>
+    <div className="min-h-screen bg-muted/30 flex">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex flex-col bg-card border-r border-border transition-all duration-300',
+          sidebarOpen ? 'w-64' : 'w-16'
+        )}
+      >
+        {/* Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+          {sidebarOpen && (
+            <span className="font-bold text-lg text-foreground">
+              Admin Panel
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="shrink-0"
+          >
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                isActive(item.path, item.exact)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              {sidebarOpen && <span>{item.label}</span>}
+              {sidebarOpen && isActive(item.path, item.exact) && (
+                <ChevronRight className="h-4 w-4 ml-auto" />
+              )}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-border">
+          {sidebarOpen && (
+            <div className="px-3 py-2 mb-2">
+              <p className="text-xs text-muted-foreground">Logado como</p>
+              <p className="text-sm font-medium truncate">{MOCK_ADMIN.name}</p>
             </div>
-          </header>
-          <main className="flex-1 p-6">
-            <Outlet />
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+          )}
+          <Button
+            variant="ghost"
+            className={cn(
+              'w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10',
+              !sidebarOpen && 'justify-center'
+            )}
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5" />
+            {sidebarOpen && <span>Sair</span>}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main
+        className={cn(
+          'flex-1 transition-all duration-300',
+          sidebarOpen ? 'ml-64' : 'ml-16'
+        )}
+      >
+        <div className="p-6 lg:p-8">
+          <Outlet />
+        </div>
+      </main>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, AlertCircle, Mail } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { ReferralService } from '@/services/ReferralService';
+import { useToast } from '@/hooks/use-toast';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -23,12 +25,17 @@ type AuthFormData = z.infer<typeof authSchema>;
 
 export function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  
+  // Referral code from URL
+  const referralCode = searchParams.get('ref');
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
@@ -37,6 +44,13 @@ export function AuthPage() {
       password: '',
     },
   });
+
+  // Auto switch to signup if referral code is present
+  useEffect(() => {
+    if (referralCode) {
+      setActiveTab('signup');
+    }
+  }, [referralCode]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -77,6 +91,15 @@ export function AuthPage() {
           }
           return;
         }
+        
+        // Link referral if code was provided
+        if (referralCode) {
+          // We need to wait for the user to be created and get their ID
+          // The linking will be done after email confirmation via a trigger
+          // For now, we store the code in localStorage to be processed later
+          localStorage.setItem('pendingReferralCode', referralCode);
+        }
+        
         setSuccessMessage('Conta criada! Verifique seu email para confirmar o cadastro.');
         form.reset();
       }
@@ -86,6 +109,30 @@ export function AuthPage() {
       setIsLoading(false);
     }
   };
+
+  // Process pending referral after login
+  useEffect(() => {
+    const processPendingReferral = async () => {
+      if (!user) return;
+      
+      const pendingCode = localStorage.getItem('pendingReferralCode');
+      if (pendingCode) {
+        const { success, error } = await ReferralService.linkReferral(user.id, pendingCode);
+        localStorage.removeItem('pendingReferralCode');
+        
+        if (success) {
+          toast({
+            title: 'Indicação aplicada!',
+            description: 'Você receberá desconto nas taxas por 30 dias.',
+          });
+        } else if (error) {
+          console.error('Failed to link referral:', error);
+        }
+      }
+    };
+    
+    processPendingReferral();
+  }, [user, toast]);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -115,10 +162,23 @@ export function AuthPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Bem-vindo</CardTitle>
           <CardDescription>
-            Entre na sua conta ou crie uma nova
+            {referralCode 
+              ? 'Você foi indicado! Crie sua conta e ganhe desconto nas taxas.'
+              : 'Entre na sua conta ou crie uma nova'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Referral Code Badge */}
+          {referralCode && (
+            <Alert className="bg-primary/10 border-primary/30">
+              <Gift className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">
+                Código de indicação: <strong>{referralCode}</strong> - Você ganhará desconto nas taxas!
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Google Sign In Button */}
           <Button
             variant="outline"

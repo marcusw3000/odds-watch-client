@@ -26,6 +26,8 @@ import { AdminRevenuePage } from "./pages/admin/AdminRevenuePage";
 import { AdminAuditLogsPage } from "./pages/admin/AdminAuditLogsPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminMarketEventsPage } from "./pages/admin/AdminMarketEventsPage";
+import { AdminReferralsPage } from "./pages/admin/AdminReferralsPage";
+import { ReferralPage } from "./pages/ReferralPage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,7 @@ const App = () => (
             <Route path="/market/:id" element={<MarketDetailPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/referral" element={<ReferralPage />} />
           </Route>
           
           {/* Admin Routes */}
@@ -61,6 +64,7 @@ const App = () => (
             <Route path="audit-logs" element={<AdminAuditLogsPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="market-events" element={<AdminMarketEventsPage />} />
+            <Route path="referrals" element={<AdminReferralsPage />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

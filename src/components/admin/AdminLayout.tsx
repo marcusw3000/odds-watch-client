@@ -15,7 +15,8 @@ import {
   TrendingUp,
   ClipboardList,
   Users,
-  Activity
+  Activity,
+  Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ const navItems = [
   { path: '/admin/audit-logs', label: 'Logs de Auditoria', icon: ClipboardList },
   { path: '/admin/users', label: 'Usuários', icon: Users },
   { path: '/admin/market-events', label: 'Eventos de Mercado', icon: Activity },
+  { path: '/admin/referrals', label: 'Indicações', icon: Gift },
 ];
 
 export function AdminLayout() {

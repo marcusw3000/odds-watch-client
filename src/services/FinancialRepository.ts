@@ -2,6 +2,7 @@
 // Data access layer for financial entities
 
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesInsert, Json } from '@/integrations/supabase/types';
 import type {
   FeeRule,
   LedgerEntry,
@@ -48,9 +49,23 @@ export class FinancialRepository {
   }
 
   static async createFeeRule(rule: Omit<FeeRule, 'id' | 'created_at'>): Promise<FeeRule | null> {
+    const insertData: TablesInsert<'fee_rules'> = {
+      name: rule.name,
+      type: rule.type,
+      mode: rule.mode,
+      tiers: rule.tiers as unknown as Json,
+      flat_value: rule.flat_value,
+      percent_value: rule.percent_value,
+      min_fee: rule.min_fee,
+      max_fee: rule.max_fee,
+      is_active: rule.is_active,
+      effective_from: rule.effective_from,
+      created_by: rule.created_by
+    };
+    
     const { data, error } = await supabase
       .from('fee_rules')
-      .insert(rule as Record<string, unknown>)
+      .insert(insertData)
       .select()
       .single();
 
@@ -245,7 +260,7 @@ export class FinancialRepository {
     if (updateError) return false;
 
     // Record ledger entry
-    await supabase.from('ledger_entries').insert({
+    const ledgerData: TablesInsert<'ledger_entries'> = {
       user_id: wallet.user_id,
       wallet_id: walletId,
       ref_type: 'ADJUSTMENT',
@@ -255,8 +270,10 @@ export class FinancialRepository {
       net_amount: Math.abs(amount),
       platform_revenue: 0,
       status: 'COMPLETED',
-      meta: { reason, adjusted_by: adminUserId }
-    });
+      meta: { reason, adjusted_by: adminUserId } as Json
+    };
+    
+    await supabase.from('ledger_entries').insert(ledgerData);
 
     return true;
   }

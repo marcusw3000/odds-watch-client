@@ -2,6 +2,7 @@
 // Central service for calculating and applying fees
 
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesInsert, Json } from '@/integrations/supabase/types';
 import type { 
   FeeType, 
   FeeRule, 
@@ -89,16 +90,18 @@ export class FeeEngine {
     rule: FeeRule,
     appliedTier?: FeeTier
   ): Promise<string | null> {
+    const insertData: TablesInsert<'fee_policy_snapshots'> = {
+      fee_rule_id: rule.id,
+      type: rule.type,
+      applied_mode: rule.mode,
+      applied_tiers: (appliedTier ? [appliedTier] : rule.tiers) as unknown as Json,
+      applied_percent: rule.percent_value,
+      applied_flat: rule.flat_value
+    };
+    
     const { data, error } = await supabase
       .from('fee_policy_snapshots')
-      .insert({
-        fee_rule_id: rule.id,
-        type: rule.type,
-        applied_mode: rule.mode,
-        applied_tiers: (appliedTier ? [appliedTier] : rule.tiers) as unknown as Record<string, unknown>,
-        applied_percent: rule.percent_value,
-        applied_flat: rule.flat_value
-      } as Record<string, unknown>)
+      .insert(insertData)
       .select('id')
       .single();
 
@@ -127,22 +130,24 @@ export class FeeEngine {
     status: 'PENDING' | 'COMPLETED' | 'FAILED';
     meta?: Record<string, unknown>;
   }): Promise<string | null> {
+    const insertData: TablesInsert<'ledger_entries'> = {
+      user_id: params.userId,
+      wallet_id: params.walletId,
+      ref_type: params.refType,
+      ref_id: params.refId,
+      direction: params.direction,
+      amount: params.amount,
+      fee_amount: params.feeAmount,
+      net_amount: params.netAmount,
+      platform_revenue: params.platformRevenue,
+      fee_snapshot_id: params.feeSnapshotId,
+      status: params.status,
+      meta: (params.meta || {}) as Json
+    };
+    
     const { data, error } = await supabase
       .from('ledger_entries')
-      .insert({
-        user_id: params.userId,
-        wallet_id: params.walletId,
-        ref_type: params.refType,
-        ref_id: params.refId,
-        direction: params.direction,
-        amount: params.amount,
-        fee_amount: params.feeAmount,
-        net_amount: params.netAmount,
-        platform_revenue: params.platformRevenue,
-        fee_snapshot_id: params.feeSnapshotId,
-        status: params.status,
-        meta: params.meta || {}
-      } as Record<string, unknown>)
+      .insert(insertData)
       .select('id')
       .single();
 
@@ -241,16 +246,18 @@ export class FeeEngine {
     beforeData?: Record<string, unknown>;
     afterData?: Record<string, unknown>;
   }): Promise<boolean> {
+    const insertData: TablesInsert<'admin_audit_logs'> = {
+      actor_user_id: params.actorUserId,
+      action: params.action,
+      entity: params.entity,
+      entity_id: params.entityId,
+      before_data: (params.beforeData || null) as Json,
+      after_data: (params.afterData || null) as Json
+    };
+    
     const { error } = await supabase
       .from('admin_audit_logs')
-      .insert({
-        actor_user_id: params.actorUserId,
-        action: params.action,
-        entity: params.entity,
-        entity_id: params.entityId,
-        before_data: params.beforeData || null,
-        after_data: params.afterData || null
-      } as Record<string, unknown>);
+      .insert(insertData);
 
     if (error) {
       console.error('Error recording audit log:', error);

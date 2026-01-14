@@ -238,54 +238,77 @@ export function PurchaseModal({
           </div>
 
           {/* Summary with LMSR data */}
-          {quote && sharesNum > 0 && (
-            <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Calculator className="h-4 w-4" />
-                Resumo da operação
-              </div>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Contratos</span>
-                  <span className="font-mono font-medium">{sharesNum}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Preço médio</span>
-                  <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Custo total</span>
-                  <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
+          {quote && sharesNum > 0 && (() => {
+            const feePercent = 0.02; // 2% fee
+            const feeAmount = quote.cost * feePercent;
+            const totalWithFee = quote.cost + feeAmount;
+            const potentialProfit = sharesNum - totalWithFee;
+            
+            return (
+              <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Calculator className="h-4 w-4" />
+                  Resumo da operação
                 </div>
                 
-
-                {/* New prices after trade */}
-                <div className="pt-2 border-t border-border text-xs text-muted-foreground">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Preço após compra:</span>
-                    <span className="font-mono">
-                      SIM: {quote.newYesPrice}¢ | NÃO: {quote.newNoPrice}¢
+                    <span className="text-muted-foreground">Contratos</span>
+                    <span className="font-mono font-medium">{sharesNum}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Preço médio</span>
+                    <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Custo contratos</span>
+                    <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
+                  </div>
+                  
+                  {/* Fee display */}
+                  <div className="flex justify-between text-warning">
+                    <span className="flex items-center gap-1">
+                      Taxa de operação (2%)
+                    </span>
+                    <span className="font-mono font-medium">R${feeAmount.toFixed(2)}</span>
+                  </div>
+                  
+                  {/* Total with fee */}
+                  <div className="flex justify-between pt-2 border-t border-border font-medium">
+                    <span>Total a pagar</span>
+                    <span className="font-mono text-foreground">R${totalWithFee.toFixed(2)}</span>
+                  </div>
+
+                  {/* New prices after trade */}
+                  <div className="pt-2 border-t border-border text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Preço após compra:</span>
+                      <span className="font-mono">
+                        SIM: {quote.newYesPrice}¢ | NÃO: {quote.newNoPrice}¢
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-2 border-t border-border">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Lucro potencial
+                    </span>
+                    <span className={cn(
+                      "font-mono font-bold",
+                      potentialProfit >= 0 ? "text-success" : "text-destructive"
+                    )}>
+                      {potentialProfit >= 0 ? '+' : ''}R${potentialProfit.toFixed(2)}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-2 border-t border-border">
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    Lucro potencial
-                  </span>
-                  <span className="font-mono font-bold text-success">
-                    +R${(sharesNum - quote.cost).toFixed(2)}
-                  </span>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se {selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} vencer, cada contrato paga R$1,00
+                </p>
               </div>
-
-              <p className="text-xs text-muted-foreground">
-                Se {selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} vencer, cada contrato paga R$1,00
-              </p>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Error Message */}
           {error && (

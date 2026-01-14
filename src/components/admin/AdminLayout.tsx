@@ -8,7 +8,14 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  DollarSign,
+  Receipt,
+  BookOpen,
+  TrendingUp,
+  ClipboardList,
+  Users,
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -20,6 +27,15 @@ const navItems = [
   { path: '/admin/events', label: 'Eventos', icon: Calendar },
   { path: '/admin/settlements', label: 'Liquidações', icon: Scale },
   { path: '/admin/audit', label: 'Auditoria', icon: FileText },
+  { section: 'Financeiro' },
+  { path: '/admin/financial', label: 'Visão Geral', icon: DollarSign },
+  { path: '/admin/fees', label: 'Taxas', icon: Receipt },
+  { path: '/admin/ledger', label: 'Ledger', icon: BookOpen },
+  { path: '/admin/revenue', label: 'Receita', icon: TrendingUp },
+  { section: 'Sistema' },
+  { path: '/admin/audit-logs', label: 'Logs de Auditoria', icon: ClipboardList },
+  { path: '/admin/users', label: 'Usuários', icon: Users },
+  { path: '/admin/market-events', label: 'Eventos de Mercado', icon: Activity },
 ];
 
 export function AdminLayout() {
@@ -78,25 +94,41 @@ export function AdminLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive(item.path, item.exact)
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {sidebarOpen && <span>{item.label}</span>}
-              {sidebarOpen && isActive(item.path, item.exact) && (
-                <ChevronRight className="h-4 w-4 ml-auto" />
-              )}
-            </Link>
-          ))}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {navItems.map((item, index) => {
+            if ('section' in item) {
+              return sidebarOpen ? (
+                <div key={item.section} className="pt-4 pb-1 px-3">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                    {item.section}
+                  </span>
+                </div>
+              ) : (
+                <div key={item.section} className="py-2">
+                  <div className="h-px bg-border mx-2" />
+                </div>
+              );
+            }
+            
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive(item.path, item.exact)
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                {sidebarOpen && <span>{item.label}</span>}
+                {sidebarOpen && isActive(item.path, item.exact) && (
+                  <ChevronRight className="h-4 w-4 ml-auto" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Footer */}

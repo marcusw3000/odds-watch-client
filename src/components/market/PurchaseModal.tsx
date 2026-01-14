@@ -7,6 +7,8 @@ import { OddsBadge } from './OddsBadge';
 import { cn } from '@/lib/utils';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
+import { FeeEngine } from '@/services/FeeEngine';
+import { FeeRule } from '@/types/financial';
 
 interface PurchaseModalProps {
   event: MarketEvent;
@@ -34,6 +36,16 @@ export function PurchaseModal({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feeRule, setFeeRule] = useState<FeeRule | null>(null);
+
+  // Fetch fee rule on mount
+  useEffect(() => {
+    const fetchFeeRule = async () => {
+      const rule = await FeeEngine.getActiveRule('TRADE');
+      setFeeRule(rule);
+    };
+    fetchFeeRule();
+  }, []);
 
   const isYes = selectedOutcome === 'YES';
   const sharesNum = parseFloat(shares) || 0;
@@ -239,7 +251,7 @@ export function PurchaseModal({
 
           {/* Summary with LMSR data */}
           {quote && sharesNum > 0 && (() => {
-            const feePercent = 0.02; // 2% fee
+            const feePercent = feeRule?.percent_value || 0.02; // fallback to 2%
             const feeAmount = quote.cost * feePercent;
             const totalWithFee = quote.cost + feeAmount;
             const potentialProfit = sharesNum - totalWithFee;
@@ -268,7 +280,7 @@ export function PurchaseModal({
                   {/* Fee display */}
                   <div className="flex justify-between text-warning">
                     <span className="flex items-center gap-1">
-                      Taxa de operação (2%)
+                      Taxa de operação ({(feePercent * 100).toFixed(1)}%)
                     </span>
                     <span className="font-mono font-medium">R${feeAmount.toFixed(2)}</span>
                   </div>

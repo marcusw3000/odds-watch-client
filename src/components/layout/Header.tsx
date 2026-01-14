@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ export function Header({ balance = 2500 }: HeaderProps) {
 
   const navItems = [
     { path: '/markets', label: 'Mercados', icon: TrendingUp },
+    { path: '/leaderboard', label: 'Ranking', icon: Trophy },
     { path: '/portfolio', label: 'Portfólio', icon: User },
   ];
 

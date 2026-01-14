@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          points: number
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          points?: number
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          points?: number
+        }
+        Relationships: []
+      }
       admin_audit_logs: {
         Row: {
           action: string
@@ -210,6 +246,48 @@ export type Database = {
           percent_value?: number | null
           tiers?: Json | null
           type?: string
+        }
+        Relationships: []
+      }
+      leaderboard_profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_name: string
+          id: string
+          is_public: boolean
+          show_profit: boolean
+          show_roi: boolean
+          show_trades: boolean
+          show_volume: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          is_public?: boolean
+          show_profit?: boolean
+          show_roi?: boolean
+          show_trades?: boolean
+          show_volume?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_public?: boolean
+          show_profit?: boolean
+          show_roi?: boolean
+          show_trades?: boolean
+          show_volume?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -701,6 +779,35 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_balances: {
         Row: {
           balance: number
@@ -803,6 +910,48 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_statistics: {
+        Row: {
+          best_streak: number
+          best_trade_profit: number
+          current_streak: number
+          id: string
+          roi_percent: number
+          total_profit: number
+          total_trades: number
+          total_volume: number
+          updated_at: string
+          user_id: string
+          winning_trades: number
+        }
+        Insert: {
+          best_streak?: number
+          best_trade_profit?: number
+          current_streak?: number
+          id?: string
+          roi_percent?: number
+          total_profit?: number
+          total_trades?: number
+          total_volume?: number
+          updated_at?: string
+          user_id: string
+          winning_trades?: number
+        }
+        Update: {
+          best_streak?: number
+          best_trade_profit?: number
+          current_streak?: number
+          id?: string
+          roi_percent?: number
+          total_profit?: number
+          total_trades?: number
+          total_volume?: number
+          updated_at?: string
+          user_id?: string
+          winning_trades?: number
         }
         Relationships: []
       }

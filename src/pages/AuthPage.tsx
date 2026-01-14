@@ -16,12 +16,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { ReferralService } from '@/services/ReferralService';
 import { useToast } from '@/hooks/use-toast';
 
-const authSchema = z.object({
-  email: z.string().email('Email inválido'),
+const loginSchema = z.object({
+  email: z.string().trim().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+const signupSchema = z.object({
+  fullName: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome deve ter menos de 100 caracteres'),
+  email: z.string().trim().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -37,9 +44,18 @@ export function AuthPage() {
   // Referral code from URL
   const referralCode = searchParams.get('ref');
 
-  const form = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const signupForm = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      fullName: '',
       email: '',
       password: '',
     },
@@ -59,50 +75,57 @@ export function AuthPage() {
     }
   }, [user, navigate]);
 
-  const onSubmit = async (data: AuthFormData) => {
+  const onLoginSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      if (activeTab === 'login') {
-        const { error: signInError } = await signIn(data.email, data.password);
-        
-        if (signInError) {
-          if (signInError.message.includes('Invalid login credentials')) {
-            setError('Email ou senha incorretos');
-          } else if (signInError.message.includes('Email not confirmed')) {
-            setError('Por favor, confirme seu email antes de fazer login');
-          } else {
-            setError(signInError.message);
-          }
-          return;
+      const { error: signInError } = await signIn(data.email, data.password);
+      
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Email ou senha incorretos');
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError('Por favor, confirme seu email antes de fazer login');
+        } else {
+          setError(signInError.message);
         }
-        navigate('/');
-      } else {
-        const { error: signUpError } = await signUp(data.email, data.password);
-        
-        if (signUpError) {
-          if (signUpError.message.includes('User already registered')) {
-            setError('Este email já está cadastrado. Faça login.');
-            setActiveTab('login');
-          } else {
-            setError(signUpError.message);
-          }
-          return;
-        }
-        
-        // Link referral if code was provided
-        if (referralCode) {
-          // We need to wait for the user to be created and get their ID
-          // The linking will be done after email confirmation via a trigger
-          // For now, we store the code in localStorage to be processed later
-          localStorage.setItem('pendingReferralCode', referralCode);
-        }
-        
-        setSuccessMessage('Conta criada! Verifique seu email para confirmar o cadastro.');
-        form.reset();
+        return;
       }
+      navigate('/');
+    } catch (err) {
+      setError('Ocorreu um erro. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSignupSubmit = async (data: SignupFormData) => {
+    setIsLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const { error: signUpError } = await signUp(data.email, data.password, data.fullName);
+      
+      if (signUpError) {
+        if (signUpError.message.includes('User already registered')) {
+          setError('Este email já está cadastrado. Faça login.');
+          setActiveTab('login');
+        } else {
+          setError(signUpError.message);
+        }
+        return;
+      }
+      
+      // Link referral if code was provided
+      if (referralCode) {
+        localStorage.setItem('pendingReferralCode', referralCode);
+      }
+      
+      setSuccessMessage('Conta criada! Verifique seu email para confirmar o cadastro.');
+      signupForm.reset();
     } catch (err) {
       setError('Ocorreu um erro. Tente novamente.');
     } finally {
@@ -241,10 +264,10 @@ export function AuthPage() {
             </TabsList>
 
             <TabsContent value="login" className="mt-4">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                   <FormField
-                    control={form.control}
+                    control={loginForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -263,7 +286,7 @@ export function AuthPage() {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={loginForm.control}
                     name="password"
                     render={({ field }) => (
                       <FormItem>
@@ -296,10 +319,29 @@ export function AuthPage() {
             </TabsContent>
 
             <TabsContent value="signup" className="mt-4">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <Form {...signupForm}>
+                <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
                   <FormField
-                    control={form.control}
+                    control={signupForm.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome Completo</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder="Seu nome completo"
+                            autoComplete="name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={signupForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -318,7 +360,7 @@ export function AuthPage() {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={signupForm.control}
                     name="password"
                     render={({ field }) => (
                       <FormItem>

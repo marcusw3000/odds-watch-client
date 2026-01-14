@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
@@ -131,6 +131,12 @@ export function Header({ balance = 2500 }: HeaderProps) {
                 )}
                 <DropdownMenuItem asChild>
                   <Link to="/portfolio">Meu Portfólio</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/referral">
+                    <Gift className="mr-2 h-4 w-4" />
+                    Indicar Amigos
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">

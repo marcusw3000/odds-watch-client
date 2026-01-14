@@ -493,6 +493,126 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_commissions: {
+        Row: {
+          commission_amount: number
+          created_at: string
+          fee_amount: number
+          id: string
+          ledger_entry_id: string | null
+          referral_id: string
+          trade_amount: number
+        }
+        Insert: {
+          commission_amount?: number
+          created_at?: string
+          fee_amount?: number
+          id?: string
+          ledger_entry_id?: string | null
+          referral_id: string
+          trade_amount?: number
+        }
+        Update: {
+          commission_amount?: number
+          created_at?: string
+          fee_amount?: number
+          id?: string
+          ledger_entry_id?: string | null
+          referral_id?: string
+          trade_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_commissions_ledger_entry_id_fkey"
+            columns: ["ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_commissions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_settings: {
+        Row: {
+          default_commission_percent: number
+          default_discount_percent: number
+          discount_duration_days: number
+          id: string
+          is_active: boolean
+          min_deposit_amount: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_commission_percent?: number
+          default_discount_percent?: number
+          discount_duration_days?: number
+          id?: string
+          is_active?: boolean
+          min_deposit_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_commission_percent?: number
+          default_discount_percent?: number
+          discount_duration_days?: number
+          id?: string
+          is_active?: boolean
+          min_deposit_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          activated_at: string | null
+          commission_percent: number
+          created_at: string
+          discount_expires_at: string | null
+          discount_percent: number
+          id: string
+          referral_code: string
+          referred_id: string | null
+          referrer_id: string
+          status: string
+          total_commission_earned: number
+        }
+        Insert: {
+          activated_at?: string | null
+          commission_percent?: number
+          created_at?: string
+          discount_expires_at?: string | null
+          discount_percent?: number
+          id?: string
+          referral_code: string
+          referred_id?: string | null
+          referrer_id: string
+          status?: string
+          total_commission_earned?: number
+        }
+        Update: {
+          activated_at?: string | null
+          commission_percent?: number
+          created_at?: string
+          discount_expires_at?: string | null
+          discount_percent?: number
+          id?: string
+          referral_code?: string
+          referred_id?: string | null
+          referrer_id?: string
+          status?: string
+          total_commission_earned?: number
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           created_at: string
@@ -687,6 +807,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

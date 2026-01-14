@@ -19,6 +19,13 @@ import { AdminEventFormPage } from "./pages/admin/AdminEventFormPage";
 import { AdminSettlementsPage } from "./pages/admin/AdminSettlementsPage";
 import { AdminAuditPage } from "./pages/admin/AdminAuditPage";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
+import { AdminFinancialOverview } from "./pages/admin/AdminFinancialOverview";
+import { AdminFeesPage } from "./pages/admin/AdminFeesPage";
+import { AdminLedgerPage } from "./pages/admin/AdminLedgerPage";
+import { AdminRevenuePage } from "./pages/admin/AdminRevenuePage";
+import { AdminAuditLogsPage } from "./pages/admin/AdminAuditLogsPage";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
+import { AdminMarketEventsPage } from "./pages/admin/AdminMarketEventsPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +54,13 @@ const App = () => (
             <Route path="events/:id/edit" element={<AdminEventFormPage />} />
             <Route path="settlements" element={<AdminSettlementsPage />} />
             <Route path="audit" element={<AdminAuditPage />} />
+            <Route path="financial" element={<AdminFinancialOverview />} />
+            <Route path="fees" element={<AdminFeesPage />} />
+            <Route path="ledger" element={<AdminLedgerPage />} />
+            <Route path="revenue" element={<AdminRevenuePage />} />
+            <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="market-events" element={<AdminMarketEventsPage />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

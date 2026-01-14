@@ -6,6 +6,8 @@ import { OddsBadge } from './OddsBadge';
 import { cn } from '@/lib/utils';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
+import { FeeEngine } from '@/services/FeeEngine';
+import { FeeRule } from '@/types/financial';
 
 interface SellModalProps {
   contract: UserContract;
@@ -30,9 +32,19 @@ export function SellModal({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feeRule, setFeeRule] = useState<FeeRule | null>(null);
 
   const isYes = contract.outcome === 'YES';
   const purchaseCost = (contract.priceAtPurchase / 100) * contract.quantity;
+
+  // Fetch fee rule on mount
+  useEffect(() => {
+    const fetchFeeRule = async () => {
+      const rule = await FeeEngine.getActiveRule('TRADE');
+      setFeeRule(rule);
+    };
+    fetchFeeRule();
+  }, []);
 
   // Fetch sell quote on mount and when refreshing
   const fetchQuote = useCallback(async () => {
@@ -48,7 +60,10 @@ export function SellModal({
     fetchQuote();
   }, [fetchQuote]);
 
-  const saleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
+  const feePercent = feeRule?.percent_value || 0.02; // fallback to 2%
+  const grossSaleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
+  const feeAmount = grossSaleValue * feePercent;
+  const saleValue = grossSaleValue - feeAmount;
   const profitLoss = saleValue - purchaseCost;
   const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(1) : '0.0';
 
@@ -204,7 +219,20 @@ export function SellModal({
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Valor de venda</span>
+                <span className="text-muted-foreground">Valor bruto de venda</span>
+                <span className="font-mono font-medium">R${grossSaleValue.toFixed(2)}</span>
+              </div>
+              
+              {/* Fee display */}
+              <div className="flex justify-between text-warning">
+                <span className="flex items-center gap-1">
+                  Taxa de operação ({(feePercent * 100).toFixed(1)}%)
+                </span>
+                <span className="font-mono font-medium">-R${feeAmount.toFixed(2)}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Valor líquido</span>
                 <span className="font-mono font-medium">R${saleValue.toFixed(2)}</span>
               </div>
 

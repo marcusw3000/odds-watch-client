@@ -11,6 +11,8 @@ import {
   TradeQuote,
   LMSRState,
 } from './LMSRCalculator';
+import { FeeEngine } from './FeeEngine';
+import type { FeeType } from '@/types/financial';
 
 // Transform DB market to frontend MarketEvent
 function transformDbMarket(dbMarket: DbMarket): MarketEvent {
@@ -518,14 +520,66 @@ export const MarketDataProvider = {
       };
     }
 
-    // Deduct balance
+    // Get or create wallet for fee processing
+    let wallet = await supabase
+      .from('wallets')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Calculate fee (if rule exists)
+    const feeRule = await FeeEngine.getActiveRule('TRADE' as FeeType);
+    let feeAmount = 0;
+    let netCost = quote.cost;
+    let feeSnapshotId: string | null = null;
+
+    if (feeRule) {
+      const feeResult = FeeEngine.calculateFee(quote.cost, feeRule);
+      feeAmount = feeResult.feeAmount;
+      netCost = quote.cost; // Total deducted is cost (fee is additional or included based on design)
+      
+      // Create fee snapshot for audit
+      feeSnapshotId = await FeeEngine.createSnapshot(feeRule, feeResult.tier);
+    }
+
+    const totalDeduction = quote.cost + feeAmount;
+
+    // Check if balance is sufficient including fee
+    if (balanceData.balance < totalDeduction) {
+      return { success: false, message: 'Saldo insuficiente (incluindo taxas).', quote };
+    }
+
+    // Deduct balance (includes fee)
     const { error: balanceError } = await supabase
       .from('user_balances')
-      .update({ balance: balanceData.balance - quote.cost })
+      .update({ balance: balanceData.balance - totalDeduction })
       .eq('user_id', user.id);
 
     if (balanceError) {
       console.error('Error updating balance:', balanceError);
+    }
+
+    // Record ledger entry if wallet exists
+    if (wallet.data?.id && feeSnapshotId) {
+      await FeeEngine.recordLedgerEntry({
+        userId: user.id,
+        walletId: wallet.data.id,
+        refType: 'TRADE',
+        refId: eventId,
+        direction: 'DEBIT',
+        amount: quote.cost,
+        feeAmount,
+        netAmount: quote.cost,
+        platformRevenue: feeAmount,
+        feeSnapshotId,
+        status: 'COMPLETED',
+        meta: { action: 'BUY', outcome, shares, marketId: eventId }
+      });
+
+      // Aggregate platform revenue
+      if (feeAmount > 0) {
+        await FeeEngine.aggregateRevenue('TRADE' as FeeType, feeAmount);
+      }
     }
 
     // Create or update contract
@@ -575,7 +629,7 @@ export const MarketDataProvider = {
         position: outcome,
         shares,
         price_per_share: quote.avgPrice / 100,
-        total_amount: -quote.cost,
+        total_amount: -totalDeduction, // Includes fee
       });
 
     const newContract: UserContract = {
@@ -591,7 +645,9 @@ export const MarketDataProvider = {
     
     return {
       success: true,
-      message: 'Compra realizada com sucesso!',
+      message: feeAmount > 0 
+        ? `Compra realizada com sucesso! Taxa: R$ ${feeAmount.toFixed(2)}`
+        : 'Compra realizada com sucesso!',
       contract: newContract,
       quote,
     };
@@ -640,6 +696,21 @@ export const MarketDataProvider = {
       };
     }
 
+    // Calculate fee (if rule exists)
+    const feeRule = await FeeEngine.getActiveRule('TRADE' as FeeType);
+    let feeAmount = 0;
+    let netProceeds = quote.cost;
+    let feeSnapshotId: string | null = null;
+
+    if (feeRule) {
+      const feeResult = FeeEngine.calculateFee(quote.cost, feeRule);
+      feeAmount = feeResult.feeAmount;
+      netProceeds = feeResult.netAmount;
+      
+      // Create fee snapshot for audit
+      feeSnapshotId = await FeeEngine.createSnapshot(feeRule, feeResult.tier);
+    }
+
     // Execute sell
     const newState = executeSell(lmsr, contract.position as 'YES' | 'NO', contract.shares);
     const newYesPrice = getPriceYes(newState);
@@ -656,7 +727,7 @@ export const MarketDataProvider = {
       })
       .eq('id', contract.market_id);
 
-    // Add balance
+    // Add balance (net of fee)
     const { data: balanceData } = await supabase
       .from('user_balances')
       .select('balance')
@@ -665,8 +736,38 @@ export const MarketDataProvider = {
 
     await supabase
       .from('user_balances')
-      .update({ balance: (balanceData?.balance || 0) + quote.cost })
+      .update({ balance: (balanceData?.balance || 0) + netProceeds })
       .eq('user_id', user.id);
+
+    // Get wallet for ledger entry
+    const wallet = await supabase
+      .from('wallets')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Record ledger entry if wallet exists
+    if (wallet.data?.id && feeSnapshotId) {
+      await FeeEngine.recordLedgerEntry({
+        userId: user.id,
+        walletId: wallet.data.id,
+        refType: 'TRADE',
+        refId: contract.market_id,
+        direction: 'CREDIT',
+        amount: quote.cost,
+        feeAmount,
+        netAmount: netProceeds,
+        platformRevenue: feeAmount,
+        feeSnapshotId,
+        status: 'COMPLETED',
+        meta: { action: 'SELL', position: contract.position, shares: contract.shares, contractId }
+      });
+
+      // Aggregate platform revenue
+      if (feeAmount > 0) {
+        await FeeEngine.aggregateRevenue('TRADE' as FeeType, feeAmount);
+      }
+    }
 
     // Delete contract
     await supabase
@@ -684,13 +785,15 @@ export const MarketDataProvider = {
         position: contract.position,
         shares: contract.shares,
         price_per_share: quote.avgPrice / 100,
-        total_amount: quote.cost,
+        total_amount: netProceeds, // Net of fee
       });
 
     return {
       success: true,
-      message: 'Venda realizada com sucesso!',
-      saleValue: quote.cost,
+      message: feeAmount > 0 
+        ? `Venda realizada com sucesso! Taxa: R$ ${feeAmount.toFixed(2)}`
+        : 'Venda realizada com sucesso!',
+      saleValue: netProceeds,
       quote,
     };
   },

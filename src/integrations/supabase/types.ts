@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          action: string
+          actor_user_id: string
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity: string
+          entity_id: string | null
+          id: string
+          ip_address: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          id?: string
+          ip_address?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          ip_address?: string | null
+        }
+        Relationships: []
+      }
       bcb_data_cache: {
         Row: {
           fetched_at: string
@@ -84,6 +120,161 @@ export type Database = {
             columns: ["market_id"]
             isOneToOne: false
             referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_policy_snapshots: {
+        Row: {
+          applied_flat: number | null
+          applied_mode: string
+          applied_percent: number | null
+          applied_tiers: Json | null
+          created_at: string
+          fee_rule_id: string | null
+          id: string
+          type: string
+        }
+        Insert: {
+          applied_flat?: number | null
+          applied_mode: string
+          applied_percent?: number | null
+          applied_tiers?: Json | null
+          created_at?: string
+          fee_rule_id?: string | null
+          id?: string
+          type: string
+        }
+        Update: {
+          applied_flat?: number | null
+          applied_mode?: string
+          applied_percent?: number | null
+          applied_tiers?: Json | null
+          created_at?: string
+          fee_rule_id?: string | null
+          id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_policy_snapshots_fee_rule_id_fkey"
+            columns: ["fee_rule_id"]
+            isOneToOne: false
+            referencedRelation: "fee_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          flat_value: number | null
+          id: string
+          is_active: boolean
+          max_fee: number | null
+          min_fee: number | null
+          mode: string
+          name: string
+          percent_value: number | null
+          tiers: Json | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          flat_value?: number | null
+          id?: string
+          is_active?: boolean
+          max_fee?: number | null
+          min_fee?: number | null
+          mode: string
+          name: string
+          percent_value?: number | null
+          tiers?: Json | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          flat_value?: number | null
+          id?: string
+          is_active?: boolean
+          max_fee?: number | null
+          min_fee?: number | null
+          mode?: string
+          name?: string
+          percent_value?: number | null
+          tiers?: Json | null
+          type?: string
+        }
+        Relationships: []
+      }
+      ledger_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          direction: string
+          fee_amount: number
+          fee_snapshot_id: string | null
+          id: string
+          meta: Json | null
+          net_amount: number
+          platform_revenue: number
+          ref_id: string | null
+          ref_type: string
+          status: string
+          user_id: string | null
+          wallet_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          direction: string
+          fee_amount?: number
+          fee_snapshot_id?: string | null
+          id?: string
+          meta?: Json | null
+          net_amount: number
+          platform_revenue?: number
+          ref_id?: string | null
+          ref_type: string
+          status?: string
+          user_id?: string | null
+          wallet_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          direction?: string
+          fee_amount?: number
+          fee_snapshot_id?: string | null
+          id?: string
+          meta?: Json | null
+          net_amount?: number
+          platform_revenue?: number
+          ref_id?: string | null
+          ref_type?: string
+          status?: string
+          user_id?: string | null
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_fee_snapshot_id_fkey"
+            columns: ["fee_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "fee_policy_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
             referencedColumns: ["id"]
           },
         ]
@@ -196,8 +387,10 @@ export type Database = {
           market_type: string
           no_shares: number
           options_exclusive: boolean
+          resolution: Json | null
           result: string | null
           result_source: string | null
+          settled_by: string | null
           settlement_config: Json | null
           settlement_date: string | null
           settlement_type: Database["public"]["Enums"]["settlement_type"]
@@ -223,8 +416,10 @@ export type Database = {
           market_type?: string
           no_shares?: number
           options_exclusive?: boolean
+          resolution?: Json | null
           result?: string | null
           result_source?: string | null
+          settled_by?: string | null
           settlement_config?: Json | null
           settlement_date?: string | null
           settlement_type?: Database["public"]["Enums"]["settlement_type"]
@@ -250,8 +445,10 @@ export type Database = {
           market_type?: string
           no_shares?: number
           options_exclusive?: boolean
+          resolution?: Json | null
           result?: string | null
           result_source?: string | null
+          settled_by?: string | null
           settlement_config?: Json | null
           settlement_date?: string | null
           settlement_type?: Database["public"]["Enums"]["settlement_type"]
@@ -260,6 +457,39 @@ export type Database = {
           total_volume?: number
           updated_at?: string
           yes_shares?: number
+        }
+        Relationships: []
+      }
+      platform_revenue: {
+        Row: {
+          created_at: string
+          day: string
+          fees: number
+          gross: number
+          id: string
+          net: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          fees?: number
+          gross?: number
+          id?: string
+          net?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          fees?: number
+          gross?: number
+          id?: string
+          net?: number
+          type?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -418,6 +648,36 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance_available: number
+          balance_locked: number
+          created_at: string
+          currency: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_available?: number
+          balance_locked?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_available?: number
+          balance_locked?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

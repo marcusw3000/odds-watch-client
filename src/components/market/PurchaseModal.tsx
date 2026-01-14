@@ -144,8 +144,14 @@ export function PurchaseModal({
   const quickShares = [10, 25, 50, 100];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold">Comprar Contrato</h2>
@@ -291,15 +297,6 @@ export function PurchaseModal({
                     <span className="font-mono text-foreground">R${totalWithFee.toFixed(2)}</span>
                   </div>
 
-                  {/* New prices after trade */}
-                  <div className="pt-2 border-t border-border text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Preço após compra:</span>
-                      <span className="font-mono">
-                        SIM: {quote.newYesPrice}¢ | NÃO: {quote.newNoPrice}¢
-                      </span>
-                    </div>
-                  </div>
 
                   <div className="flex justify-between pt-2 border-t border-border">
                     <span className="text-muted-foreground flex items-center gap-1">

@@ -40,8 +40,8 @@ export function AdminLedgerPage() {
   // Filters
   const [filters, setFilters] = useState({
     userId: '',
-    refType: '',
-    status: '',
+    refType: 'all',
+    status: 'all',
     startDate: '',
     endDate: '',
     minAmount: '',
@@ -56,8 +56,8 @@ export function AdminLedgerPage() {
     setLoading(true);
     const data = await FinancialRepository.getLedgerEntries({
       userId: filters.userId || undefined,
-      refType: filters.refType || undefined,
-      status: filters.status || undefined,
+      refType: filters.refType !== 'all' ? filters.refType : undefined,
+      status: filters.status !== 'all' ? filters.status : undefined,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
       minAmount: filters.minAmount ? parseFloat(filters.minAmount) : undefined,
@@ -183,7 +183,7 @@ export function AdminLedgerPage() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="DEPOSIT">Depósito</SelectItem>
                   <SelectItem value="WITHDRAW">Saque</SelectItem>
                   <SelectItem value="TRADE">Trade</SelectItem>
@@ -203,7 +203,7 @@ export function AdminLedgerPage() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="COMPLETED">Completo</SelectItem>
                   <SelectItem value="PENDING">Pendente</SelectItem>
                   <SelectItem value="FAILED">Falhou</SelectItem>

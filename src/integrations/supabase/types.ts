@@ -545,6 +545,93 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          email_market_closing: boolean
+          email_market_settled: boolean
+          email_marketing: boolean
+          email_weekly_summary: boolean
+          id: string
+          in_app_achievements: boolean
+          in_app_market_updates: boolean
+          in_app_system: boolean
+          in_app_trade_updates: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_market_closing?: boolean
+          email_market_settled?: boolean
+          email_marketing?: boolean
+          email_weekly_summary?: boolean
+          id?: string
+          in_app_achievements?: boolean
+          in_app_market_updates?: boolean
+          in_app_system?: boolean
+          in_app_trade_updates?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_market_closing?: boolean
+          email_market_settled?: boolean
+          email_marketing?: boolean
+          email_weekly_summary?: boolean
+          id?: string
+          in_app_achievements?: boolean
+          in_app_market_updates?: boolean
+          in_app_system?: boolean
+          in_app_trade_updates?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          email_sent: boolean
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          email_sent?: boolean
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          email_sent?: boolean
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_revenue: {
         Row: {
           created_at: string
@@ -1015,6 +1102,15 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       market_status: "OPEN" | "HALTED" | "PENDING" | "CONTESTED" | "SETTLED"
+      notification_type:
+        | "MARKET_CLOSING_SOON"
+        | "MARKET_HALTED"
+        | "MARKET_SETTLED"
+        | "TRADE_EXECUTED"
+        | "ACHIEVEMENT_UNLOCKED"
+        | "LEADERBOARD_RANK"
+        | "REFERRAL_ACTIVATED"
+        | "SYSTEM_ANNOUNCEMENT"
       settlement_type:
         | "MANUAL"
         | "SELIC"
@@ -1155,6 +1251,16 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       market_status: ["OPEN", "HALTED", "PENDING", "CONTESTED", "SETTLED"],
+      notification_type: [
+        "MARKET_CLOSING_SOON",
+        "MARKET_HALTED",
+        "MARKET_SETTLED",
+        "TRADE_EXECUTED",
+        "ACHIEVEMENT_UNLOCKED",
+        "LEADERBOARD_RANK",
+        "REFERRAL_ACTIVATED",
+        "SYSTEM_ANNOUNCEMENT",
+      ],
       settlement_type: [
         "MANUAL",
         "SELIC",

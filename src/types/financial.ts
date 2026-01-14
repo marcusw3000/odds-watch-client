@@ -43,6 +43,16 @@ export interface FeePolicySnapshot {
   created_at: string;
 }
 
+// Profile
+export interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Wallet
 export interface Wallet {
   id: string;
@@ -52,6 +62,12 @@ export interface Wallet {
   currency: string;
   created_at: string;
   updated_at: string;
+}
+
+// Wallet with Profile (from VIEW)
+export interface WalletWithProfile extends Wallet {
+  email: string | null;
+  full_name: string | null;
 }
 
 // Ledger Entry

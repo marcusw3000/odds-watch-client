@@ -34,21 +34,21 @@ import {
 import { FinancialRepository } from '@/services/FinancialRepository';
 import { FeeEngine } from '@/services/FeeEngine';
 import { useAuth } from '@/hooks/useAuth';
-import type { Wallet } from '@/types/financial';
+import type { WalletWithProfile } from '@/types/financial';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Users, Wallet as WalletIcon, Plus, Minus, Search } from 'lucide-react';
+import { Users, Wallet as WalletIcon, Plus, Minus, Search, Mail, User } from 'lucide-react';
 
 export function AdminUsersPage() {
   const { user } = useAuth();
-  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [wallets, setWallets] = useState<WalletWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Adjustment dialog
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<WalletWithProfile | null>(null);
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('');
@@ -59,7 +59,7 @@ export function AdminUsersPage() {
 
   const loadWallets = async () => {
     setLoading(true);
-    const data = await FinancialRepository.getAllWallets();
+    const data = await FinancialRepository.getAllWalletsWithProfiles();
     setWallets(data);
     setLoading(false);
   };
@@ -71,7 +71,7 @@ export function AdminUsersPage() {
     }).format(value);
   };
 
-  const openAdjustDialog = (wallet: Wallet, type: 'add' | 'subtract') => {
+  const openAdjustDialog = (wallet: WalletWithProfile, type: 'add' | 'subtract') => {
     setSelectedWallet(wallet);
     setAdjustmentType(type);
     setAdjustmentAmount('');
@@ -130,9 +130,14 @@ export function AdminUsersPage() {
     setSelectedWallet(null);
   };
 
-  const filteredWallets = wallets.filter(w => 
-    w.user_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredWallets = wallets.filter(w => {
+    const term = searchTerm.toLowerCase();
+    return (
+      w.user_id.toLowerCase().includes(term) ||
+      (w.email?.toLowerCase().includes(term) ?? false) ||
+      (w.full_name?.toLowerCase().includes(term) ?? false)
+    );
+  });
 
   if (loading) {
     return (
@@ -163,7 +168,7 @@ export function AdminUsersPage() {
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
-                placeholder="Buscar por ID do usuário..."
+                placeholder="Buscar por email, nome ou ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -188,7 +193,8 @@ export function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User ID</TableHead>
+                <TableHead>Usuário</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead className="text-right">Saldo Disponível</TableHead>
                 <TableHead className="text-right">Saldo Bloqueado</TableHead>
                 <TableHead className="text-right">Saldo Total</TableHead>
@@ -200,8 +206,26 @@ export function AdminUsersPage() {
             <TableBody>
               {filteredWallets.map((wallet) => (
                 <TableRow key={wallet.id}>
-                  <TableCell className="font-mono text-sm">
-                    {wallet.user_id.substring(0, 8)}...
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">
+                          {wallet.full_name || 'Sem nome'}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {wallet.user_id.substring(0, 8)}...
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        {wallet.email || 'N/A'}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium text-green-600">
                     {formatCurrency(wallet.balance_available)}
@@ -240,7 +264,7 @@ export function AdminUsersPage() {
               ))}
               {filteredWallets.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     Nenhuma carteira encontrada
                   </TableCell>
                 </TableRow>
@@ -268,9 +292,17 @@ export function AdminUsersPage() {
           <div className="space-y-4">
             <div>
               <Label>Usuário</Label>
-              <p className="font-mono text-sm bg-muted p-2 rounded">
-                {selectedWallet?.user_id}
-              </p>
+              <div className="bg-muted p-3 rounded space-y-1">
+                <p className="font-medium">
+                  {selectedWallet?.full_name || 'Sem nome'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedWallet?.email || 'Sem email'}
+                </p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  ID: {selectedWallet?.user_id}
+                </p>
+              </div>
             </div>
 
             <div>

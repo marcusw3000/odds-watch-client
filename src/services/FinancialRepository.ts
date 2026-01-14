@@ -8,6 +8,7 @@ import type {
   LedgerEntry,
   AdminAuditLog,
   Wallet,
+  WalletWithProfile,
   PlatformRevenue,
   FinancialMetrics,
   RevenueByDay,
@@ -189,6 +190,51 @@ export class FinancialRepository {
   }
 
   // ==================== WALLETS ====================
+
+  static async getAllWalletsWithProfiles(): Promise<WalletWithProfile[]> {
+    // First get all wallets
+    const { data: walletsData, error: walletsError } = await supabase
+      .from('wallets')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (walletsError || !walletsData) {
+      console.error('Error fetching wallets:', walletsError);
+      return [];
+    }
+
+    // Get user IDs
+    const userIds = walletsData.map(w => w.user_id);
+
+    // Fetch profiles for these users
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+    }
+
+    // Create a map of profiles
+    const profilesMap = new Map<string, { email: string | null; full_name: string | null }>();
+    (profilesData || []).forEach(p => {
+      profilesMap.set(p.id, { email: p.email, full_name: p.full_name });
+    });
+
+    // Combine data
+    return walletsData.map(wallet => ({
+      id: wallet.id,
+      user_id: wallet.user_id,
+      balance_available: wallet.balance_available,
+      balance_locked: wallet.balance_locked,
+      currency: wallet.currency,
+      created_at: wallet.created_at,
+      updated_at: wallet.updated_at,
+      email: profilesMap.get(wallet.user_id)?.email ?? null,
+      full_name: profilesMap.get(wallet.user_id)?.full_name ?? null
+    })) as WalletWithProfile[];
+  }
 
   static async getAllWallets(): Promise<Wallet[]> {
     const { data, error } = await supabase

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,12 +94,15 @@ export function Header({ balance = 2500 }: HeaderProps) {
         {/* Balance & User Actions */}
         <div className="hidden md:flex items-center gap-4">
           {user && (
-            <div className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2">
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-              <span className="font-mono font-semibold text-foreground">
-                {formatCurrency(balance)}
-              </span>
-            </div>
+            <>
+              <div className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+                <span className="font-mono font-semibold text-foreground">
+                  {formatCurrency(balance)}
+                </span>
+              </div>
+              <NotificationBell />
+            </>
           )}
           
           {loading ? (

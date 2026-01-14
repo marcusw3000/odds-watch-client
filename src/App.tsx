@@ -9,6 +9,7 @@ import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import NotFound from "./pages/NotFound";
 import { AuthPage } from "./pages/AuthPage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/markets" element={<MarketsPage />} />
             <Route path="/market/:id" element={<MarketDetailPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/referral" element={<ReferralPage />} />
           </Route>

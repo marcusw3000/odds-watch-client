@@ -124,14 +124,14 @@ export function AdminAuditLogsPage() {
             <div className="space-y-2">
               <Label>Ação</Label>
               <Select
-                value={filters.action}
-                onValueChange={(v) => setFilters({ ...filters, action: v })}
+                value={filters.action || 'all'}
+                onValueChange={(v) => setFilters({ ...filters, action: v === 'all' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="FEE_RULE_CREATED">Regra Criada</SelectItem>
                   <SelectItem value="FEE_RULE_UPDATED">Regra Atualizada</SelectItem>
                   <SelectItem value="FEE_RULE_ACTIVATED">Regra Ativada</SelectItem>
@@ -146,14 +146,14 @@ export function AdminAuditLogsPage() {
             <div className="space-y-2">
               <Label>Entidade</Label>
               <Select
-                value={filters.entity}
-                onValueChange={(v) => setFilters({ ...filters, entity: v })}
+                value={filters.entity || 'all'}
+                onValueChange={(v) => setFilters({ ...filters, entity: v === 'all' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="fee_rules">Regras de Taxa</SelectItem>
                   <SelectItem value="wallets">Carteiras</SelectItem>
                   <SelectItem value="markets">Mercados</SelectItem>

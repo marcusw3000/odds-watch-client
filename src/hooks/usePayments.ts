@@ -73,7 +73,7 @@ export function useVerifyDeposit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (sessionId: string): Promise<{ success: boolean; amount?: number; message: string }> => {
+    mutationFn: async (sessionId: string): Promise<{ success: boolean; amount?: number; message?: string; status?: string }> => {
       const { data, error } = await supabase.functions.invoke('verify-deposit', {
         body: { session_id: sessionId },
       });

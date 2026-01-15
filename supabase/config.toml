@@ -2,3 +2,12 @@ project_id = "nfwxyftsdhgxfrnrvsdo"
 
 [functions.send-notification-email]
 verify_jwt = false
+
+[functions.create-deposit]
+verify_jwt = false
+
+[functions.verify-deposit]
+verify_jwt = false
+
+[functions.request-withdrawal]
+verify_jwt = false

@@ -632,6 +632,78 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          fee: number
+          id: string
+          metadata: Json | null
+          method: Database["public"]["Enums"]["payment_method"]
+          net_amount: number
+          pix_code: string | null
+          pix_expires_at: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          pix_qr_code_url: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
+          type: Database["public"]["Enums"]["payment_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          fee?: number
+          id?: string
+          metadata?: Json | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          net_amount: number
+          pix_code?: string | null
+          pix_expires_at?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_qr_code_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          type: Database["public"]["Enums"]["payment_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          fee?: number
+          id?: string
+          metadata?: Json | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          net_amount?: number
+          pix_code?: string | null
+          pix_expires_at?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_qr_code_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          type?: Database["public"]["Enums"]["payment_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_revenue: {
         Row: {
           created_at: string
@@ -1111,6 +1183,15 @@ export type Database = {
         | "LEADERBOARD_RANK"
         | "REFERRAL_ACTIVATED"
         | "SYSTEM_ANNOUNCEMENT"
+      payment_method: "PIX" | "CARD" | "BOLETO"
+      payment_status:
+        | "PENDING"
+        | "PROCESSING"
+        | "COMPLETED"
+        | "FAILED"
+        | "CANCELLED"
+        | "REFUNDED"
+      payment_type: "DEPOSIT" | "WITHDRAWAL"
       settlement_type:
         | "MANUAL"
         | "SELIC"
@@ -1261,6 +1342,16 @@ export const Constants = {
         "REFERRAL_ACTIVATED",
         "SYSTEM_ANNOUNCEMENT",
       ],
+      payment_method: ["PIX", "CARD", "BOLETO"],
+      payment_status: [
+        "PENDING",
+        "PROCESSING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "REFUNDED",
+      ],
+      payment_type: ["DEPOSIT", "WITHDRAWAL"],
       settlement_type: [
         "MANUAL",
         "SELIC",

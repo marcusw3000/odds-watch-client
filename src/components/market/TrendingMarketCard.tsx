@@ -1,8 +1,8 @@
 import { memo, useState, useMemo } from 'react';
-import { TrendingUp, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { TrendingUp, ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
+import { format, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LineChart, Line, XAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { MarketStatusBadge } from './MarketStatusBadge';
@@ -45,45 +45,71 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
       Esportes: '⚽',
       Mercado: '📈',
       Política: '🗳️',
+      'Política Monetária': '🏦',
+      Inflação: '📊',
     };
     return icons[category] || '📊';
   };
 
+  // Format time until event
+  const getTimeUntil = () => {
+    const now = new Date();
+    const target = event.tradingHaltAt;
+    const hours = differenceInHours(target, now);
+    const minutes = differenceInMinutes(target, now) % 60;
+    
+    if (hours > 24) {
+      const days = differenceInDays(target, now);
+      return `${days}d`;
+    }
+    return `${hours}h ${minutes}m`;
+  };
+
   const hasImage = Boolean(event.imageUrl);
 
-  // Generate mock price history data based on created_at
+  // Generate mock price history data
   const priceHistory = useMemo(() => {
     const createdAt = event.createdAt ? new Date(event.createdAt) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const now = new Date();
     const daysDiff = Math.max(differenceInDays(now, createdAt), 1);
-    const dataPoints = Math.min(daysDiff, 14); // Max 14 data points
+    const dataPoints = Math.min(Math.max(daysDiff * 4, 20), 50);
     
     const data = [];
-    const currentPrice = event.outcomes.YES.price;
+    const currentYesPrice = event.outcomes.YES.price;
+    const currentNoPrice = event.outcomes.NO.price;
     
-    // Generate random walk from ~50% to current price
-    let price = 50;
-    const priceStep = (currentPrice - 50) / dataPoints;
+    let yesPrice = 50;
+    let noPrice = 50;
+    const yesStep = (currentYesPrice - 50) / dataPoints;
+    const noStep = (currentNoPrice - 50) / dataPoints;
     
     for (let i = 0; i <= dataPoints; i++) {
       const date = new Date(createdAt.getTime() + (i * (now.getTime() - createdAt.getTime()) / dataPoints));
-      // Add some randomness
-      const randomVariation = (Math.random() - 0.5) * 10;
-      price = Math.max(1, Math.min(99, price + priceStep + randomVariation));
+      const randomVariation = (Math.random() - 0.5) * 8;
+      
+      yesPrice = Math.max(5, Math.min(95, yesPrice + yesStep + randomVariation));
+      noPrice = 100 - yesPrice;
       
       data.push({
+        time: format(date, 'HH:mm', { locale: ptBR }),
         date: format(date, 'd MMM', { locale: ptBR }),
-        price: Math.round(price),
+        yes: Math.round(yesPrice),
+        no: Math.round(noPrice),
       });
     }
     
-    // Ensure last point is the current price
+    // Ensure last point matches current prices
     if (data.length > 0) {
-      data[data.length - 1].price = currentPrice;
+      data[data.length - 1].yes = currentYesPrice;
+      data[data.length - 1].no = currentNoPrice;
     }
     
     return data;
-  }, [event.createdAt, event.outcomes.YES.price]);
+  }, [event.createdAt, event.outcomes.YES.price, event.outcomes.NO.price]);
+
+  // Calculate potential payout
+  const yesPayoutMultiplier = (100 / event.outcomes.YES.price).toFixed(1);
+  const noPayoutMultiplier = (100 / event.outcomes.NO.price).toFixed(1);
 
   return (
     <div 
@@ -91,98 +117,110 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr,auto,1fr] gap-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
         {/* Left Side - Market Info */}
         <div className="p-6 lg:p-8 flex flex-col">
-          {/* Category & Status */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-muted-foreground">{event.category}</span>
-            <MarketStatusBadge
-              status={statusInfo.status}
-              timeToHalt={statusInfo.timeToHalt}
-              result={event.result}
-              size="sm"
-              showCountdown={statusInfo.isUrgent}
-              isUrgent={statusInfo.isUrgent}
-            />
-          </div>
-
-          {/* Title */}
-          <h2 
-            className="text-2xl lg:text-3xl font-bold mb-6 cursor-pointer hover:text-primary transition-colors"
-            onClick={() => onViewDetails?.(event.id)}
-          >
-            {event.title}
-          </h2>
-
-          {/* Outcomes */}
-          <div className="space-y-3 flex-1">
-            {/* YES Option */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
-              <span className="font-medium">Sim</span>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-yes">{event.outcomes.YES.price}%</span>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-4 text-xs font-semibold border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                    onClick={() => onBuy(event.id, 'YES')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Sim
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-4 text-xs font-semibold border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
-                    onClick={() => onBuy(event.id, 'NO')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Não
-                  </Button>
+          {/* Header with image, category and countdown */}
+          <div className="flex items-start gap-4 mb-4">
+            {/* Image/Icon */}
+            <div className="flex-shrink-0">
+              {hasImage ? (
+                <div className="w-16 h-16 rounded-xl overflow-hidden relative">
+                  <div
+                    className={cn(
+                      "absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out",
+                      isHovered && "scale-110"
+                    )}
+                    style={{
+                      backgroundImage: `url(${event.imageUrl})`,
+                      backgroundPosition: event.imagePosition 
+                        ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
+                        : 'center',
+                      transform: isHovered 
+                        ? `scale(${(event.imageZoom || 1) * 1.1})` 
+                        : `scale(${event.imageZoom || 1})`,
+                    }}
+                  />
                 </div>
-              </div>
+              ) : (
+                <div 
+                  className={cn(
+                    "w-16 h-16 rounded-xl bg-secondary flex items-center justify-center text-3xl transition-transform duration-300",
+                    isHovered && "scale-105"
+                  )}
+                >
+                  {getCategoryIcon(event.category)}
+                </div>
+              )}
             </div>
 
-            {/* NO Option */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
-              <span className="font-medium">Não</span>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-no">{event.outcomes.NO.price}%</span>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-4 text-xs font-semibold border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                    onClick={() => onBuy(event.id, 'YES')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Sim
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-4 text-xs font-semibold border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
-                    onClick={() => onBuy(event.id, 'NO')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Não
-                  </Button>
-                </div>
+            {/* Category and Title */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm text-muted-foreground">{event.category}</span>
+              </div>
+              <h2 
+                className="text-xl lg:text-2xl font-bold cursor-pointer hover:text-primary transition-colors line-clamp-2"
+                onClick={() => onViewDetails?.(event.id)}
+              >
+                {event.title}
+              </h2>
+            </div>
+
+            {/* Countdown / Status */}
+            <div className="flex-shrink-0 text-right">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Encerra em {getTimeUntil()}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {format(event.tradingHaltAt, "d MMM, HH:mm", { locale: ptBR })}
               </div>
             </div>
           </div>
 
-          {/* Description (if available) */}
+          {/* Outcome Buttons */}
+          <div className="flex gap-3 mb-4">
+            <Button
+              className="flex-1 h-14 bg-yes/20 hover:bg-yes/30 border-2 border-yes text-yes font-bold text-lg"
+              variant="outline"
+              onClick={() => onBuy(event.id, 'YES')}
+              disabled={!statusInfo.canTrade}
+            >
+              SIM {event.outcomes.YES.price}¢
+            </Button>
+            <Button
+              className="flex-1 h-14 bg-no/20 hover:bg-no/30 border-2 border-no text-no font-bold text-lg"
+              variant="outline"
+              onClick={() => onBuy(event.id, 'NO')}
+              disabled={!statusInfo.canTrade}
+            >
+              NÃO {event.outcomes.NO.price}¢
+            </Button>
+          </div>
+
+          {/* Payout info */}
+          <div className="flex gap-6 mb-4 text-sm">
+            <div className="text-muted-foreground">
+              R$1 → <span className="text-yes font-semibold">R${yesPayoutMultiplier}</span>
+            </div>
+            <div className="text-muted-foreground">
+              R$1 → <span className="text-no font-semibold">R${noPayoutMultiplier}</span>
+            </div>
+          </div>
+
+          {/* Description */}
           {event.description && (
-            <p className="text-sm text-muted-foreground mt-4 line-clamp-2">
-              {event.description}
-            </p>
+            <div className="mb-4">
+              <span className="text-xs font-medium text-muted-foreground">Descrição</span>
+              <p className="text-sm text-foreground mt-1 line-clamp-2">
+                {event.description}
+              </p>
+            </div>
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+          <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
               <span>{formatVolume(event.volume)}</span>
@@ -198,50 +236,51 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
           </div>
         </div>
 
-        {/* Center - Image/Icon (small) */}
-        <div className="hidden lg:flex items-center justify-center w-32 border-l border-border bg-secondary/20">
-          {hasImage ? (
-            <div className="w-20 h-20 rounded-full overflow-hidden relative">
-              <div
-                className={cn(
-                  "absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out",
-                  isHovered && "scale-110"
-                )}
-                style={{
-                  backgroundImage: `url(${event.imageUrl})`,
-                  backgroundPosition: event.imagePosition 
-                    ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
-                    : 'center',
-                  transform: isHovered 
-                    ? `scale(${(event.imageZoom || 1) * 1.1})` 
-                    : `scale(${event.imageZoom || 1})`,
-                }}
-              />
+        {/* Right Side - Chart */}
+        <div className="hidden lg:flex flex-col p-6 border-l border-border bg-secondary/5">
+          {/* Chart Header */}
+          <div className="flex justify-between items-center mb-4">
+            <MarketStatusBadge
+              status={statusInfo.status}
+              timeToHalt={statusInfo.timeToHalt}
+              result={event.result}
+              size="sm"
+              showCountdown={statusInfo.isUrgent}
+              isUrgent={statusInfo.isUrgent}
+            />
+            <div className="flex gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-0.5 bg-yes rounded" />
+                <span className="text-muted-foreground">Sim</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-0.5 bg-no rounded" />
+                <span className="text-muted-foreground">Não</span>
+              </div>
             </div>
-          ) : (
-            <div 
-              className={cn(
-                "w-20 h-20 rounded-full bg-secondary flex items-center justify-center text-4xl transition-transform duration-300",
-                isHovered && "scale-110"
-              )}
-            >
-              {getCategoryIcon(event.category)}
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* Right Side - Price Chart */}
-        <div className="hidden lg:flex flex-col p-6 border-l border-border bg-secondary/10">
-          <div className="flex-1 min-h-[180px]">
+          {/* Chart */}
+          <div className="flex-1 min-h-[200px] relative">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={priceHistory} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+              <LineChart data={priceHistory} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="time" 
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   interval="preserveStartEnd"
                 />
+                <YAxis 
+                  domain={[0, 100]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={(value) => `${value}%`}
+                  orientation="right"
+                  width={40}
+                />
+                <ReferenceLine y={50} stroke="hsl(var(--border))" strokeDasharray="3 3" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'hsl(var(--background))',
@@ -249,24 +288,48 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number) => [`${value}%`, 'Preço']}
+                  formatter={(value: number, name: string) => [
+                    `${value}%`, 
+                    name === 'yes' ? 'Sim' : 'Não'
+                  ]}
+                  labelFormatter={(label) => `Horário: ${label}`}
                 />
                 <Line
                   type="monotone"
-                  dataKey="price"
-                  stroke="hsl(var(--primary))"
+                  dataKey="yes"
+                  stroke="hsl(var(--yes))"
                   strokeWidth={2}
                   dot={false}
-                  activeDot={{ r: 4, fill: 'hsl(var(--primary))' }}
+                  activeDot={{ r: 4, fill: 'hsl(var(--yes))' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="no"
+                  stroke="hsl(var(--no))"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'hsl(var(--no))' }}
                 />
               </LineChart>
             </ResponsiveContainer>
+
+            {/* Current price labels */}
+            <div className="absolute right-0 top-1/4 flex flex-col gap-1">
+              <div className="bg-yes text-yes-foreground px-2 py-0.5 rounded text-xs font-bold">
+                Sim {event.outcomes.YES.price}%
+              </div>
+            </div>
+            <div className="absolute right-0 bottom-1/4 flex flex-col gap-1">
+              <div className="bg-no text-no-foreground px-2 py-0.5 rounded text-xs font-bold">
+                Não {event.outcomes.NO.price}%
+              </div>
+            </div>
           </div>
           
-          {/* Date range labels */}
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+          {/* Date range */}
+          <div className="flex justify-between text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
             <span>{priceHistory[0]?.date}</span>
-            <span>{priceHistory[priceHistory.length - 1]?.date}</span>
+            <span>Agora</span>
           </div>
         </div>
       </div>

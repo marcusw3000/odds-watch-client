@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Share2, Twitter, Facebook, Link2, Copy, Check, MessageCircle } from 'lucide-react';
+import { Share2, Twitter, Facebook, Link2, Copy, Check, MessageCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,12 +9,14 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { generateMarketShareLink, generateSocialShareLinks } from '@/lib/deepLinks';
 
 interface ShareButtonProps {
   title: string;
   description?: string;
   url?: string;
   marketId?: string;
+  outcome?: 'YES' | 'NO';
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'icon';
   showLabel?: boolean;
@@ -25,17 +27,27 @@ export function ShareButton({
   description,
   url,
   marketId,
+  outcome,
   variant = 'outline',
   size = 'sm',
   showLabel = false,
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
-  const shareUrl = url || (marketId ? `${window.location.origin}/market/${marketId}` : window.location.href);
+  // Generate deep link with tracking
+  const getShareUrl = (source: 'twitter' | 'facebook' | 'whatsapp' | 'telegram' | 'copy') => {
+    if (url) return url;
+    if (marketId) {
+      return generateMarketShareLink(marketId, { outcome, source });
+    }
+    return window.location.href;
+  };
+
   const shareText = description || title;
 
   const handleCopyLink = async () => {
     try {
+      const shareUrl = getShareUrl('copy');
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       toast.success('Link copiado!');
@@ -48,6 +60,7 @@ export function ShareButton({
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
+        const shareUrl = getShareUrl('copy');
         await navigator.share({
           title,
           text: shareText,
@@ -62,25 +75,54 @@ export function ShareButton({
   };
 
   const handleTwitterShare = () => {
-    const text = encodeURIComponent(`${title}\n\n${shareText}`);
-    const urlParam = encodeURIComponent(shareUrl);
-    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${urlParam}`, '_blank', 'noopener,noreferrer');
+    const shareUrl = getShareUrl('twitter');
+    const links = generateSocialShareLinks({
+      title,
+      description: shareText,
+      deepLink: shareUrl,
+      hashtags: ['MercadoPrevisoes', 'Trading'],
+    });
+    window.open(links.twitter, '_blank', 'noopener,noreferrer');
   };
 
   const handleFacebookShare = () => {
-    const urlParam = encodeURIComponent(shareUrl);
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${urlParam}`, '_blank', 'noopener,noreferrer');
+    const shareUrl = getShareUrl('facebook');
+    const links = generateSocialShareLinks({
+      title,
+      description: shareText,
+      deepLink: shareUrl,
+    });
+    window.open(links.facebook, '_blank', 'noopener,noreferrer');
   };
 
   const handleWhatsAppShare = () => {
-    const text = encodeURIComponent(`${title}\n\n${shareText}\n\n${shareUrl}`);
-    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+    const shareUrl = getShareUrl('whatsapp');
+    const links = generateSocialShareLinks({
+      title,
+      description: shareText,
+      deepLink: shareUrl,
+    });
+    window.open(links.whatsapp, '_blank', 'noopener,noreferrer');
   };
 
   const handleTelegramShare = () => {
-    const text = encodeURIComponent(`${title}\n${shareText}`);
-    const urlParam = encodeURIComponent(shareUrl);
-    window.open(`https://t.me/share/url?url=${urlParam}&text=${text}`, '_blank', 'noopener,noreferrer');
+    const shareUrl = getShareUrl('telegram');
+    const links = generateSocialShareLinks({
+      title,
+      description: shareText,
+      deepLink: shareUrl,
+    });
+    window.open(links.telegram, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleEmailShare = () => {
+    const shareUrl = getShareUrl('copy');
+    const links = generateSocialShareLinks({
+      title,
+      description: shareText,
+      deepLink: shareUrl,
+    });
+    window.location.href = links.email;
   };
 
   return (
@@ -120,6 +162,11 @@ export function ShareButton({
         <DropdownMenuItem onClick={handleTelegramShare}>
           <MessageCircle className="mr-2 h-4 w-4" />
           Telegram
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={handleEmailShare}>
+          <Mail className="mr-2 h-4 w-4" />
+          Email
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />

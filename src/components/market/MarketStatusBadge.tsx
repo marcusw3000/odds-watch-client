@@ -58,7 +58,7 @@ export function MarketStatusBadge({
         if (timeToHalt && timeToHalt > 0) {
           return (
             <span className="text-xs opacity-80">
-              Encerra em {formatCountdown(timeToHalt)}
+              · {formatCountdown(timeToHalt)}
             </span>
           );
         }
@@ -67,7 +67,7 @@ export function MarketStatusBadge({
         if (timeToEvent && timeToEvent > 0) {
           return (
             <span className="text-xs opacity-80">
-              Resultado em {formatCountdown(timeToEvent)}
+              · Resultado em {formatCountdown(timeToEvent)}
             </span>
           );
         }
@@ -76,7 +76,7 @@ export function MarketStatusBadge({
         if (contestTimeRemaining && contestTimeRemaining > 0) {
           return (
             <span className="text-xs opacity-80">
-              Contestação: {formatCountdown(contestTimeRemaining)} restante
+              · {formatCountdown(contestTimeRemaining)} restante
             </span>
           );
         }

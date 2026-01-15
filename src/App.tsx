@@ -31,6 +31,7 @@ import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminMarketEventsPage } from "./pages/admin/AdminMarketEventsPage";
 import { AdminReferralsPage } from "./pages/admin/AdminReferralsPage";
 import { AdminAppearancePage } from "./pages/admin/AdminAppearancePage";
+import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
 import { ReferralPage } from "./pages/ReferralPage";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="market-events" element={<AdminMarketEventsPage />} />
             <Route path="referrals" element={<AdminReferralsPage />} />
             <Route path="appearance" element={<AdminAppearancePage />} />
+            <Route path="reports" element={<AdminReportsPage />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

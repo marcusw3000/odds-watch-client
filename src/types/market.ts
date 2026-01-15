@@ -72,6 +72,7 @@ export interface MarketEvent {
     NO: Outcome;
   };
   limits: MarketLimits;
+  createdAt: Date;
   lastUpdatedAt: Date;
   volume?: number;
   description?: string;

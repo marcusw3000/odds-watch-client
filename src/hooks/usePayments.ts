@@ -52,12 +52,12 @@ export function useCreatePaymentIntent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ amount, method }: { amount: number; method: 'PIX' | 'CARD' }): Promise<{ 
+    mutationFn: async ({ amount, method, saveCard }: { amount: number; method: 'PIX' | 'CARD'; saveCard?: boolean }): Promise<{ 
       clientSecret: string; 
       paymentIntentId: string;
     }> => {
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-        body: { amount, method },
+        body: { amount, method, saveCard },
       });
 
       if (error) throw error;

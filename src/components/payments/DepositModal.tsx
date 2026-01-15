@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2, Check, Plus, Copy, CheckCircle } from 'lucide-react';
+import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2, Check, Plus, Copy, CheckCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import { Elements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -377,18 +377,34 @@ export function DepositModal({ onClose }: DepositModalProps) {
               {/* Amount Input */}
               <div className="space-y-2">
                 <Label htmlFor="deposit-amount">Valor do depósito</Label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">R$</span>
                   <Input
                     id="deposit-amount"
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="pl-10 text-2xl font-bold h-14"
+                    className="pl-10 pr-14 text-2xl font-bold h-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="0,00"
                     min={10}
                     max={10000}
                   />
+                  <div className="absolute right-1 flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(Math.min(10000, numericAmount + 10)))}
+                      className="flex items-center justify-center h-6 w-10 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(Math.max(10, numericAmount - 10)))}
+                      className="flex items-center justify-center h-6 w-10 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Mínimo R$10,00 • Máximo R$10.000,00

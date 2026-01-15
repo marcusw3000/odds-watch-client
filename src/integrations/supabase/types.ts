@@ -466,7 +466,10 @@ export type Database = {
           description: string | null
           halt_reason: string | null
           id: string
+          image_position_x: number | null
+          image_position_y: number | null
           image_url: string | null
+          image_zoom: number | null
           liquidity_pool: number
           lmsr_b: number
           market_type: string
@@ -495,7 +498,10 @@ export type Database = {
           description?: string | null
           halt_reason?: string | null
           id?: string
+          image_position_x?: number | null
+          image_position_y?: number | null
           image_url?: string | null
+          image_zoom?: number | null
           liquidity_pool?: number
           lmsr_b?: number
           market_type?: string
@@ -524,7 +530,10 @@ export type Database = {
           description?: string | null
           halt_reason?: string | null
           id?: string
+          image_position_x?: number | null
+          image_position_y?: number | null
           image_url?: string | null
+          image_zoom?: number | null
           liquidity_pool?: number
           lmsr_b?: number
           market_type?: string

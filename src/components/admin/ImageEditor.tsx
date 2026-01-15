@@ -1,15 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Move, Upload, X, Eye } from 'lucide-react';
+import { ZoomIn, ZoomOut, Move, Upload, X, Eye, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ImageEditorProps {
   value?: string;
   onChange: (imageData: { url: string; zoom: number; position: { x: number; y: number } }) => void;
   error?: string;
+  initialZoom?: number;
+  initialPosition?: { x: number; y: number };
 }
 
 interface ImageData {
@@ -18,38 +22,95 @@ interface ImageData {
   position: { x: number; y: number };
 }
 
-export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
+export function ImageEditor({ value, onChange, error, initialZoom = 1, initialPosition }: ImageEditorProps) {
   const [imageData, setImageData] = useState<ImageData>({
     url: value || '',
-    zoom: 1,
-    position: { x: 50, y: 50 },
+    zoom: initialZoom,
+    position: initialPosition || { x: 50, y: 50 },
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (value && value !== imageData.url) {
-      setImageData(prev => ({ ...prev, url: value }));
+      setImageData(prev => ({ 
+        ...prev, 
+        url: value,
+        zoom: initialZoom,
+        position: initialPosition || { x: 50, y: 50 }
+      }));
     }
-  }, [value]);
+  }, [value, initialZoom, initialPosition]);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadToSupabase = async (file: File): Promise<string | null> => {
+    try {
+      setIsUploading(true);
+      
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `markets/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('market-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        toast.error('Erro ao fazer upload da imagem');
+        return null;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('market-images')
+        .getPublicUrl(data.path);
+
+      toast.success('Imagem enviada com sucesso');
+      return publicUrl;
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error('Erro ao fazer upload da imagem');
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newData = {
-          url: event.target?.result as string,
-          zoom: 1,
-          position: { x: 50, y: 50 },
-        };
-        setImageData(newData);
-        onChange(newData);
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem válida');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    const publicUrl = await uploadToSupabase(file);
+    
+    if (publicUrl) {
+      const newData = {
+        url: publicUrl,
+        zoom: 1,
+        position: { x: 50, y: 50 },
       };
-      reader.readAsDataURL(file);
+      setImageData(newData);
+      onChange(newData);
     }
   }, [onChange]);
 
@@ -74,10 +135,10 @@ export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
   }, [imageData, onChange]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!imageData.url) return;
+    if (!imageData.url || isUploading) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [imageData.url]);
+  }, [imageData.url, isUploading]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
@@ -102,7 +163,9 @@ export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
     setIsDragging(false);
   }, []);
 
-  const handleRemove = useCallback(() => {
+  const handleRemove = useCallback(async () => {
+    // Note: We don't delete from storage here to avoid complexity
+    // Old images can be cleaned up periodically
     const newData = { url: '', zoom: 1, position: { x: 50, y: 50 } };
     setImageData(newData);
     onChange(newData);
@@ -119,17 +182,23 @@ export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
       <div
         ref={containerRef}
         className={cn(
-          "relative w-full aspect-video rounded-xl border-2 border-dashed overflow-hidden cursor-move transition-colors",
+          "relative w-full aspect-video rounded-xl border-2 border-dashed overflow-hidden transition-colors",
           error ? "border-destructive" : "border-border hover:border-primary/50",
-          !imageData.url && "cursor-pointer"
+          !imageData.url && !isUploading && "cursor-pointer",
+          imageData.url && !isUploading && "cursor-move"
         )}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onClick={() => !imageData.url && fileInputRef.current?.click()}
+        onClick={() => !imageData.url && !isUploading && fileInputRef.current?.click()}
       >
-        {imageData.url ? (
+        {isUploading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-secondary/50">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Enviando imagem...</span>
+          </div>
+        ) : imageData.url ? (
           <>
             <div
               className="absolute inset-0 bg-cover bg-no-repeat transition-transform"
@@ -151,6 +220,7 @@ export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
             <Upload className="h-8 w-8" />
             <span className="text-sm">Clique para selecionar uma imagem</span>
+            <span className="text-xs text-muted-foreground">Máximo 5MB</span>
           </div>
         )}
       </div>
@@ -164,10 +234,11 @@ export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
         accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
+        disabled={isUploading}
       />
 
       {/* Controls */}
-      {imageData.url && (
+      {imageData.url && !isUploading && (
         <div className="flex items-center gap-4">
           {/* Zoom Controls */}
           <div className="flex items-center gap-2 flex-1">
@@ -197,6 +268,9 @@ export function ImageEditor({ value, onChange, error }: ImageEditorProps) {
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
+            <span className="text-xs text-muted-foreground w-12 text-right">
+              {Math.round(imageData.zoom * 100)}%
+            </span>
           </div>
 
           {/* Action Buttons */}
@@ -249,31 +323,30 @@ function CardPreview({ imageData }: { imageData: ImageData }) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       {/* Image */}
       <div 
-        className="w-full aspect-[4/3] bg-cover bg-no-repeat"
+        className="w-full aspect-[16/10] bg-cover bg-no-repeat overflow-hidden"
         style={{
           backgroundImage: `url(${imageData.url})`,
           backgroundPosition: `${imageData.position.x}% ${imageData.position.y}%`,
-          transform: `scale(${imageData.zoom})`,
-          transformOrigin: 'center',
+          backgroundSize: `${imageData.zoom * 100}%`,
         }}
       />
       
       {/* Content */}
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Economia</span>
+          <span className="px-2 py-1 rounded-md bg-secondary text-xs font-medium">Economia</span>
         </div>
         <h3 className="text-sm font-semibold line-clamp-2">
           Exemplo de título do mercado preditivo
         </h3>
         <div className="flex justify-between text-xs">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Sim</span>
-            <span className="font-bold text-green-500">65%</span>
+            <span className="font-bold text-yes">65%</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Não</span>
-            <span className="font-bold text-red-500">35%</span>
+            <span className="font-bold text-no">35%</span>
           </div>
         </div>
       </div>

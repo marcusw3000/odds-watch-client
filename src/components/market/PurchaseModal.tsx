@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, ChevronUp, ChevronDown } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
 import { FeeEngine } from '@/services/FeeEngine';
 import { FeeRule } from '@/types/financial';
+import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 
 // Custom hook for debouncing values
 function useDebouncedValue<T>(value: T, delay: number): T {
@@ -31,6 +32,12 @@ interface PurchaseModalProps {
   onRefreshPrice: () => Promise<MarketEvent | null>;
 }
 
+interface SuccessData {
+  shares: number;
+  totalCost: number;
+  potentialProfit: number;
+}
+
 const PRICE_VALIDITY_SECONDS = 15;
 
 export function PurchaseModal({
@@ -49,6 +56,7 @@ export function PurchaseModal({
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feeRule, setFeeRule] = useState<FeeRule | null>(null);
+  const [successData, setSuccessData] = useState<SuccessData | null>(null);
 
   // Fetch fee rule on mount
   useEffect(() => {
@@ -152,7 +160,21 @@ export function PurchaseModal({
     setError(null);
 
     try {
+      // Calculate fee and profit for success modal
+      const P = quote.avgPrice / 100;
+      const C = sharesNum;
+      const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
+      const totalWithFee = quote.cost + feeAmount;
+      const potentialProfit = sharesNum - totalWithFee;
+
       await onConfirm(sharesNum, quote.cost);
+      
+      // Show success modal
+      setSuccessData({
+        shares: sharesNum,
+        totalCost: totalWithFee,
+        potentialProfit,
+      });
     } catch {
       setError('Erro ao processar compra. Tente novamente.');
     } finally {
@@ -161,6 +183,21 @@ export function PurchaseModal({
   };
 
   const quickShares = [10, 25, 50, 100];
+
+  // Show success modal if purchase completed
+  if (successData) {
+    return (
+      <PurchaseSuccessModal
+        eventTitle={event.title}
+        eventId={event.id}
+        outcome={selectedOutcome}
+        shares={successData.shares}
+        totalCost={successData.totalCost}
+        potentialProfit={successData.potentialProfit}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <div 

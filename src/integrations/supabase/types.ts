@@ -1310,6 +1310,10 @@ export type Database = {
       }
     }
     Functions: {
+      atomic_withdraw_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: boolean
+      }
       decrement_comment_likes: {
         Args: { p_comment_id: string }
         Returns: undefined

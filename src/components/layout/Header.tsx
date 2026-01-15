@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
@@ -150,6 +150,12 @@ export function Header({ balance = 2500 }: HeaderProps) {
                   <Link to="/referral">
                     <Gift className="mr-2 h-4 w-4" />
                     Indicar Amigos
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/fees">
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Taxas
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

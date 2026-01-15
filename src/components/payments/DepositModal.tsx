@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ArrowDownToLine, X, CreditCard } from 'lucide-react';
+import { ArrowDownToLine, X, CreditCard, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDeposit } from '@/hooks/usePayments';
 
@@ -101,11 +102,24 @@ export function DepositModal({ onClose }: DepositModalProps) {
           </div>
 
           {/* Payment Method Info */}
-          <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30">
-            <CreditCard className="h-5 w-5 text-blue-500" />
-            <div>
-              <p className="font-medium text-sm">Cartão de Crédito</p>
-              <p className="text-xs text-muted-foreground">Processamento seguro via Stripe</p>
+          <div className="space-y-3">
+            <Label>Método de pagamento</Label>
+            <div className="p-4 rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center gap-3 mb-3">
+                <QrCode className="h-5 w-5 text-green-500" />
+                <div>
+                  <p className="font-medium text-sm">PIX</p>
+                  <p className="text-xs text-muted-foreground">Instantâneo • Sem taxas</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 pt-3 border-t border-border">
+                <CreditCard className="h-5 w-5 text-blue-500" />
+                <div>
+                  <p className="font-medium text-sm">Cartão de Crédito</p>
+                  <p className="text-xs text-muted-foreground">Processamento imediato</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Escolha o método de pagamento no checkout</p>
             </div>
           </div>
 

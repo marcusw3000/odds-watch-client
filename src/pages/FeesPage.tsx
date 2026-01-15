@@ -13,7 +13,7 @@ export function FeesPage() {
     { contracts: 100, price: 0.50, description: 'Grande quantidade (50¢)' },
   ];
 
-  const calculateKalshiFee = (contracts: number, price: number) => {
+  const calculateTradingFee = (contracts: number, price: number) => {
     const fee = Math.ceil(0.07 * contracts * price * (1 - price) * 100) / 100;
     return fee;
   };
@@ -33,7 +33,7 @@ export function FeesPage() {
         </div>
         <p className="text-muted-foreground leading-relaxed">
           Acreditamos na transparência total. Aqui você encontra todas as informações sobre como as taxas 
-          são calculadas em nossa plataforma, seguindo o modelo Kalshi adaptado.
+          são calculadas em nossa plataforma.
         </p>
       </div>
 
@@ -73,7 +73,7 @@ export function FeesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-primary">Kalshi</p>
+            <p className="text-2xl font-bold text-primary">Variável</p>
             <p className="text-xs text-muted-foreground">Baseado em ganhos esperados</p>
           </CardContent>
         </Card>
@@ -84,7 +84,7 @@ export function FeesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5" />
-            Taxa de Trading (Modelo Kalshi)
+            Taxa de Trading
           </CardTitle>
           <CardDescription>
             Uma taxa variável baseada nos ganhos esperados do contrato
@@ -135,7 +135,7 @@ export function FeesPage() {
                 </thead>
                 <tbody>
                   {examples.map((example, i) => {
-                    const fee = calculateKalshiFee(example.contracts, example.price);
+                    const fee = calculateTradingFee(example.contracts, example.price);
                     const expectedEarnings = example.price * (1 - example.price);
                     return (
                       <tr key={i} className="border-b border-border/50">
@@ -193,9 +193,9 @@ export function FeesPage() {
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1">
-              <AccordionTrigger>Por que usamos o modelo Kalshi?</AccordionTrigger>
+              <AccordionTrigger>Por que usamos esse modelo de taxa?</AccordionTrigger>
               <AccordionContent>
-                O modelo Kalshi é amplamente reconhecido como o mais justo para mercados de previsão. 
+                Este modelo é amplamente reconhecido como o mais justo para mercados de previsão. 
                 Ele cobra taxas proporcionais aos ganhos esperados, não ao valor total da transação. 
                 Isso significa que trades com alta probabilidade (perto de 0 ou 100%) pagam menos taxa, 
                 enquanto trades mais incertos (perto de 50%) pagam um pouco mais.

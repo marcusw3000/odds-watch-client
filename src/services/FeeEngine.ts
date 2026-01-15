@@ -36,8 +36,7 @@ export class FeeEngine {
   }
 
   /**
-   * Calculate trading fee using Kalshi formula
-   * fee = roundUp(0.07 × C × P × (1-P))
+   * Calculate trading fee using formula: fee = roundUp(0.07 × C × P × (1-P))
    * Where:
    * - P = price per contract (0 to 1, e.g., 0.50 for 50 cents)
    * - C = number of contracts
@@ -47,12 +46,12 @@ export class FeeEngine {
    * the implied probability multiplied by max potential earnings.
    * Fee is only charged for taker orders (immediately matched).
    */
-  static calculateKalshiFee(contracts: number, pricePerContract: number): number {
+  static calculateTradingFee(contracts: number, pricePerContract: number): number {
     // Ensure price is between 0 and 1
     const P = Math.max(0.01, Math.min(0.99, pricePerContract));
     const C = contracts;
     
-    // Kalshi formula: 0.07 × C × P × (1-P)
+    // Formula: 0.07 × C × P × (1-P)
     const rawFee = 0.07 * C * P * (1 - P);
     
     // Round up to next cent
@@ -110,7 +109,7 @@ export class FeeEngine {
   }
 
   /**
-   * Calculate trading fee with full result object (Kalshi model)
+   * Calculate trading fee with full result object
    * Only charged for taker orders (immediately matched)
    */
   static calculateTradeFee(
@@ -118,17 +117,17 @@ export class FeeEngine {
     pricePerContract: number,
     totalCost: number
   ): FeeCalculationResult {
-    const feeAmount = this.calculateKalshiFee(contracts, pricePerContract);
+    const feeAmount = this.calculateTradingFee(contracts, pricePerContract);
     const netAmount = Math.round((totalCost - feeAmount) * 100) / 100;
 
     return {
       feeAmount,
       netAmount,
       appliedRule: {
-        id: 'kalshi-model',
-        name: 'Kalshi Trading Fee',
+        id: 'trading-model',
+        name: 'Taxa de Trading',
         type: 'TRADE',
-        mode: 'KALSHI',
+        mode: 'TRADING',
         percent_value: 0.07,
         flat_value: null,
         tiers: null,

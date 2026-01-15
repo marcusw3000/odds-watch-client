@@ -294,7 +294,7 @@ export function PurchaseModal({
 
           {/* Summary with LMSR data */}
           {quote && sharesNum > 0 && (() => {
-            // Kalshi formula: fee = roundUp(0.07 × C × P × (1-P))
+            // Trading fee formula: fee = roundUp(0.07 × C × P × (1-P))
             const P = quote.avgPrice / 100; // Convert cents to decimal (0-1)
             const C = sharesNum;
             const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
@@ -322,10 +322,10 @@ export function PurchaseModal({
                     <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
                   </div>
                   
-                  {/* Fee display - Kalshi model */}
+                  {/* Fee display */}
                   <div className="flex justify-between text-warning">
                     <span className="flex items-center gap-1">
-                      Taxa Kalshi (7% × P × (1-P))
+                      Taxa de trading (7% × P × (1-P))
                     </span>
                     <span className="font-mono font-medium">R${feeAmount.toFixed(2)}</span>
                   </div>

@@ -1284,6 +1284,8 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          total_deposited: number
+          total_withdrawn: number
           updated_at: string
           user_id: string
         }
@@ -1293,6 +1295,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          total_deposited?: number
+          total_withdrawn?: number
           updated_at?: string
           user_id: string
         }
@@ -1302,6 +1306,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          total_deposited?: number
+          total_withdrawn?: number
           updated_at?: string
           user_id?: string
         }

@@ -30,8 +30,9 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
   const { toast } = useToast();
 
   const numericAmount = parseFloat(amount) || 0;
-  const fee = Math.max(numericAmount * 0.01, 2);
-  const netAmount = numericAmount - fee;
+  // No withdrawal fee
+  const fee = 0;
+  const netAmount = numericAmount;
   const isValidAmount = numericAmount >= 20 && numericAmount <= Math.min(5000, balance);
   const isValidPixKey = pixKey.trim().length > 0;
 
@@ -143,26 +144,18 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
             />
           </div>
 
-          {/* Fee Warning */}
+          {/* Processing Info */}
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Taxa de saque: 1% (mínimo R$2,00). Processamento em até 24h úteis.
+              Saque sem taxas! Processamento em até 24h úteis.
             </AlertDescription>
           </Alert>
 
           {/* Summary */}
           {isValidAmount && (
             <div className="space-y-2 p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Valor solicitado</span>
-                <span>R${numericAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Taxa</span>
-                <span className="text-red-500">-R${fee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-border">
+              <div className="flex justify-between pt-2">
                 <span className="font-medium">Você receberá</span>
                 <span className="text-xl font-bold text-orange-500">
                   R${netAmount.toFixed(2)}

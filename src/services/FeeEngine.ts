@@ -36,7 +36,33 @@ export class FeeEngine {
   }
 
   /**
-   * Calculate fee based on amount and rule
+   * Calculate trading fee using Kalshi formula
+   * fee = roundUp(0.07 × C × P × (1-P))
+   * Where:
+   * - P = price per contract (0 to 1, e.g., 0.50 for 50 cents)
+   * - C = number of contracts
+   * - roundUp = rounds to the next cent
+   * 
+   * This formula charges based on expected earnings: P × (1-P) represents
+   * the implied probability multiplied by max potential earnings.
+   * Fee is only charged for taker orders (immediately matched).
+   */
+  static calculateKalshiFee(contracts: number, pricePerContract: number): number {
+    // Ensure price is between 0 and 1
+    const P = Math.max(0.01, Math.min(0.99, pricePerContract));
+    const C = contracts;
+    
+    // Kalshi formula: 0.07 × C × P × (1-P)
+    const rawFee = 0.07 * C * P * (1 - P);
+    
+    // Round up to next cent
+    const feeAmount = Math.ceil(rawFee * 100) / 100;
+    
+    return feeAmount;
+  }
+
+  /**
+   * Calculate fee based on amount and rule (legacy method for non-trade operations)
    */
   static calculateFee(amount: number, rule: FeeRule): FeeCalculationResult {
     let feeAmount = 0;
@@ -80,6 +106,40 @@ export class FeeEngine {
       netAmount,
       appliedRule: rule,
       tier: appliedTier
+    };
+  }
+
+  /**
+   * Calculate trading fee with full result object (Kalshi model)
+   * Only charged for taker orders (immediately matched)
+   */
+  static calculateTradeFee(
+    contracts: number, 
+    pricePerContract: number,
+    totalCost: number
+  ): FeeCalculationResult {
+    const feeAmount = this.calculateKalshiFee(contracts, pricePerContract);
+    const netAmount = Math.round((totalCost - feeAmount) * 100) / 100;
+
+    return {
+      feeAmount,
+      netAmount,
+      appliedRule: {
+        id: 'kalshi-model',
+        name: 'Kalshi Trading Fee',
+        type: 'TRADE',
+        mode: 'KALSHI',
+        percent_value: 0.07,
+        flat_value: null,
+        tiers: null,
+        min_fee: null,
+        max_fee: null,
+        is_active: true,
+        effective_from: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        created_by: null
+      },
+      tier: undefined
     };
   }
 

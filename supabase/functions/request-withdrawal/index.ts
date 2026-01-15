@@ -75,11 +75,9 @@ serve(async (req) => {
     }
     logStep("Balance verified", { currentBalance: balance.balance });
 
-    // Calculate fee (example: 1% with min R$2)
-    const feePercent = 0.01;
-    const minFee = 2;
-    const fee = Math.max(amount * feePercent, minFee);
-    const netAmount = amount - fee;
+    // No withdrawal fee
+    const fee = 0;
+    const netAmount = amount;
 
     // Create withdrawal request
     const { data: payment, error: paymentError } = await supabaseAdmin
@@ -119,7 +117,7 @@ serve(async (req) => {
         user_id: user.id,
         type: "TRADE_EXECUTED",
         title: "Solicitação de Saque Recebida",
-        message: `Seu saque de R$${netAmount.toFixed(2)} (taxa: R$${fee.toFixed(2)}) está sendo processado.`,
+        message: `Seu saque de R$${netAmount.toFixed(2)} está sendo processado.`,
         data: { amount, fee, net_amount: netAmount, payment_id: payment.id },
       });
 

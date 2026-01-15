@@ -2,7 +2,7 @@
 
 // Fee Types
 export type FeeType = 'DEPOSIT' | 'WITHDRAW' | 'TRADE' | 'SETTLEMENT';
-export type FeeMode = 'PERCENT' | 'FIXED' | 'TIERED';
+export type FeeMode = 'PERCENT' | 'FIXED' | 'TIERED' | 'KALSHI';
 export type LedgerDirection = 'CREDIT' | 'DEBIT';
 export type LedgerStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
 export type LedgerRefType = 'DEPOSIT' | 'WITHDRAW' | 'TRADE' | 'SETTLEMENT' | 'FEE' | 'ADJUSTMENT';

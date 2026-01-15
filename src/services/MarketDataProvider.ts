@@ -12,7 +12,6 @@ import {
   LMSRState,
 } from './LMSRCalculator';
 import { FeeEngine } from './FeeEngine';
-import type { FeeType } from '@/types/financial';
 
 // Transform DB market to frontend MarketEvent
 function transformDbMarket(dbMarket: DbMarket & { image_zoom?: number; image_position_x?: number; image_position_y?: number }): MarketEvent {
@@ -519,18 +518,14 @@ export const MarketDataProvider = {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Calculate fee (if rule exists)
-    const feeRule = await FeeEngine.getActiveRule('TRADE' as FeeType);
-    let feeAmount = 0;
-    let feeSnapshotId: string | null = null;
-
-    if (feeRule) {
-      const feeResult = FeeEngine.calculateFee(quote.cost, feeRule);
-      feeAmount = feeResult.feeAmount;
-      
-      // Create fee snapshot for audit
-      feeSnapshotId = await FeeEngine.createSnapshot(feeRule, feeResult.tier);
-    }
+    // Calculate fee using Kalshi formula: fee = roundUp(0.07 × C × P × (1-P))
+    // P = price per contract (as decimal 0-1), C = number of contracts
+    const pricePerContract = quote.avgPrice / 100; // Convert from cents to decimal (0-1)
+    const feeResult = FeeEngine.calculateTradeFee(shares, pricePerContract, quote.cost);
+    const feeAmount = feeResult.feeAmount;
+    
+    // Create fee snapshot for audit
+    const feeSnapshotId = await FeeEngine.createSnapshot(feeResult.appliedRule, feeResult.tier);
 
     const totalDeduction = quote.cost + feeAmount;
 
@@ -569,7 +564,7 @@ export const MarketDataProvider = {
 
       // Aggregate platform revenue
       if (feeAmount > 0) {
-        await FeeEngine.aggregateRevenue('TRADE' as FeeType, feeAmount);
+        await FeeEngine.aggregateRevenue('TRADE', feeAmount);
       }
     }
 
@@ -711,20 +706,15 @@ export const MarketDataProvider = {
       };
     }
 
-    // Calculate fee (if rule exists)
-    const feeRule = await FeeEngine.getActiveRule('TRADE' as FeeType);
-    let feeAmount = 0;
-    let netProceeds = quote.cost;
-    let feeSnapshotId: string | null = null;
-
-    if (feeRule) {
-      const feeResult = FeeEngine.calculateFee(quote.cost, feeRule);
-      feeAmount = feeResult.feeAmount;
-      netProceeds = feeResult.netAmount;
-      
-      // Create fee snapshot for audit
-      feeSnapshotId = await FeeEngine.createSnapshot(feeRule, feeResult.tier);
-    }
+    // Calculate fee using Kalshi formula: fee = roundUp(0.07 × C × P × (1-P))
+    // P = price per contract (as decimal 0-1), C = number of contracts
+    const pricePerContract = quote.avgPrice / 100; // Convert from cents to decimal (0-1)
+    const feeResult = FeeEngine.calculateTradeFee(contract.shares, pricePerContract, quote.cost);
+    const feeAmount = feeResult.feeAmount;
+    const netProceeds = quote.cost - feeAmount;
+    
+    // Create fee snapshot for audit
+    const feeSnapshotId = await FeeEngine.createSnapshot(feeResult.appliedRule, feeResult.tier);
 
     // Execute sell
     const newState = executeSell(lmsr, contract.position as 'YES' | 'NO', contract.shares);
@@ -780,7 +770,7 @@ export const MarketDataProvider = {
 
       // Aggregate platform revenue
       if (feeAmount > 0) {
-        await FeeEngine.aggregateRevenue('TRADE' as FeeType, feeAmount);
+        await FeeEngine.aggregateRevenue('TRADE', feeAmount);
       }
     }
 

@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDownToLine, X, CreditCard, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDeposit } from '@/hooks/usePayments';
 
@@ -45,13 +45,19 @@ export function DepositModal({ onClose }: DepositModalProps) {
     }
   };
 
-  return (
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={handleBackdropClick}
     >
       <div 
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in"
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -60,7 +66,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
             <ArrowDownToLine className="h-5 w-5 text-green-500" />
             <h2 className="text-lg font-semibold">Depositar</h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} type="button">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -69,10 +75,11 @@ export function DepositModal({ onClose }: DepositModalProps) {
         <div className="p-5 space-y-6">
           {/* Amount Input */}
           <div className="space-y-2">
-            <Label>Valor do depósito</Label>
+            <Label htmlFor="deposit-amount">Valor do depósito</Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">R$</span>
               <Input
+                id="deposit-amount"
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -92,6 +99,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
             {quickAmounts.map((value) => (
               <Button
                 key={value}
+                type="button"
                 variant={numericAmount === value ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setAmount(value.toString())}
@@ -137,6 +145,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
 
           {/* Submit Button */}
           <Button 
+            type="button"
             className="w-full h-12 text-base"
             onClick={handleDeposit}
             disabled={!isValidAmount || createDeposit.isPending}
@@ -154,4 +163,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
       </div>
     </div>
   );
+
+  // Use portal to render outside of header
+  return createPortal(modalContent, document.body);
 }

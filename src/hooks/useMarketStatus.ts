@@ -118,9 +118,24 @@ export function formatCountdown(seconds: number | null): string {
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
 
-  if (days > 0) {
-    return `${days}d ${hours.toString().padStart(2, '0')}h`;
+  // Mais de 1 ano
+  if (days > 365) {
+    const years = Math.floor(days / 365);
+    return years === 1 ? '~1 ano' : `~${years} anos`;
   }
+
+  // Mais de 30 dias
+  if (days > 30) {
+    const months = Math.floor(days / 30);
+    return months === 1 ? '~1 mês' : `~${months} meses`;
+  }
+
+  // Mais de 1 dia
+  if (days > 0) {
+    return days === 1 ? '1 dia' : `${days} dias`;
+  }
+
+  // Menos de 1 dia - formato HH:MM:SS ou MM:SS
   if (hours > 0) {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }

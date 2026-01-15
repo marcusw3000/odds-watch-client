@@ -57,8 +57,8 @@ export function MarketStatusBadge({
       case 'OPEN':
         if (timeToHalt && timeToHalt > 0) {
           return (
-            <span className="font-mono text-xs opacity-80">
-              Halt em {formatCountdown(timeToHalt)}
+            <span className="text-xs opacity-80">
+              Encerra em {formatCountdown(timeToHalt)}
             </span>
           );
         }
@@ -66,8 +66,8 @@ export function MarketStatusBadge({
       case 'HALTED':
         if (timeToEvent && timeToEvent > 0) {
           return (
-            <span className="font-mono text-xs opacity-80">
-              Evento em {formatCountdown(timeToEvent)}
+            <span className="text-xs opacity-80">
+              Resultado em {formatCountdown(timeToEvent)}
             </span>
           );
         }
@@ -75,8 +75,8 @@ export function MarketStatusBadge({
       case 'CONTESTED':
         if (contestTimeRemaining && contestTimeRemaining > 0) {
           return (
-            <span className="font-mono text-xs opacity-80">
-              Encerra em {formatCountdown(contestTimeRemaining)}
+            <span className="text-xs opacity-80">
+              Contestação: {formatCountdown(contestTimeRemaining)} restante
             </span>
           );
         }

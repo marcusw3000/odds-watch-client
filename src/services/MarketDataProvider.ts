@@ -462,12 +462,15 @@ export const MarketDataProvider = {
       };
     }
 
-    // Get balance from wallets table (cast to bypass type issues during migration)
-    const { data: balanceData } = await supabase
+    // Get balance from wallets table
+    // @ts-ignore - new columns exist after migration, types will be regenerated
+    const walletResult = await supabase
       .from('wallets')
       .select('balance_available, total_deposited, total_withdrawn')
       .eq('user_id', user.id)
-      .maybeSingle() as { data: { balance_available: number; total_deposited: number; total_withdrawn: number } | null; error: unknown };
+      .maybeSingle();
+    
+    const balanceData = walletResult.data as { balance_available: number; total_deposited: number; total_withdrawn: number } | null;
 
     // Get contracts
     const { data: contractsData } = await supabase
@@ -511,9 +514,13 @@ export const MarketDataProvider = {
       transactions = mockTransactions;
     }
 
+    // Calculate balance and profit from wallet data
+    const balance = (balanceData as any)?.balance_available ?? 485.60;
+    const totalDeposited = (balanceData as any)?.total_deposited ?? 462.15;
+
     return {
-      balance: balanceData?.balance_available || 485.60,
-      totalProfit: (balanceData?.balance_available || 485.60) - (balanceData?.total_deposited || 462.15),
+      balance,
+      totalProfit: balance - totalDeposited,
       contracts,
       transactions,
     };

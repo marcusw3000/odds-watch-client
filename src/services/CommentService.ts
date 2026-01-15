@@ -16,19 +16,23 @@ export const CommentService = {
   async searchUsersForMention(query: string): Promise<MentionUser[]> {
     if (!query || query.length < 2) return [];
 
+    // Search in profiles table (now consolidated with leaderboard data)
     const { data, error } = await supabase
-      .from('leaderboard_profiles')
-      .select('user_id, display_name')
+      .from('profiles')
+      .select('id, display_name')
       .eq('is_public', true)
       .ilike('display_name', `%${query}%`)
-      .limit(5);
+      .limit(5) as { data: Array<{ id: string; display_name: string | null }> | null; error: unknown };
 
     if (error) {
       console.error('Error searching users:', error);
       return [];
     }
 
-    return data || [];
+    return (data || []).map(p => ({
+      user_id: p.id,
+      display_name: p.display_name || 'Usuário'
+    }));
   },
 
   // Get root comments (no parent)
@@ -62,15 +66,15 @@ export const CommentService = {
       }
     }
 
-    // Get display names for authors
+    // Get display names for authors from profiles
     const userIds = [...new Set((data || []).map(c => c.user_id))];
-    const { data: leaderboardProfiles } = await supabase
-      .from('leaderboard_profiles')
-      .select('user_id, display_name')
-      .in('user_id', userIds);
+    const { data: profilesWithDisplayName } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', userIds) as { data: Array<{ id: string; display_name: string | null }> | null; error: unknown };
 
     const displayNameMap = new Map(
-      (leaderboardProfiles || []).map(p => [p.user_id, p.display_name])
+      (profilesWithDisplayName || []).map(p => [p.id, p.display_name])
     );
 
     return (data || []).map(comment => ({
@@ -133,13 +137,13 @@ export const CommentService = {
     const parentUserIds = [...new Set((data || []).map(c => (c.parent as any)?.user_id).filter(Boolean))];
     const allUserIds = [...new Set([...userIds, ...parentUserIds])];
     
-    const { data: leaderboardProfiles } = await supabase
-      .from('leaderboard_profiles')
-      .select('user_id, display_name')
-      .in('user_id', allUserIds);
+    const { data: profilesWithDisplayName } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', allUserIds) as { data: Array<{ id: string; display_name: string | null }> | null; error: unknown };
 
     const displayNameMap = new Map(
-      (leaderboardProfiles || []).map(p => [p.user_id, p.display_name])
+      (profilesWithDisplayName || []).map(p => [p.id, p.display_name])
     );
 
     return (data || []).map(comment => {
@@ -208,13 +212,14 @@ export const CommentService = {
       .eq('id', userId)
       .single();
 
-    const { data: leaderboardProfile } = await supabase
-      .from('leaderboard_profiles')
+    // Get display name from profile
+    const { data: profileData } = await supabase
+      .from('profiles')
       .select('display_name')
-      .eq('user_id', userId)
-      .single();
+      .eq('id', userId)
+      .single() as { data: { display_name: string | null } | null; error: unknown };
 
-    const authorName = leaderboardProfile?.display_name || profile?.full_name || 'Usuário';
+    const authorName = profileData?.display_name || profile?.full_name || 'Usuário';
 
     // Get market title for notifications
     const { data: market } = await supabase
@@ -329,18 +334,12 @@ export const CommentService = {
       if (comment && comment.user_id !== userId) {
         // Get liker name
         const { data: likerProfile } = await supabase
-          .from('leaderboard_profiles')
-          .select('display_name')
-          .eq('user_id', userId)
-          .single();
-
-        const { data: likerBasicProfile } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('display_name, full_name')
           .eq('id', userId)
-          .single();
+          .single() as { data: { display_name: string | null; full_name: string | null } | null; error: unknown };
 
-        const likerName = likerProfile?.display_name || likerBasicProfile?.full_name || 'Usuário';
+        const likerName = likerProfile?.display_name || likerProfile?.full_name || 'Usuário';
 
         // Get market title
         const { data: market } = await supabase
@@ -460,18 +459,13 @@ export const CommentService = {
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name')
-      .in('id', allUserIds);
+      .select('id, full_name, display_name')
+      .in('id', allUserIds) as { data: Array<{ id: string; full_name: string | null; display_name: string | null }> | null; error: unknown };
 
-    const { data: leaderboardProfiles } = await supabase
-      .from('leaderboard_profiles')
-      .select('user_id, display_name')
-      .in('user_id', allUserIds);
-
-    const profileMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
-    const displayNameMap = new Map((leaderboardProfiles || []).map(p => [p.user_id, p.display_name]));
-
-    const getName = (userId: string) => displayNameMap.get(userId) || profileMap.get(userId) || 'Usuário';
+    const getName = (userId: string) => {
+      const profile = (profiles || []).find(p => p.id === userId);
+      return profile?.display_name || profile?.full_name || 'Usuário';
+    };
 
     return (data || []).map(report => ({
       id: report.id,

@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ArrowDownToLine, ArrowUpFromLine, X, CreditCard, QrCode } from 'lucide-react';
+import { ArrowDownToLine, X, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDeposit } from '@/hooks/usePayments';
 
@@ -15,7 +14,6 @@ const quickAmounts = [50, 100, 200, 500, 1000];
 
 export function DepositModal({ onClose }: DepositModalProps) {
   const [amount, setAmount] = useState<string>('100');
-  const [method, setMethod] = useState<'PIX' | 'CARD'>('PIX');
   const createDeposit = useCreateDeposit();
   const { toast } = useToast();
 
@@ -102,38 +100,13 @@ export function DepositModal({ onClose }: DepositModalProps) {
             ))}
           </div>
 
-          {/* Payment Method */}
-          <div className="space-y-3">
-            <Label>Método de pagamento</Label>
-            <RadioGroup value={method} onValueChange={(v) => setMethod(v as 'PIX' | 'CARD')}>
-              <div 
-                className={`flex items-center space-x-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                  method === 'PIX' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
-                }`}
-                onClick={() => setMethod('PIX')}
-              >
-                <RadioGroupItem value="PIX" id="pix" />
-                <QrCode className="h-5 w-5 text-green-500" />
-                <div className="flex-1">
-                  <Label htmlFor="pix" className="cursor-pointer font-medium">PIX</Label>
-                  <p className="text-xs text-muted-foreground">Instantâneo • Sem taxas</p>
-                </div>
-              </div>
-              
-              <div 
-                className={`flex items-center space-x-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                  method === 'CARD' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
-                }`}
-                onClick={() => setMethod('CARD')}
-              >
-                <RadioGroupItem value="CARD" id="card" />
-                <CreditCard className="h-5 w-5 text-blue-500" />
-                <div className="flex-1">
-                  <Label htmlFor="card" className="cursor-pointer font-medium">Cartão de Crédito</Label>
-                  <p className="text-xs text-muted-foreground">Processamento imediato</p>
-                </div>
-              </div>
-            </RadioGroup>
+          {/* Payment Method Info */}
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30">
+            <CreditCard className="h-5 w-5 text-blue-500" />
+            <div>
+              <p className="font-medium text-sm">Cartão de Crédito</p>
+              <p className="text-xs text-muted-foreground">Processamento seguro via Stripe</p>
+            </div>
           </div>
 
           {/* Summary */}

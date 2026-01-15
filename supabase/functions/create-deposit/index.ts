@@ -55,12 +55,12 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    // Create checkout session with PIX
+    // Create checkout session with card only (PIX requires special activation)
     const origin = req.headers.get("origin") || "https://predictmarket.com";
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      payment_method_types: ["pix", "card"],
+      payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
@@ -102,7 +102,7 @@ serve(async (req) => {
       .insert({
         user_id: user.id,
         type: "DEPOSIT",
-        method: "PIX",
+        method: "CARD",
         amount: amount,
         fee: 0,
         net_amount: amount,

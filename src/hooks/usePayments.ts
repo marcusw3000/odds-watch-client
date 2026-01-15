@@ -52,9 +52,9 @@ export function useCreateDeposit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (amount: number): Promise<{ url: string; sessionId: string }> => {
+    mutationFn: async ({ amount, method }: { amount: number; method: 'PIX' | 'CARD' }): Promise<{ url: string; sessionId: string }> => {
       const { data, error } = await supabase.functions.invoke('create-deposit', {
-        body: { amount },
+        body: { amount, method },
       });
 
       if (error) throw error;

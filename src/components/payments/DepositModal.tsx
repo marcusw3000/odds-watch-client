@@ -4,6 +4,7 @@ import { ArrowDownToLine, X, CreditCard, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDeposit } from '@/hooks/usePayments';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,7 @@ const quickAmounts = [50, 100, 200, 500, 1000];
 
 export function DepositModal({ onClose }: DepositModalProps) {
   const [amount, setAmount] = useState<string>('100');
+  const [method, setMethod] = useState<'PIX' | 'CARD'>('PIX');
   const [isClosing, setIsClosing] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const createDeposit = useCreateDeposit();
@@ -39,7 +41,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
     if (!isValidAmount) return;
 
     try {
-      const result = await createDeposit.mutateAsync(numericAmount);
+      const result = await createDeposit.mutateAsync({ amount: numericAmount, method });
       
       if (result.url) {
         // Open Stripe Checkout in new tab
@@ -136,26 +138,40 @@ export function DepositModal({ onClose }: DepositModalProps) {
             ))}
           </div>
 
-          {/* Payment Method Info */}
+          {/* Payment Method */}
           <div className="space-y-3">
             <Label>Método de pagamento</Label>
-            <div className="p-4 rounded-lg border border-border bg-muted/30">
-              <div className="flex items-center gap-3 mb-3">
+            <RadioGroup value={method} onValueChange={(v) => setMethod(v as 'PIX' | 'CARD')}>
+              <div
+                className={cn(
+                  'flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+                  method === 'PIX' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'
+                )}
+                onClick={() => setMethod('PIX')}
+              >
+                <RadioGroupItem value="PIX" id="deposit-method-pix" />
                 <QrCode className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="font-medium text-sm">PIX</p>
+                <div className="flex-1">
+                  <Label htmlFor="deposit-method-pix" className="cursor-pointer font-medium">PIX</Label>
                   <p className="text-xs text-muted-foreground">Instantâneo • Sem taxas</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 pt-3 border-t border-border">
+
+              <div
+                className={cn(
+                  'flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+                  method === 'CARD' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'
+                )}
+                onClick={() => setMethod('CARD')}
+              >
+                <RadioGroupItem value="CARD" id="deposit-method-card" />
                 <CreditCard className="h-5 w-5 text-blue-500" />
-                <div>
-                  <p className="font-medium text-sm">Cartão de Crédito</p>
+                <div className="flex-1">
+                  <Label htmlFor="deposit-method-card" className="cursor-pointer font-medium">Cartão de Crédito</Label>
                   <p className="text-xs text-muted-foreground">Processamento imediato</p>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-3">Escolha o método de pagamento no checkout</p>
-            </div>
+            </RadioGroup>
           </div>
 
           {/* Summary */}

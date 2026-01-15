@@ -101,6 +101,8 @@ export interface MarketEvent {
   
   // Image
   imageUrl?: string;
+  imageZoom?: number;
+  imagePosition?: { x: number; y: number };
   haltReason?: string;
   
   // Contract cost

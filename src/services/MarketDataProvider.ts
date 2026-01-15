@@ -499,27 +499,6 @@ export const MarketDataProvider = {
       }
     }
 
-    // For mock markets, simulate success without DB operations
-    if (isMockMarket) {
-      const newContract: UserContract = {
-        id: `ctr-${Date.now()}`,
-        eventId,
-        eventTitle: market.title,
-        outcome,
-        quantity: shares,
-        priceAtPurchase: quote.avgPrice,
-        purchasedAt: new Date(),
-        status: 'ACTIVE',
-      };
-      
-      return {
-        success: true,
-        message: 'Compra simulada realizada com sucesso!',
-        contract: newContract,
-        quote,
-      };
-    }
-
     // Get or create wallet for fee processing
     let wallet = await supabase
       .from('wallets')
@@ -530,13 +509,11 @@ export const MarketDataProvider = {
     // Calculate fee (if rule exists)
     const feeRule = await FeeEngine.getActiveRule('TRADE' as FeeType);
     let feeAmount = 0;
-    let netCost = quote.cost;
     let feeSnapshotId: string | null = null;
 
     if (feeRule) {
       const feeResult = FeeEngine.calculateFee(quote.cost, feeRule);
       feeAmount = feeResult.feeAmount;
-      netCost = quote.cost; // Total deducted is cost (fee is additional or included based on design)
       
       // Create fee snapshot for audit
       feeSnapshotId = await FeeEngine.createSnapshot(feeRule, feeResult.tier);
@@ -557,6 +534,7 @@ export const MarketDataProvider = {
 
     if (balanceError) {
       console.error('Error updating balance:', balanceError);
+      return { success: false, message: 'Erro ao atualizar saldo.' };
     }
 
     // Record ledger entry if wallet exists
@@ -582,55 +560,79 @@ export const MarketDataProvider = {
       }
     }
 
-    // Create or update contract
-    const { data: existingContract } = await supabase
-      .from('user_contracts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('market_id', eventId)
-      .eq('position', outcome)
-      .maybeSingle();
-
-    if (existingContract) {
-      // Update existing contract
-      const newShares = existingContract.shares + shares;
-      const newTotalInvested = existingContract.total_invested + quote.cost;
-      const newAvgPrice = newTotalInvested / newShares;
-
-      await supabase
-        .from('user_contracts')
-        .update({
-          shares: newShares,
-          total_invested: newTotalInvested,
-          average_price: newAvgPrice,
-        })
-        .eq('id', existingContract.id);
-    } else {
-      // Create new contract
-      await supabase
-        .from('user_contracts')
-        .insert({
-          user_id: user.id,
-          market_id: eventId,
-          position: outcome,
-          shares,
-          average_price: quote.avgPrice / 100,
-          total_invested: quote.cost,
-        });
-    }
-
-    // Record transaction
+    // Record transaction (for all markets including mock)
     await supabase
       .from('transactions')
       .insert({
         user_id: user.id,
-        market_id: eventId,
+        market_id: isMockMarket ? '00000000-0000-0000-0000-000000000000' : eventId,
         type: 'BUY',
         position: outcome,
         shares,
         price_per_share: quote.avgPrice / 100,
-        total_amount: -totalDeduction, // Includes fee
+        total_amount: -totalDeduction,
       });
+
+    // For mock markets, return success after processing balance
+    if (isMockMarket) {
+      const newContract: UserContract = {
+        id: `ctr-${Date.now()}`,
+        eventId,
+        eventTitle: market.title,
+        outcome,
+        quantity: shares,
+        priceAtPurchase: quote.avgPrice,
+        purchasedAt: new Date(),
+        status: 'ACTIVE',
+      };
+      
+      return {
+        success: true,
+        message: feeAmount > 0 
+          ? `Compra realizada! Taxa: R$ ${feeAmount.toFixed(2)}`
+          : 'Compra realizada com sucesso!',
+        contract: newContract,
+        quote,
+      };
+    }
+
+    // For real markets (non-mock), also update contracts in DB
+    if (!isMockMarket) {
+      // Create or update contract
+      const { data: existingContract } = await supabase
+        .from('user_contracts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('market_id', eventId)
+        .eq('position', outcome)
+        .maybeSingle();
+
+      if (existingContract) {
+        const newShares = existingContract.shares + shares;
+        const newTotalInvested = existingContract.total_invested + quote.cost;
+        const newAvgPrice = newTotalInvested / newShares;
+
+        await supabase
+          .from('user_contracts')
+          .update({
+            shares: newShares,
+            total_invested: newTotalInvested,
+            average_price: newAvgPrice,
+          })
+          .eq('id', existingContract.id);
+      } else {
+        await supabase
+          .from('user_contracts')
+          .insert({
+            user_id: user.id,
+            market_id: eventId,
+            position: outcome,
+            shares,
+            average_price: quote.avgPrice / 100,
+            total_invested: quote.cost,
+          });
+      }
+    }
 
     const newContract: UserContract = {
       id: `ctr-${Date.now()}`,

@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
-import { MarketCard } from '@/components/market/MarketCard';
+import { TrendingMarketCard } from '@/components/market/TrendingMarketCard';
+import { CompactMarketCard } from '@/components/market/CompactMarketCard';
 import { MarketCardSkeleton } from '@/components/market/MarketCardSkeleton';
 import { CategoryFilter } from '@/components/market/CategoryFilter';
 import { PurchaseModal } from '@/components/market/PurchaseModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LayoutContext {
   userBalance: number;
@@ -27,6 +29,7 @@ export function MarketsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
+  const [trendingIndex, setTrendingIndex] = useState(0);
   const { toast } = useToast();
 
   const fetchData = async (showLoading = true) => {
@@ -104,12 +107,19 @@ export function MarketsPage() {
         description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
       });
       handleCloseModal();
-      // Refresh events to show updated odds
       fetchData(false);
     } else {
       throw new Error(result.message);
     }
   };
+
+  const handlePrevTrending = useCallback(() => {
+    setTrendingIndex((prev) => (prev > 0 ? prev - 1 : Math.min(2, events.length - 1)));
+  }, [events.length]);
+
+  const handleNextTrending = useCallback(() => {
+    setTrendingIndex((prev) => (prev < Math.min(2, events.length - 1) ? prev + 1 : 0));
+  }, [events.length]);
 
   const filteredEvents = events.filter((event) => {
     const matchesCategory = !activeCategory || event.category === activeCategory;
@@ -119,8 +129,20 @@ export function MarketsPage() {
     return matchesCategory && matchesSearch;
   });
 
+  // Get trending markets (top 3 by volume or first 3)
+  const trendingEvents = [...filteredEvents]
+    .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+    .slice(0, 3);
+
+  // Get remaining markets for the grid
+  const gridEvents = filteredEvents.filter(
+    (e) => !trendingEvents.slice(0, 1).find((t) => t.id === e.id)
+  );
+
+  const currentTrendingEvent = trendingEvents[trendingIndex] || trendingEvents[0];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -160,38 +182,69 @@ export function MarketsPage() {
         />
       </div>
 
-      {/* Events Grid */}
+      {/* Trending Section */}
       {isLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <MarketCardSkeleton key={i} />
-          ))}
+        <Skeleton className="h-80 w-full rounded-2xl" />
+      ) : currentTrendingEvent ? (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm font-semibold text-primary uppercase tracking-wide">
+              Em destaque
+            </span>
+          </div>
+          <TrendingMarketCard
+            event={currentTrendingEvent}
+            onBuy={handleBuy}
+            onViewDetails={handleViewDetails}
+            onPrev={handlePrevTrending}
+            onNext={handleNextTrending}
+            currentIndex={trendingIndex}
+            totalCount={Math.min(3, trendingEvents.length)}
+          />
+        </section>
+      ) : null}
+
+      {/* Markets Grid */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Todos os mercados</h2>
+          <span className="text-sm text-muted-foreground">
+            {gridEvents.length} mercados disponíveis
+          </span>
         </div>
-      ) : filteredEvents.length === 0 ? (
-        <div className="text-center py-16">
-          <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-          <h3 className="text-lg font-medium mb-2">Nenhum mercado encontrado</h3>
-          <p className="text-muted-foreground">
-            Tente ajustar os filtros ou volte mais tarde.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredEvents.map((event, index) => (
-            <div
-              key={event.id}
-              className={index < 6 ? "animate-fade-in" : ""}
-              style={index < 6 ? { animationDelay: `${index * 30}ms` } : undefined}
-            >
-              <MarketCard 
-                event={event} 
-                onBuy={handleBuy}
-                onViewDetails={handleViewDetails}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <MarketCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : gridEvents.length === 0 ? (
+          <div className="text-center py-16">
+            <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-medium mb-2">Nenhum mercado encontrado</h3>
+            <p className="text-muted-foreground">
+              Tente ajustar os filtros ou volte mais tarde.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {gridEvents.map((event, index) => (
+              <div
+                key={event.id}
+                className={index < 8 ? "animate-fade-in" : ""}
+                style={index < 8 ? { animationDelay: `${index * 30}ms` } : undefined}
+              >
+                <CompactMarketCard
+                  event={event}
+                  onBuy={handleBuy}
+                  onViewDetails={handleViewDetails}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Purchase Modal */}
       {selectedEvent && (

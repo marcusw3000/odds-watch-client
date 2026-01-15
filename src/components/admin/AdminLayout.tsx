@@ -16,7 +16,8 @@ import {
   ClipboardList,
   Users,
   Activity,
-  Gift
+  Gift,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ const navItems = [
   { path: '/admin/users', label: 'Usuários', icon: Users },
   { path: '/admin/market-events', label: 'Eventos de Mercado', icon: Activity },
   { path: '/admin/referrals', label: 'Indicações', icon: Gift },
+  { path: '/admin/appearance', label: 'Aparência', icon: Palette },
 ];
 
 export function AdminLayout() {

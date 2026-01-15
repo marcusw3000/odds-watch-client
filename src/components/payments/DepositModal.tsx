@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownToLine, X, CreditCard, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDeposit } from '@/hooks/usePayments';
+import { cn } from '@/lib/utils';
 
 interface DepositModalProps {
   onClose: () => void;
@@ -15,11 +16,24 @@ const quickAmounts = [50, 100, 200, 500, 1000];
 
 export function DepositModal({ onClose }: DepositModalProps) {
   const [amount, setAmount] = useState<string>('100');
+  const [isClosing, setIsClosing] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const createDeposit = useCreateDeposit();
   const { toast } = useToast();
 
   const numericAmount = parseFloat(amount) || 0;
   const isValidAmount = numericAmount >= 10 && numericAmount <= 10000;
+
+  // Trigger entrance animation on mount
+  useEffect(() => {
+    requestAnimationFrame(() => setIsVisible(true));
+  }, []);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setIsVisible(false);
+    setTimeout(onClose, 200); // Wait for animation to complete
+  };
 
   const handleDeposit = async () => {
     if (!isValidAmount) return;
@@ -34,7 +48,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
           title: 'Redirecionando para pagamento',
           description: 'Complete o pagamento na nova aba.',
         });
-        onClose();
+        handleClose();
       }
     } catch (error) {
       toast({
@@ -47,17 +61,25 @@ export function DepositModal({ onClose }: DepositModalProps) {
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleClose();
     }
   };
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className={cn(
+        "fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-all duration-200",
+        isVisible ? "bg-black/60 backdrop-blur-sm" : "bg-black/0 backdrop-blur-none"
+      )}
       onClick={handleBackdropClick}
     >
       <div 
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
+        className={cn(
+          "relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl transition-all duration-200",
+          isVisible 
+            ? "opacity-100 scale-100 translate-y-0" 
+            : "opacity-0 scale-95 translate-y-4"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -66,7 +88,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
             <ArrowDownToLine className="h-5 w-5 text-green-500" />
             <h2 className="text-lg font-semibold">Depositar</h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} type="button">
+          <Button variant="ghost" size="icon" onClick={handleClose} type="button">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -96,13 +118,18 @@ export function DepositModal({ onClose }: DepositModalProps) {
 
           {/* Quick Amounts */}
           <div className="flex flex-wrap gap-2">
-            {quickAmounts.map((value) => (
+            {quickAmounts.map((value, index) => (
               <Button
                 key={value}
                 type="button"
                 variant={numericAmount === value ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setAmount(value.toString())}
+                className={cn(
+                  "transition-all duration-200",
+                  isVisible && "animate-fade-in"
+                )}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
                 R${value}
               </Button>
@@ -133,7 +160,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
 
           {/* Summary */}
           {isValidAmount && (
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 animate-fade-in">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Você receberá</span>
                 <span className="text-xl font-bold text-green-500">
@@ -146,7 +173,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
           {/* Submit Button */}
           <Button 
             type="button"
-            className="w-full h-12 text-base"
+            className="w-full h-12 text-base transition-transform active:scale-[0.98]"
             onClick={handleDeposit}
             disabled={!isValidAmount || createDeposit.isPending}
           >

@@ -95,16 +95,14 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         </div>
       </div>
 
-      {/* Status badge for non-tradeable markets or spacer for consistency */}
+      {/* Status badge (always) or spacer for consistency */}
       <div className="mb-3 min-h-[24px]">
-        {!statusInfo.canTrade && (
-          <MarketStatusBadge 
-            status={statusInfo.status}
-            timeToEvent={statusInfo.timeToEvent}
-            result={event.result}
-            size="sm"
-          />
-        )}
+        <MarketStatusBadge 
+          status={statusInfo.status}
+          timeToEvent={statusInfo.timeToEvent}
+          result={event.result}
+          size="sm"
+        />
       </div>
 
       {/* Two colored buttons or locked state */}

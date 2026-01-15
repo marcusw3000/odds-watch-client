@@ -462,12 +462,12 @@ export const MarketDataProvider = {
       };
     }
 
-    // Get balance
+    // Get balance from wallets table (cast to bypass type issues during migration)
     const { data: balanceData } = await supabase
-      .from('user_balances')
-      .select('*')
+      .from('wallets')
+      .select('balance_available, total_deposited, total_withdrawn')
       .eq('user_id', user.id)
-      .maybeSingle();
+      .maybeSingle() as { data: { balance_available: number; total_deposited: number; total_withdrawn: number } | null; error: unknown };
 
     // Get contracts
     const { data: contractsData } = await supabase
@@ -512,8 +512,8 @@ export const MarketDataProvider = {
     }
 
     return {
-      balance: balanceData?.balance || 485.60,
-      totalProfit: (balanceData?.balance || 485.60) - (balanceData?.total_deposited || 462.15),
+      balance: balanceData?.balance_available || 485.60,
+      totalProfit: (balanceData?.balance_available || 485.60) - (balanceData?.total_deposited || 462.15),
       contracts,
       transactions,
     };
@@ -622,14 +622,14 @@ export const MarketDataProvider = {
       };
     }
 
-    // Get user balance
+    // Get user balance from wallets (cast to bypass type issues during migration)
     const { data: balanceData } = await supabase
-      .from('user_balances')
-      .select('balance')
+      .from('wallets')
+      .select('balance_available')
       .eq('user_id', userId)
-      .maybeSingle();
+      .maybeSingle() as { data: { balance_available: number } | null; error: unknown };
 
-    if (!balanceData || balanceData.balance < quote.cost) {
+    if (!balanceData || balanceData.balance_available < quote.cost) {
       return { success: false, message: 'Saldo insuficiente.', quote };
     }
 
@@ -639,7 +639,7 @@ export const MarketDataProvider = {
     const feeAmount = feeResult.feeAmount;
     const totalDeduction = quote.cost + feeAmount;
 
-    if (balanceData.balance < totalDeduction) {
+    if (balanceData.balance_available < totalDeduction) {
       return { success: false, message: 'Saldo insuficiente (incluindo taxas).', quote };
     }
 

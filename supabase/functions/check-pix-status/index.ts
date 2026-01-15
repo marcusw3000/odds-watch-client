@@ -119,31 +119,19 @@ serve(async (req) => {
           })
           .eq("stripe_payment_intent_id", paymentIntentId);
 
-        // Update user balance
-        const { data: currentBalance } = await supabaseAdmin
-          .from("user_balances")
-          .select("balance, total_deposited")
-          .eq("user_id", user.id)
-          .single();
+        // Use atomic deposit function to update wallet balance
+        const { error: depositError } = await supabaseAdmin
+          .rpc('atomic_deposit_balance', {
+            p_user_id: user.id,
+            p_amount: amount
+          });
 
-        if (currentBalance) {
-          await supabaseAdmin
-            .from("user_balances")
-            .update({
-              balance: currentBalance.balance + amount,
-              total_deposited: currentBalance.total_deposited + amount,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", user.id);
-        } else {
-          await supabaseAdmin
-            .from("user_balances")
-            .insert({
-              user_id: user.id,
-              balance: amount,
-              total_deposited: amount,
-            });
+        if (depositError) {
+          logStep("Error with atomic deposit", { error: depositError });
+          throw new Error("Failed to update balance");
         }
+
+        logStep("Balance updated atomically", { amount });
 
         // Create notification
         await supabaseAdmin.from("notifications").insert({

@@ -81,26 +81,19 @@ serve(async (req) => {
       })
       .eq("stripe_checkout_session_id", session_id);
 
-    // Credit user balance
-    const { data: currentBalance } = await supabaseAdmin
-      .from("user_balances")
-      .select("balance, total_deposited")
-      .eq("user_id", userId)
-      .single();
-
-    if (currentBalance) {
-      await supabaseAdmin
-        .from("user_balances")
-        .update({
-          balance: currentBalance.balance + amount,
-          total_deposited: currentBalance.total_deposited + amount,
-        })
-        .eq("user_id", userId);
-      logStep("Balance updated", { 
-        newBalance: currentBalance.balance + amount,
-        totalDeposited: currentBalance.total_deposited + amount 
+    // Use atomic deposit function to credit wallet balance
+    const { error: depositError } = await supabaseAdmin
+      .rpc('atomic_deposit_balance', {
+        p_user_id: userId,
+        p_amount: amount
       });
+
+    if (depositError) {
+      logStep("Error with atomic deposit", { error: depositError });
+      throw new Error("Failed to update balance");
     }
+
+    logStep("Balance updated atomically", { amount });
 
     // Create notification
     await supabaseAdmin

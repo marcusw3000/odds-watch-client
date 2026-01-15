@@ -382,48 +382,6 @@ export type Database = {
         }
         Relationships: []
       }
-      leaderboard_profiles: {
-        Row: {
-          bio: string | null
-          created_at: string
-          display_name: string
-          id: string
-          is_public: boolean
-          show_profit: boolean
-          show_roi: boolean
-          show_trades: boolean
-          show_volume: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          bio?: string | null
-          created_at?: string
-          display_name: string
-          id?: string
-          is_public?: boolean
-          show_profit?: boolean
-          show_roi?: boolean
-          show_trades?: boolean
-          show_volume?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          bio?: string | null
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_public?: boolean
-          show_profit?: boolean
-          show_roi?: boolean
-          show_trades?: boolean
-          show_volume?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       ledger_entries: {
         Row: {
           amount: number
@@ -1235,48 +1193,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_statistics: {
-        Row: {
-          best_streak: number
-          best_trade_profit: number
-          current_streak: number
-          id: string
-          roi_percent: number
-          total_profit: number
-          total_trades: number
-          total_volume: number
-          updated_at: string
-          user_id: string
-          winning_trades: number
-        }
-        Insert: {
-          best_streak?: number
-          best_trade_profit?: number
-          current_streak?: number
-          id?: string
-          roi_percent?: number
-          total_profit?: number
-          total_trades?: number
-          total_volume?: number
-          updated_at?: string
-          user_id: string
-          winning_trades?: number
-        }
-        Update: {
-          best_streak?: number
-          best_trade_profit?: number
-          current_streak?: number
-          id?: string
-          roi_percent?: number
-          total_profit?: number
-          total_trades?: number
-          total_volume?: number
-          updated_at?: string
-          user_id?: string
-          winning_trades?: number
-        }
-        Relationships: []
-      }
       wallets: {
         Row: {
           balance_available: number
@@ -1321,9 +1237,12 @@ export type Database = {
           balance_locked: number | null
           created_at: string | null
           currency: string | null
+          display_name: string | null
           email: string | null
           full_name: string | null
           id: string | null
+          total_deposited: number | null
+          total_withdrawn: number | null
           updated_at: string | null
           user_id: string | null
         }

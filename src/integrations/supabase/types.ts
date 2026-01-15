@@ -888,27 +888,72 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          best_streak: number
+          best_trade_profit: number
+          bio: string | null
           created_at: string
+          current_streak: number
+          display_name: string | null
           email: string | null
           full_name: string | null
           id: string
+          is_public: boolean
+          roi_percent: number
+          show_profit: boolean
+          show_roi: boolean
+          show_trades: boolean
+          show_volume: boolean
+          total_profit: number
+          total_trades: number
+          total_volume: number
           updated_at: string
+          winning_trades: number
         }
         Insert: {
           avatar_url?: string | null
+          best_streak?: number
+          best_trade_profit?: number
+          bio?: string | null
           created_at?: string
+          current_streak?: number
+          display_name?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          is_public?: boolean
+          roi_percent?: number
+          show_profit?: boolean
+          show_roi?: boolean
+          show_trades?: boolean
+          show_volume?: boolean
+          total_profit?: number
+          total_trades?: number
+          total_volume?: number
           updated_at?: string
+          winning_trades?: number
         }
         Update: {
           avatar_url?: string | null
+          best_streak?: number
+          best_trade_profit?: number
+          bio?: string | null
           created_at?: string
+          current_streak?: number
+          display_name?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          is_public?: boolean
+          roi_percent?: number
+          show_profit?: boolean
+          show_roi?: boolean
+          show_trades?: boolean
+          show_volume?: boolean
+          total_profit?: number
+          total_trades?: number
+          total_volume?: number
           updated_at?: string
+          winning_trades?: number
         }
         Relationships: []
       }

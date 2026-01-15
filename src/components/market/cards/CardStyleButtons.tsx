@@ -1,8 +1,9 @@
 import { memo, useState } from 'react';
-import { TrendingUp, Plus } from 'lucide-react';
+import { TrendingUp, Plus, Lock } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
-import { useMarketStatus } from '@/hooks/useMarketStatus';
+import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
+import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { cn } from '@/lib/utils';
 
 interface CardStyleButtonsProps {
@@ -18,6 +19,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
 }: CardStyleButtonsProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
+  const statusColors = getStatusColor(statusInfo.status);
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
@@ -40,25 +42,47 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   const hasImage = Boolean(event.imageUrl);
   const yesPrice = event.outcomes.YES.price;
   const noPrice = event.outcomes.NO.price;
+  const isSettled = statusInfo.status === 'SETTLED';
+  const resultIsYes = event.result === 'YES';
 
   return (
     <div 
       className={cn(
         "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200",
-        "hover:border-primary/30 hover:shadow-md",
-        !statusInfo.canTrade && "opacity-60"
+        "hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Status indicator border */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1 rounded-l-xl transition-colors",
+        statusColors.bg
+      )} />
+
+      {/* Status badge for non-tradeable markets */}
+      {!statusInfo.canTrade && (
+        <div className="absolute top-2 right-2 z-10">
+          <MarketStatusBadge 
+            status={statusInfo.status}
+            timeToEvent={statusInfo.timeToEvent}
+            result={event.result}
+            size="sm"
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary">
+        <div className={cn(
+          "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
+          !statusInfo.canTrade && "grayscale"
+        )}>
           {hasImage ? (
             <div 
               className={cn(
                 "absolute inset-0 bg-cover transition-transform duration-300 ease-out",
-                isHovered && "scale-110"
+                statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
                 backgroundImage: `url(${event.imageUrl})`,
@@ -72,7 +96,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-16">
           <p className="text-xs text-muted-foreground mb-0.5">{event.category}</p>
           <h3 
             className="text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
@@ -83,23 +107,42 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         </div>
       </div>
 
-      {/* Two colored buttons */}
-      <div className="flex gap-2 mb-3">
-        <Button
-          className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-          onClick={() => onBuy(event.id, 'YES')}
-          disabled={!statusInfo.canTrade}
-        >
-          SIM {yesPrice}¢
-        </Button>
-        <Button
-          className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
-          onClick={() => onBuy(event.id, 'NO')}
-          disabled={!statusInfo.canTrade}
-        >
-          NÃO {noPrice}¢
-        </Button>
-      </div>
+      {/* Two colored buttons or locked state */}
+      {statusInfo.canTrade ? (
+        <div className="flex gap-2 mb-3">
+          <Button
+            className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            onClick={() => onBuy(event.id, 'YES')}
+          >
+            SIM {yesPrice}¢
+          </Button>
+          <Button
+            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            onClick={() => onBuy(event.id, 'NO')}
+          >
+            NÃO {noPrice}¢
+          </Button>
+        </div>
+      ) : (
+        <div className="flex gap-2 mb-3">
+          <div className={cn(
+            "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
+            isSettled && resultIsYes 
+              ? "bg-yes/20 text-yes border border-yes/30" 
+              : "bg-muted text-muted-foreground"
+          )}>
+            {isSettled ? (resultIsYes ? '✓ SIM' : 'SIM') : <Lock className="h-4 w-4" />}
+          </div>
+          <div className={cn(
+            "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
+            isSettled && !resultIsYes 
+              ? "bg-no/20 text-no border border-no/30" 
+              : "bg-muted text-muted-foreground"
+          )}>
+            {isSettled ? (!resultIsYes ? '✓ NÃO' : 'NÃO') : <Lock className="h-4 w-4" />}
+          </div>
+        </div>
+      )}
 
       {/* Payout info */}
       <div className="flex justify-between text-xs text-muted-foreground mb-3">

@@ -1,11 +1,12 @@
 import { memo, useState, useMemo } from 'react';
-import { TrendingUp, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { TrendingUp, ChevronLeft, ChevronRight, Plus, Lock } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
-import { useMarketStatus } from '@/hooks/useMarketStatus';
+import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
+import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { cn } from '@/lib/utils';
 
 interface TrendingMarketCardProps {
@@ -29,6 +30,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
 }: TrendingMarketCardProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
+  const statusColors = getStatusColor(statusInfo.status);
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
@@ -51,6 +53,8 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
   };
 
   const hasImage = Boolean(event.imageUrl);
+  const isSettled = statusInfo.status === 'SETTLED';
+  const resultIsYes = event.result === 'YES';
 
   // Generate mock price history data with dates
   const priceHistory = useMemo(() => {
@@ -98,6 +102,24 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Status indicator border */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl transition-colors",
+        statusColors.bg
+      )} />
+
+      {/* Status badge for non-tradeable markets */}
+      {!statusInfo.canTrade && (
+        <div className="absolute top-4 right-4 z-10">
+          <MarketStatusBadge 
+            status={statusInfo.status}
+            timeToEvent={statusInfo.timeToEvent}
+            result={event.result}
+            size="md"
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
         {/* Left Side - Market Info */}
         <div className="p-6 flex flex-col">
@@ -105,18 +127,21 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
           <div className="flex items-start gap-4 mb-6">
             {/* Image/Icon */}
             {hasImage ? (
-              <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative">
+              <div className={cn(
+                "flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative",
+                !statusInfo.canTrade && "grayscale"
+              )}>
                 <div
                   className={cn(
                     "absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out",
-                    isHovered && "scale-110"
+                    statusInfo.canTrade && isHovered && "scale-110"
                   )}
                   style={{
                     backgroundImage: `url(${event.imageUrl})`,
                     backgroundPosition: event.imagePosition 
                       ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
                       : 'center',
-                    transform: isHovered 
+                    transform: statusInfo.canTrade && isHovered 
                       ? `scale(${(event.imageZoom || 1) * 1.1})` 
                       : `scale(${event.imageZoom || 1})`,
                   }}
@@ -126,7 +151,8 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
               <div 
                 className={cn(
                   "flex-shrink-0 w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-2xl transition-transform duration-300",
-                  isHovered && "scale-105"
+                  statusInfo.canTrade && isHovered && "scale-105",
+                  !statusInfo.canTrade && "grayscale"
                 )}
               >
                 {getCategoryIcon(event.category)}
@@ -135,7 +161,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
 
             {/* Title */}
             <h2 
-              className="flex-1 text-xl font-bold cursor-pointer hover:text-primary transition-colors"
+              className="flex-1 text-xl font-bold cursor-pointer hover:text-primary transition-colors pr-20"
               onClick={() => onViewDetails?.(event.id)}
             >
               {event.title}
@@ -146,56 +172,80 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
           <div className="space-y-3 mb-6">
             {/* YES Option */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Sim</span>
+              <span className={cn(
+                "text-sm text-muted-foreground",
+                isSettled && resultIsYes && "text-yes font-medium"
+              )}>Sim</span>
               <div className="flex items-center gap-3">
-                <span className="text-base font-bold">{event.outcomes.YES.price}%</span>
+                <span className={cn(
+                  "text-base font-bold",
+                  isSettled && resultIsYes && "text-yes"
+                )}>{event.outcomes.YES.price}%</span>
                 <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-3 text-xs font-medium border-yes/40 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                    onClick={() => onBuy(event.id, 'YES')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-3 text-xs font-medium border-no/40 hover:bg-no/10 hover:text-no hover:border-no"
-                    onClick={() => onBuy(event.id, 'NO')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    No
-                  </Button>
+                  {statusInfo.canTrade ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs font-medium border-yes/40 hover:bg-yes/10 hover:text-yes hover:border-yes"
+                        onClick={() => onBuy(event.id, 'YES')}
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs font-medium border-no/40 hover:bg-no/10 hover:text-no hover:border-no"
+                        onClick={() => onBuy(event.id, 'NO')}
+                      >
+                        No
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Lock className="h-4 w-4" />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* NO Option */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Não</span>
+              <span className={cn(
+                "text-sm text-muted-foreground",
+                isSettled && !resultIsYes && "text-no font-medium"
+              )}>Não</span>
               <div className="flex items-center gap-3">
-                <span className="text-base font-bold">{event.outcomes.NO.price}%</span>
+                <span className={cn(
+                  "text-base font-bold",
+                  isSettled && !resultIsYes && "text-no"
+                )}>{event.outcomes.NO.price}%</span>
                 <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-3 text-xs font-medium border-yes/40 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                    onClick={() => onBuy(event.id, 'YES')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-3 text-xs font-medium border-no/40 hover:bg-no/10 hover:text-no hover:border-no"
-                    onClick={() => onBuy(event.id, 'NO')}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    No
-                  </Button>
+                  {statusInfo.canTrade ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs font-medium border-yes/40 hover:bg-yes/10 hover:text-yes hover:border-yes"
+                        onClick={() => onBuy(event.id, 'YES')}
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs font-medium border-no/40 hover:bg-no/10 hover:text-no hover:border-no"
+                        onClick={() => onBuy(event.id, 'NO')}
+                      >
+                        No
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Lock className="h-4 w-4" />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -235,12 +285,18 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-yes" />
               <span className="text-sm text-muted-foreground">Sim</span>
-              <span className="text-sm font-bold">{event.outcomes.YES.price}%</span>
+              <span className={cn(
+                "text-sm font-bold",
+                isSettled && resultIsYes && "text-yes"
+              )}>{event.outcomes.YES.price}%</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-no" />
               <span className="text-sm text-muted-foreground">Não</span>
-              <span className="text-sm font-bold">{event.outcomes.NO.price}%</span>
+              <span className={cn(
+                "text-sm font-bold",
+                isSettled && !resultIsYes && "text-no"
+              )}>{event.outcomes.NO.price}%</span>
             </div>
           </div>
 

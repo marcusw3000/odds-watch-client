@@ -1,8 +1,9 @@
 import { memo, useState } from 'react';
-import { TrendingUp, Plus } from 'lucide-react';
+import { TrendingUp, Plus, Lock } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
-import { useMarketStatus } from '@/hooks/useMarketStatus';
+import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
+import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { cn } from '@/lib/utils';
 
 interface CardStyleDefaultProps {
@@ -18,6 +19,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
 }: CardStyleDefaultProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
+  const statusColors = getStatusColor(statusInfo.status);
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
@@ -43,32 +45,54 @@ export const CardStyleDefault = memo(function CardStyleDefault({
   };
 
   const hasImage = Boolean(event.imageUrl);
+  const isSettled = statusInfo.status === 'SETTLED';
+  const resultIsYes = event.result === 'YES';
 
   return (
     <div 
       className={cn(
         "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200",
-        "hover:border-primary/30 hover:shadow-md",
-        !statusInfo.canTrade && "opacity-60"
+        "hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Status indicator border */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1 rounded-l-xl transition-colors",
+        statusColors.bg
+      )} />
+
+      {/* Status badge for non-tradeable markets */}
+      {!statusInfo.canTrade && (
+        <div className="absolute top-2 right-2 z-10">
+          <MarketStatusBadge 
+            status={statusInfo.status}
+            timeToEvent={statusInfo.timeToEvent}
+            result={event.result}
+            size="sm"
+          />
+        </div>
+      )}
+
       {/* Header with image and title */}
       <div className="flex items-start gap-3 mb-4">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary">
+        <div className={cn(
+          "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
+          !statusInfo.canTrade && "grayscale"
+        )}>
           {hasImage ? (
             <div 
               className={cn(
                 "absolute inset-0 bg-cover transition-transform duration-300 ease-out",
-                isHovered && "scale-110"
+                statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
                 backgroundImage: `url(${event.imageUrl})`,
                 backgroundPosition: event.imagePosition 
                   ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
                   : 'center',
-                transform: isHovered 
+                transform: statusInfo.canTrade && isHovered 
                   ? `scale(${(event.imageZoom || 1) * 1.1})` 
                   : `scale(${event.imageZoom || 1})`,
               }}
@@ -77,7 +101,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
             <div 
               className={cn(
                 "absolute inset-0 flex items-center justify-center text-lg transition-transform duration-300 ease-out",
-                isHovered && "scale-110"
+                statusInfo.canTrade && isHovered && "scale-110"
               )}
             >
               {getCategoryIcon(event.category)}
@@ -86,7 +110,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         </div>
 
         <h3 
-          className="flex-1 text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+          className="flex-1 text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors pr-16"
           onClick={() => onViewDetails?.(event.id)}
         >
           {event.title}
@@ -96,55 +120,79 @@ export const CardStyleDefault = memo(function CardStyleDefault({
       {/* Options */}
       <div className="space-y-2 mb-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground truncate max-w-[100px]">Sim</span>
+          <span className={cn(
+            "text-xs text-muted-foreground truncate max-w-[100px]",
+            isSettled && resultIsYes && "text-yes font-medium"
+          )}>Sim</span>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-muted-foreground">{event.outcomes.YES.price}%</span>
+            <span className={cn(
+              "text-sm font-bold text-muted-foreground",
+              isSettled && resultIsYes && "text-yes"
+            )}>{event.outcomes.YES.price}%</span>
             <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                onClick={() => onBuy(event.id, 'YES')}
-                disabled={!statusInfo.canTrade}
-              >
-                Yes
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
-                onClick={() => onBuy(event.id, 'NO')}
-                disabled={!statusInfo.canTrade}
-              >
-                No
-              </Button>
+              {statusInfo.canTrade ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
+                    onClick={() => onBuy(event.id, 'YES')}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
+                    onClick={() => onBuy(event.id, 'NO')}
+                  >
+                    No
+                  </Button>
+                </>
+              ) : (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground truncate max-w-[100px]">Não</span>
+          <span className={cn(
+            "text-xs text-muted-foreground truncate max-w-[100px]",
+            isSettled && !resultIsYes && "text-no font-medium"
+          )}>Não</span>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-muted-foreground">{event.outcomes.NO.price}%</span>
+            <span className={cn(
+              "text-sm font-bold text-muted-foreground",
+              isSettled && !resultIsYes && "text-no"
+            )}>{event.outcomes.NO.price}%</span>
             <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                onClick={() => onBuy(event.id, 'YES')}
-                disabled={!statusInfo.canTrade}
-              >
-                Yes
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
-                onClick={() => onBuy(event.id, 'NO')}
-                disabled={!statusInfo.canTrade}
-              >
-                No
-              </Button>
+              {statusInfo.canTrade ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
+                    onClick={() => onBuy(event.id, 'YES')}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
+                    onClick={() => onBuy(event.id, 'NO')}
+                  >
+                    No
+                  </Button>
+                </>
+              ) : (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                </div>
+              )}
             </div>
           </div>
         </div>

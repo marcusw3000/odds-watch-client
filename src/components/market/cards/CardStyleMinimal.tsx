@@ -1,8 +1,8 @@
 import { memo, useState } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Lock } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
-import { useMarketStatus } from '@/hooks/useMarketStatus';
+import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
 interface CardStyleMinimalProps {
@@ -18,6 +18,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
 }: CardStyleMinimalProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
+  const statusColors = getStatusColor(statusInfo.status);
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
@@ -40,21 +41,42 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
   const hasImage = Boolean(event.imageUrl);
   const yesPrice = event.outcomes.YES.price;
   const noPrice = event.outcomes.NO.price;
+  const isSettled = statusInfo.status === 'SETTLED';
+  const resultIsYes = event.result === 'YES';
+
+  // Get status label for minimal display
+  const getStatusLabel = () => {
+    switch (statusInfo.status) {
+      case 'HALTED': return 'Pausado';
+      case 'PENDING': return 'Aguardando';
+      case 'CONTESTED': return 'Contestação';
+      case 'SETTLED': return resultIsYes ? 'SIM ✓' : 'NÃO ✓';
+      default: return '';
+    }
+  };
 
   return (
     <div 
       className={cn(
         "group relative overflow-hidden rounded-lg border border-border bg-card p-3 transition-all duration-200",
-        "hover:border-primary/30 hover:shadow-sm",
-        !statusInfo.canTrade && "opacity-60"
+        "hover:border-primary/30 hover:shadow-sm"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Status indicator border */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg transition-colors",
+        statusColors.bg
+      )} />
+
       {/* Compact layout */}
       <div className="flex items-center gap-3">
         {/* Image */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden relative bg-secondary">
+        <div className={cn(
+          "flex-shrink-0 w-8 h-8 rounded-full overflow-hidden relative bg-secondary",
+          !statusInfo.canTrade && "grayscale"
+        )}>
           {hasImage ? (
             <div 
               className="absolute inset-0 bg-cover"
@@ -78,24 +100,35 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
           {event.title}
         </h3>
 
-        {/* Compact buttons */}
+        {/* Compact buttons or status */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            size="sm"
-            className="h-7 px-2.5 bg-yes/20 hover:bg-yes/30 text-yes border-0 text-xs font-bold"
-            onClick={() => onBuy(event.id, 'YES')}
-            disabled={!statusInfo.canTrade}
-          >
-            {yesPrice}¢
-          </Button>
-          <Button
-            size="sm"
-            className="h-7 px-2.5 bg-no/20 hover:bg-no/30 text-no border-0 text-xs font-bold"
-            onClick={() => onBuy(event.id, 'NO')}
-            disabled={!statusInfo.canTrade}
-          >
-            {noPrice}¢
-          </Button>
+          {statusInfo.canTrade ? (
+            <>
+              <Button
+                size="sm"
+                className="h-7 px-2.5 bg-yes/20 hover:bg-yes/30 text-yes border-0 text-xs font-bold"
+                onClick={() => onBuy(event.id, 'YES')}
+              >
+                {yesPrice}¢
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 px-2.5 bg-no/20 hover:bg-no/30 text-no border-0 text-xs font-bold"
+                onClick={() => onBuy(event.id, 'NO')}
+              >
+                {noPrice}¢
+              </Button>
+            </>
+          ) : (
+            <div className={cn(
+              "flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium",
+              statusColors.bg,
+              statusColors.text
+            )}>
+              {!isSettled && <Lock className="h-3 w-3" />}
+              <span>{getStatusLabel()}</span>
+            </div>
+          )}
         </div>
       </div>
 

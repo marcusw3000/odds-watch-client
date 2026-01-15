@@ -148,8 +148,8 @@ export function DepositModal({ onClose }: DepositModalProps) {
   const modalContent = (
     <div 
       className={cn(
-        "fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-all duration-200",
-        isVisible ? "bg-black/60 backdrop-blur-sm" : "bg-black/0 backdrop-blur-none"
+        "fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-opacity duration-200",
+        isVisible ? "bg-black/70" : "bg-black/0"
       )}
       onClick={handleBackdropClick}
     >

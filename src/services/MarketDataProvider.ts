@@ -15,7 +15,7 @@ import { FeeEngine } from './FeeEngine';
 import type { FeeType } from '@/types/financial';
 
 // Transform DB market to frontend MarketEvent
-function transformDbMarket(dbMarket: DbMarket): MarketEvent {
+function transformDbMarket(dbMarket: DbMarket & { image_zoom?: number; image_position_x?: number; image_position_y?: number }): MarketEvent {
   const lmsr: LMSRState = {
     b: dbMarket.lmsr_b,
     qYes: dbMarket.yes_shares,
@@ -31,6 +31,11 @@ function transformDbMarket(dbMarket: DbMarket): MarketEvent {
     category: dbMarket.category,
     description: dbMarket.description || undefined,
     imageUrl: dbMarket.image_url || undefined,
+    imageZoom: dbMarket.image_zoom ?? 1,
+    imagePosition: {
+      x: dbMarket.image_position_x ?? 50,
+      y: dbMarket.image_position_y ?? 50,
+    },
     status: dbMarket.status as MarketStatus,
     settlementType: dbMarket.settlement_type as SettlementType,
     settlementConfig: dbMarket.settlement_config as SettlementConfig | undefined,

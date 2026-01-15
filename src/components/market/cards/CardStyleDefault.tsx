@@ -105,17 +105,17 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         </h3>
       </div>
 
-      {/* Status badge for non-tradeable markets */}
-      {!statusInfo.canTrade && (
-        <div className="mb-3">
+      {/* Status badge for non-tradeable markets or spacer for consistency */}
+      <div className="mb-3 min-h-[24px]">
+        {!statusInfo.canTrade && (
           <MarketStatusBadge 
             status={statusInfo.status}
             timeToEvent={statusInfo.timeToEvent}
             result={event.result}
             size="sm"
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Options */}
       <div className="space-y-2 mb-4">

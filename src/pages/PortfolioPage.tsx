@@ -1,19 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Briefcase, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Briefcase, RefreshCw, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { UserPortfolio } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { PortfolioOverview } from '@/components/portfolio/PortfolioOverview';
 import { ContractsList } from '@/components/portfolio/ContractsList';
 import { TransactionHistory } from '@/components/portfolio/TransactionHistory';
+import { PaymentHistory } from '@/components/payments/PaymentHistory';
+import { DepositModal } from '@/components/payments/DepositModal';
+import { WithdrawModal } from '@/components/payments/WithdrawModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useVerifyDeposit } from '@/hooks/usePayments';
 
 export function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<UserPortfolio | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const verifyDeposit = useVerifyDeposit();
 
   const fetchPortfolio = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
@@ -32,6 +43,49 @@ export function PortfolioPage() {
       setIsRefreshing(false);
     }
   };
+
+  // Check for deposit success on page load
+  useEffect(() => {
+    const depositStatus = searchParams.get('deposit');
+    const sessionId = searchParams.get('session_id');
+
+    if (depositStatus === 'success' && sessionId) {
+      // Verify and credit the deposit
+      verifyDeposit.mutate(sessionId, {
+        onSuccess: (result) => {
+          if (result.success) {
+            toast({
+              title: '💰 Depósito Confirmado!',
+              description: `R$${result.amount?.toFixed(2)} foi creditado na sua conta.`,
+            });
+            fetchPortfolio(false);
+          } else {
+            toast({
+              title: 'Processando depósito',
+              description: result.message,
+            });
+          }
+        },
+        onError: () => {
+          toast({
+            title: 'Erro ao verificar depósito',
+            description: 'Verifique seu histórico de transações.',
+            variant: 'destructive',
+          });
+        },
+      });
+
+      // Clear URL params
+      setSearchParams({});
+    } else if (depositStatus === 'cancelled') {
+      toast({
+        title: 'Depósito cancelado',
+        description: 'O pagamento foi cancelado.',
+        variant: 'destructive',
+      });
+      setSearchParams({});
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchPortfolio();
@@ -93,14 +147,35 @@ export function PortfolioPage() {
             Acompanhe seus investimentos e resultados
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          {user && (
+            <>
+              <Button
+                variant="default"
+                onClick={() => setShowDepositModal(true)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <ArrowDownToLine className="h-4 w-4 mr-2" />
+                Depositar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowWithdrawModal(true)}
+              >
+                <ArrowUpFromLine className="h-4 w-4 mr-2" />
+                Sacar
+              </Button>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Portfolio Overview */}
@@ -108,7 +183,7 @@ export function PortfolioPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="w-full justify-start border-b border-border rounded-none bg-transparent p-0 h-auto">
+        <TabsList className="w-full justify-start border-b border-border rounded-none bg-transparent p-0 h-auto overflow-x-auto">
           <TabsTrigger
             value="active"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
@@ -125,7 +200,13 @@ export function PortfolioPage() {
             value="history"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
           >
-            Histórico
+            Histórico de Trades
+          </TabsTrigger>
+          <TabsTrigger
+            value="payments"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+          >
+            Depósitos/Saques
           </TabsTrigger>
         </TabsList>
 
@@ -144,7 +225,22 @@ export function PortfolioPage() {
         <TabsContent value="history" className="mt-6">
           <TransactionHistory transactions={portfolio.transactions} />
         </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <PaymentHistory />
+        </TabsContent>
       </Tabs>
+
+      {/* Modals */}
+      {showDepositModal && (
+        <DepositModal onClose={() => setShowDepositModal(false)} />
+      )}
+      {showWithdrawModal && (
+        <WithdrawModal 
+          balance={portfolio.balance} 
+          onClose={() => setShowWithdrawModal(false)} 
+        />
+      )}
     </div>
   );
 }

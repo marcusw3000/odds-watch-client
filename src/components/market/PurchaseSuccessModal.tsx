@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { X, Check, Share2, Copy, Download, PartyPopper } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Check, Copy, Download, PartyPopper, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { generateMarketShareLink, generateSocialShareLinks } from '@/lib/deepLinks';
+import html2canvas from 'html2canvas';
 
 // Custom X icon
 const XIcon = () => (
@@ -46,6 +47,8 @@ export function PurchaseSuccessModal({
   onClose,
 }: PurchaseSuccessModalProps) {
   const [copied, setCopied] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const shareLink = generateMarketShareLink(eventId, { outcome, source: 'copy' });
   const socialLinks = generateSocialShareLinks({
@@ -54,6 +57,40 @@ export function PurchaseSuccessModal({
     deepLink: shareLink,
     hashtags: ['trading', 'previsões', 'mercado'],
   });
+
+  const handleDownloadImage = async () => {
+    if (!cardRef.current) return;
+    
+    setIsDownloading(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: '#0f172a',
+        scale: 2, // Higher resolution
+        logging: false,
+        useCORS: true,
+      });
+      
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `aposta-${outcome.toLowerCase()}-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          toast.success('Imagem baixada com sucesso!');
+        }
+      }, 'image/png', 1.0);
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast.error('Erro ao gerar imagem');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -137,9 +174,12 @@ export function PurchaseSuccessModal({
 
         {/* Trade Details Card - Shareable Preview */}
         <div className="p-5">
-          <div className="rounded-xl overflow-hidden border border-border shadow-lg">
+          <div 
+            ref={cardRef}
+            className="rounded-xl overflow-hidden border border-slate-700 shadow-lg"
+          >
             {/* Card Header */}
-            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 text-white">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 text-white relative">
               {/* Background pattern */}
               <div className="absolute inset-0 opacity-5">
                 <div className="absolute inset-0" style={{ 
@@ -202,7 +242,22 @@ export function PurchaseSuccessModal({
             Compartilhe sua aposta
           </p>
           
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadImage}
+              disabled={isDownloading}
+              className="flex flex-col items-center gap-1 h-auto py-3 hover:bg-primary hover:text-primary-foreground"
+            >
+              {isDownloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              <span className="text-[10px]">Baixar</span>
+            </Button>
+            
             <Button
               variant="outline"
               size="sm"

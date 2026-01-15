@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import { AuthPage } from "./pages/AuthPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { FeesPage } from "./pages/FeesPage";
 
 // Admin imports
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/referral" element={<ReferralPage />} />
+            <Route path="/fees" element={<FeesPage />} />
           </Route>
           
           {/* Admin Routes */}

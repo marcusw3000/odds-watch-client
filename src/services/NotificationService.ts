@@ -129,3 +129,54 @@ export async function notifyAchievementUnlocked(
     sendEmail: false,
   });
 }
+
+export async function notifyCommentMention(
+  userId: string,
+  mentionedByName: string,
+  marketId: string,
+  marketTitle: string,
+  commentPreview: string
+) {
+  return createNotification({
+    userId,
+    type: 'COMMENT_MENTION' as any,
+    title: `${mentionedByName} mencionou você`,
+    message: `Em "${marketTitle}": "${commentPreview}..."`,
+    data: { market_id: marketId, mentioned_by: mentionedByName },
+    sendEmail: true,
+  });
+}
+
+export async function notifyCommentLike(
+  userId: string,
+  likedByName: string,
+  marketId: string,
+  marketTitle: string,
+  likesCount: number
+) {
+  return createNotification({
+    userId,
+    type: 'COMMENT_LIKE' as any,
+    title: `${likedByName} curtiu seu comentário`,
+    message: `Seu comentário em "${marketTitle}" tem ${likesCount} ${likesCount === 1 ? 'curtida' : 'curtidas'}`,
+    data: { market_id: marketId, liked_by: likedByName, likes_count: likesCount },
+    sendEmail: false,
+  });
+}
+
+export async function notifyCommentReply(
+  userId: string,
+  repliedByName: string,
+  marketId: string,
+  marketTitle: string,
+  replyPreview: string
+) {
+  return createNotification({
+    userId,
+    type: 'COMMENT_REPLY' as any,
+    title: `${repliedByName} respondeu ao seu comentário`,
+    message: `Em "${marketTitle}": "${replyPreview}..."`,
+    data: { market_id: marketId, replied_by: repliedByName },
+    sendEmail: false,
+  });
+}

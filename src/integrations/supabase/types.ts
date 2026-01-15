@@ -113,6 +113,139 @@ export type Database = {
         }
         Relationships: []
       }
+      comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_reports: {
+        Row: {
+          action_taken: string | null
+          comment_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          comment_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          comment_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_hidden: boolean | null
+          likes_count: number | null
+          market_id: string
+          mentions: string[] | null
+          parent_id: string | null
+          replies_count: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          likes_count?: number | null
+          market_id: string
+          mentions?: string[] | null
+          parent_id?: string | null
+          replies_count?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          likes_count?: number | null
+          market_id?: string
+          mentions?: string[] | null
+          parent_id?: string | null
+          replies_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contestations: {
         Row: {
           admin_notes: string | null
@@ -560,10 +693,12 @@ export type Database = {
           email_market_closing: boolean
           email_market_settled: boolean
           email_marketing: boolean
+          email_mentions: boolean | null
           email_weekly_summary: boolean
           id: string
           in_app_achievements: boolean
           in_app_market_updates: boolean
+          in_app_social: boolean | null
           in_app_system: boolean
           in_app_trade_updates: boolean
           quiet_hours_end: string | null
@@ -576,10 +711,12 @@ export type Database = {
           email_market_closing?: boolean
           email_market_settled?: boolean
           email_marketing?: boolean
+          email_mentions?: boolean | null
           email_weekly_summary?: boolean
           id?: string
           in_app_achievements?: boolean
           in_app_market_updates?: boolean
+          in_app_social?: boolean | null
           in_app_system?: boolean
           in_app_trade_updates?: boolean
           quiet_hours_end?: string | null
@@ -592,10 +729,12 @@ export type Database = {
           email_market_closing?: boolean
           email_market_settled?: boolean
           email_marketing?: boolean
+          email_mentions?: boolean | null
           email_weekly_summary?: boolean
           id?: string
           in_app_achievements?: boolean
           in_app_market_updates?: boolean
+          in_app_social?: boolean | null
           in_app_system?: boolean
           in_app_trade_updates?: boolean
           quiet_hours_end?: string | null
@@ -1171,6 +1310,14 @@ export type Database = {
       }
     }
     Functions: {
+      decrement_comment_likes: {
+        Args: { p_comment_id: string }
+        Returns: undefined
+      }
+      decrement_replies_count: {
+        Args: { p_comment_id: string }
+        Returns: undefined
+      }
       generate_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1178,6 +1325,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_comment_likes: {
+        Args: { p_comment_id: string }
+        Returns: undefined
+      }
+      increment_replies_count: {
+        Args: { p_comment_id: string }
+        Returns: undefined
       }
     }
     Enums: {
@@ -1192,6 +1347,9 @@ export type Database = {
         | "LEADERBOARD_RANK"
         | "REFERRAL_ACTIVATED"
         | "SYSTEM_ANNOUNCEMENT"
+        | "COMMENT_MENTION"
+        | "COMMENT_LIKE"
+        | "COMMENT_REPLY"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -1350,6 +1508,9 @@ export const Constants = {
         "LEADERBOARD_RANK",
         "REFERRAL_ACTIVATED",
         "SYSTEM_ANNOUNCEMENT",
+        "COMMENT_MENTION",
+        "COMMENT_LIKE",
+        "COMMENT_REPLY",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

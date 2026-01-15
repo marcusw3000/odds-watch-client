@@ -150,8 +150,13 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                   </Button>
                 </>
               ) : (
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Lock className="h-3 w-3" />
+                <div className="flex gap-1 h-6">
+                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
+                    <Lock className="h-3 w-3" />
+                  </div>
+                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
+                    <Lock className="h-3 w-3" />
+                  </div>
                 </div>
               )}
             </div>
@@ -189,8 +194,13 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                   </Button>
                 </>
               ) : (
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Lock className="h-3 w-3" />
+                <div className="flex gap-1 h-6">
+                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
+                    <Lock className="h-3 w-3" />
+                  </div>
+                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
+                    <Lock className="h-3 w-3" />
+                  </div>
                 </div>
               )}
             </div>

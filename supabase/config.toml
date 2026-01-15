@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.request-withdrawal]
 verify_jwt = false
+
+[functions.execute-trade]
+verify_jwt = false
+
+[functions.execute-sell]
+verify_jwt = false

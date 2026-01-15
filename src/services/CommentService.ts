@@ -423,7 +423,7 @@ export const CommentService = {
   },
 
   // Admin: Get all reports
-  async getReports(status?: string): Promise<CommentReport[]> {
+  async getReports(status?: string, reason?: string): Promise<CommentReport[]> {
     let query = supabase
       .from('comment_reports')
       .select(`
@@ -440,6 +440,10 @@ export const CommentService = {
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (reason) {
+      query = query.eq('reason', reason);
     }
 
     const { data, error } = await query;

@@ -16,9 +16,10 @@ import {
   AlertTriangle,
   Scale
 } from 'lucide-react';
-import { MarketEvent, OddsHistoryPoint, Comment } from '@/types/market';
+import { MarketEvent, OddsHistoryPoint } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
+import { CommentSection } from '@/components/market/CommentSection';
 import { PurchaseModal } from '@/components/market/PurchaseModal';
 import { OddsChart } from '@/components/market/OddsChart';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
@@ -44,7 +45,6 @@ export function MarketDetailPage() {
   
   const [event, setEvent] = useState<MarketEvent | null>(null);
   const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [userBalance, setUserBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -57,10 +57,9 @@ export function MarketDetailPage() {
     
     setIsLoading(true);
     try {
-      const [eventData, historyData, commentsData, portfolio] = await Promise.all([
+      const [eventData, historyData, portfolio] = await Promise.all([
         MarketDataProvider.getEventById(id),
         MarketDataProvider.getOddsHistory(id),
-        MarketDataProvider.getEventComments(id),
         MarketDataProvider.getUserPortfolio(),
       ]);
       
@@ -71,7 +70,6 @@ export function MarketDetailPage() {
       
       setEvent(eventData);
       setOddsHistory(historyData);
-      setComments(commentsData);
       setUserBalance(portfolio.balance);
     } catch (error) {
       console.error('Error fetching market details:', error);
@@ -337,7 +335,7 @@ export function MarketDetailPage() {
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Análises ({comments.length})
+                Comentários
               </TabsTrigger>
               <TabsTrigger
                 value="contestations"
@@ -372,40 +370,7 @@ export function MarketDetailPage() {
             </TabsContent>
 
             <TabsContent value="comments" className="mt-6">
-              <div className="space-y-4">
-                {comments.length > 0 ? (
-                  comments.map((comment) => (
-                    <Card key={comment.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-medium text-sm">{comment.author}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {format(comment.createdAt, "dd MMM yyyy", { locale: ptBR })}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {comment.content}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <ThumbsUp className="h-4 w-4" />
-                            <span className="text-xs">{comment.likes}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="p-6 text-center text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nenhuma análise disponível ainda.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+              <CommentSection marketId={event.id} />
             </TabsContent>
 
             <TabsContent value="contestations" className="mt-6">

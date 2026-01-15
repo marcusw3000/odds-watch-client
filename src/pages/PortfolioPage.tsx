@@ -50,33 +50,50 @@ export function PortfolioPage() {
     const sessionId = searchParams.get('session_id');
 
     if (depositStatus === 'success' && sessionId) {
-      // Verify and credit the deposit
-      verifyDeposit.mutate(sessionId, {
-        onSuccess: (result) => {
-          if (result.success) {
+      // For PIX payments, we need to poll until payment is confirmed
+      let attempts = 0;
+      const maxAttempts = 12; // 2 minutes max (10s intervals)
+      
+      const checkPayment = () => {
+        verifyDeposit.mutate(sessionId, {
+          onSuccess: (result) => {
+            if (result.success) {
+              toast({
+                title: '💰 Depósito Confirmado!',
+                description: `R$${result.amount?.toFixed(2)} foi creditado na sua conta.`,
+              });
+              fetchPortfolio(false);
+              setSearchParams({});
+            } else if (result.status === 'unpaid' && attempts < maxAttempts) {
+              // PIX payment pending - retry after 10 seconds
+              attempts++;
+              toast({
+                title: '⏳ Aguardando pagamento PIX',
+                description: `Verificando confirmação... (tentativa ${attempts}/${maxAttempts})`,
+              });
+              setTimeout(checkPayment, 10000);
+            } else {
+              toast({
+                title: 'Pagamento não confirmado',
+                description: result.message || 'Verifique seu histórico de transações.',
+                variant: 'destructive',
+              });
+              setSearchParams({});
+            }
+          },
+          onError: () => {
             toast({
-              title: '💰 Depósito Confirmado!',
-              description: `R$${result.amount?.toFixed(2)} foi creditado na sua conta.`,
+              title: 'Erro ao verificar depósito',
+              description: 'Verifique seu histórico de transações.',
+              variant: 'destructive',
             });
-            fetchPortfolio(false);
-          } else {
-            toast({
-              title: 'Processando depósito',
-              description: result.message,
-            });
-          }
-        },
-        onError: () => {
-          toast({
-            title: 'Erro ao verificar depósito',
-            description: 'Verifique seu histórico de transações.',
-            variant: 'destructive',
-          });
-        },
-      });
+            setSearchParams({});
+          },
+        });
+      };
 
-      // Clear URL params
-      setSearchParams({});
+      // Start verification
+      checkPayment();
     } else if (depositStatus === 'cancelled') {
       toast({
         title: 'Depósito cancelado',

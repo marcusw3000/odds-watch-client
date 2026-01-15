@@ -32,11 +32,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { updateMetaTags, resetMetaTags } from '@/lib/seo';
 import { cn } from '@/lib/utils';
+import { useDeepLink } from '@/hooks/useDeepLink';
 
 export function MarketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const deepLink = useDeepLink();
   
   const [event, setEvent] = useState<MarketEvent | null>(null);
   const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
@@ -100,6 +102,14 @@ export function MarketDetailPage() {
       resetMetaTags();
     };
   }, [event]);
+
+  // Handle deep link action (auto-open buy modal)
+  useEffect(() => {
+    if (event && deepLink.action === 'buy' && deepLink.outcome) {
+      setSelectedOutcome(deepLink.outcome);
+      deepLink.clearAction();
+    }
+  }, [event, deepLink]);
 
   const handleRefresh = async () => {
     if (!id) return;

@@ -10,46 +10,60 @@ import type {
   LeaderboardSortBy 
 } from '@/types/leaderboard';
 
+// Type for profile data from database (with type cast for migration period)
+interface ProfileData {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  display_name: string | null;
+  bio: string | null;
+  is_public: boolean;
+  show_profit: boolean;
+  show_roi: boolean;
+  show_volume: boolean;
+  show_trades: boolean;
+  total_profit: number;
+  roi_percent: number;
+  total_volume: number;
+  total_trades: number;
+  winning_trades: number;
+  current_streak: number;
+  best_streak: number;
+  best_trade_profit: number;
+}
+
 export function useLeaderboard(sortBy: LeaderboardSortBy = 'profit', limit: number = 50) {
   return useQuery({
     queryKey: ['leaderboard', sortBy, limit],
     queryFn: async (): Promise<LeaderboardEntry[]> => {
-      // Fetch public leaderboard profiles with stats
-      const { data: profiles, error: profilesError } = await supabase
-        .from('leaderboard_profiles')
-        .select('*')
+      // Fetch public profiles with stats from unified profiles table
+      // @ts-ignore - new columns exist after migration, types will be regenerated
+      const result = await supabase
+        .from('profiles')
+        .select('id, display_name, is_public, show_profit, show_roi, show_volume, show_trades, total_profit, roi_percent, total_volume, total_trades, winning_trades')
         .eq('is_public', true);
+      
+      const profiles = (result.data || []) as ProfileData[];
+      const error = result.error;
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
       if (!profiles || profiles.length === 0) return [];
 
-      const userIds = profiles.map(p => p.user_id);
-
-      const { data: stats, error: statsError } = await supabase
-        .from('user_statistics')
-        .select('*')
-        .in('user_id', userIds);
-
-      if (statsError) throw statsError;
-
-      // Combine and sort
-      const entries: LeaderboardEntry[] = profiles.map((profile, index) => {
-        const stat = stats?.find(s => s.user_id === profile.user_id);
-        return {
-          rank: 0,
-          user_id: profile.user_id,
-          display_name: profile.display_name,
-          total_profit: stat?.total_profit || 0,
-          roi_percent: stat?.roi_percent || 0,
-          total_volume: stat?.total_volume || 0,
-          total_trades: stat?.total_trades || 0,
-          winning_trades: stat?.winning_trades || 0,
-          show_profit: profile.show_profit,
-          show_roi: profile.show_roi,
-          show_volume: profile.show_volume,
-          show_trades: profile.show_trades,
-        };
-      });
+      // Map to leaderboard entries
+      const entries: LeaderboardEntry[] = profiles.map((profile) => ({
+        rank: 0,
+        user_id: profile.id,
+        display_name: profile.display_name || 'Trader Anônimo',
+        total_profit: profile.total_profit || 0,
+        roi_percent: profile.roi_percent || 0,
+        total_volume: profile.total_volume || 0,
+        total_trades: profile.total_trades || 0,
+        winning_trades: profile.winning_trades || 0,
+        show_profit: profile.show_profit,
+        show_roi: profile.show_roi,
+        show_volume: profile.show_volume,
+        show_trades: profile.show_trades,
+      }));
 
       // Sort by selected metric
       const sortFn = {
@@ -78,13 +92,27 @@ export function useMyLeaderboardProfile() {
       if (!user) return null;
 
       const { data, error } = await supabase
-        .from('leaderboard_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .from('profiles')
+        .select('id, display_name, bio, is_public, show_profit, show_roi, show_volume, show_trades, created_at, updated_at')
+        .eq('id', user.id)
+        .maybeSingle() as { data: ProfileData | null; error: unknown };
 
       if (error) throw error;
-      return data as LeaderboardProfile | null;
+      if (!data) return null;
+
+      return {
+        id: data.id,
+        user_id: data.id,
+        display_name: data.display_name || 'Trader Anônimo',
+        bio: data.bio,
+        is_public: data.is_public,
+        show_profit: data.show_profit,
+        show_roi: data.show_roi,
+        show_volume: data.show_volume,
+        show_trades: data.show_trades,
+        created_at: '',
+        updated_at: '',
+      };
     },
     enabled: !!user,
   });
@@ -99,13 +127,27 @@ export function useMyStatistics() {
       if (!user) return null;
 
       const { data, error } = await supabase
-        .from('user_statistics')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .from('profiles')
+        .select('id, total_profit, roi_percent, total_volume, total_trades, winning_trades, current_streak, best_streak, best_trade_profit, updated_at')
+        .eq('id', user.id)
+        .maybeSingle() as { data: ProfileData | null; error: unknown };
 
       if (error) throw error;
-      return data as UserStatistics | null;
+      if (!data) return null;
+
+      return {
+        id: data.id,
+        user_id: data.id,
+        total_profit: data.total_profit || 0,
+        roi_percent: data.roi_percent || 0,
+        total_volume: data.total_volume || 0,
+        total_trades: data.total_trades || 0,
+        winning_trades: data.winning_trades || 0,
+        current_streak: data.current_streak || 0,
+        best_streak: data.best_streak || 0,
+        best_trade_profit: data.best_trade_profit || 0,
+        updated_at: '',
+      };
     },
     enabled: !!user,
   });
@@ -160,44 +202,26 @@ export function useUpdateLeaderboardProfile() {
     mutationFn: async (updates: Partial<LeaderboardProfile>) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Check if profile exists
-      const { data: existing } = await supabase
-        .from('leaderboard_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Update profile with leaderboard fields (using type assertion for migration period)
+      const updatePayload = {
+        display_name: updates.display_name,
+        bio: updates.bio,
+        is_public: updates.is_public,
+        show_profit: updates.show_profit,
+        show_roi: updates.show_roi,
+        show_volume: updates.show_volume,
+        show_trades: updates.show_trades,
+      };
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updatePayload)
+        .eq('id', user.id)
+        .select()
+        .single();
 
-      if (existing) {
-        // Update
-        const { data, error } = await supabase
-          .from('leaderboard_profiles')
-          .update(updates)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      } else {
-        // Insert
-        const { data, error } = await supabase
-          .from('leaderboard_profiles')
-          .insert({
-            user_id: user.id,
-            display_name: updates.display_name || 'Trader Anônimo',
-            is_public: updates.is_public || false,
-            show_profit: updates.show_profit ?? true,
-            show_roi: updates.show_roi ?? true,
-            show_volume: updates.show_volume ?? true,
-            show_trades: updates.show_trades ?? true,
-            bio: updates.bio || null,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      }
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-leaderboard-profile'] });
@@ -212,21 +236,8 @@ export function useInitializeUserStats() {
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
-
-      // Check if stats exist
-      const { data: existing } = await supabase
-        .from('user_statistics')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!existing) {
-        const { error } = await supabase
-          .from('user_statistics')
-          .insert({ user_id: user.id });
-
-        if (error) throw error;
-      }
+      // No longer needed - stats are part of profiles table which is auto-created
+      // This is a no-op for backward compatibility
     },
   });
 }

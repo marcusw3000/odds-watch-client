@@ -1,30 +1,38 @@
-export interface LeaderboardProfile {
+// Unified profile with leaderboard and statistics data
+export interface UserProfile {
   id: string;
-  user_id: string;
-  display_name: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  display_name: string | null;
+  bio: string | null;
   is_public: boolean;
   show_profit: boolean;
   show_roi: boolean;
   show_volume: boolean;
   show_trades: boolean;
-  bio: string | null;
+  total_profit: number;
+  roi_percent: number;
+  total_volume: number;
+  total_trades: number;
+  winning_trades: number;
+  current_streak: number;
+  best_streak: number;
+  best_trade_profit: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface UserStatistics {
-  id: string;
-  user_id: string;
-  total_profit: number;
-  total_volume: number;
-  total_trades: number;
-  winning_trades: number;
-  roi_percent: number;
-  best_trade_profit: number;
-  current_streak: number;
-  best_streak: number;
-  updated_at: string;
-}
+// Legacy type aliases for backward compatibility
+export type LeaderboardProfile = Pick<UserProfile, 
+  'id' | 'display_name' | 'is_public' | 'show_profit' | 'show_roi' | 
+  'show_volume' | 'show_trades' | 'bio' | 'created_at' | 'updated_at'
+> & { user_id: string };
+
+export type UserStatistics = Pick<UserProfile,
+  'id' | 'total_profit' | 'total_volume' | 'total_trades' | 'winning_trades' |
+  'roi_percent' | 'best_trade_profit' | 'current_streak' | 'best_streak' | 'updated_at'
+> & { user_id: string };
 
 export interface Achievement {
   id: string;

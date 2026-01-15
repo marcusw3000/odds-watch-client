@@ -34,14 +34,17 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { amount } = await req.json();
+    const { amount, method } = await req.json();
+
+    const normalizedMethod = method === "PIX" || method === "CARD" ? method : "PIX";
+
     if (!amount || amount < 10) {
       throw new Error("Valor mínimo de depósito é R$10,00");
     }
     if (amount > 10000) {
       throw new Error("Valor máximo de depósito é R$10.000,00");
     }
-    logStep("Amount validated", { amount });
+    logStep("Amount validated", { amount, method: normalizedMethod });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -55,12 +58,15 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    // Create checkout session with PIX and card
+    // Create checkout session with selected method
     const origin = req.headers.get("origin") || "https://predictmarket.com";
+
+    const payment_method_types = normalizedMethod === "CARD" ? ["card"] : ["pix"];
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      payment_method_types: ["pix", "card"],
+      payment_method_types,
       line_items: [
         {
           price_data: {
@@ -81,6 +87,7 @@ serve(async (req) => {
         user_id: user.id,
         type: "deposit",
         amount: amount.toString(),
+        method: normalizedMethod,
       },
       payment_intent_data: {
         metadata: {
@@ -102,7 +109,7 @@ serve(async (req) => {
       .insert({
         user_id: user.id,
         type: "DEPOSIT",
-        method: "CARD",
+        method: normalizedMethod,
         amount: amount,
         fee: 0,
         net_amount: amount,

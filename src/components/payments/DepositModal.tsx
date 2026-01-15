@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft } from 'lucide-react';
+import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
 import { Elements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreatePaymentIntent, useConfirmPayment } from '@/hooks/usePayments';
 import { stripePromise } from '@/lib/stripe';
 import { StripePaymentForm } from './StripePaymentForm';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface DepositModalProps {
@@ -293,8 +294,31 @@ export function DepositModal({ onClose }: DepositModalProps) {
               </Button>
             </>
           ) : (
-            <>
-              {clientSecret && stripePromise && (
+            <div className="space-y-4">
+              {!stripePromise ? (
+                <div className="p-6 rounded-lg bg-destructive/10 border border-destructive/30 text-center space-y-3">
+                  <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+                  <div>
+                    <h3 className="font-semibold text-destructive">Stripe não configurado</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      A chave pública do Stripe não foi encontrada. Configure VITE_STRIPE_PUBLISHABLE_KEY no arquivo .env
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={handleBack} className="mt-2">
+                    Voltar
+                  </Button>
+                </div>
+              ) : !clientSecret ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Carregando formulário de pagamento...</span>
+                  </div>
+                </div>
+              ) : (
                 <Elements 
                   stripe={stripePromise} 
                   options={{
@@ -310,7 +334,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                   />
                 </Elements>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

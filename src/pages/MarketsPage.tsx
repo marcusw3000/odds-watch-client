@@ -180,8 +180,8 @@ export function MarketsPage() {
           {filteredEvents.map((event, index) => (
             <div
               key={event.id}
-              className="animate-fade-in"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className={index < 6 ? "animate-fade-in" : ""}
+              style={index < 6 ? { animationDelay: `${index * 30}ms` } : undefined}
             >
               <MarketCard 
                 event={event} 

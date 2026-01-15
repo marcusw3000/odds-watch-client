@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,18 @@ import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
 import { FeeEngine } from '@/services/FeeEngine';
 import { FeeRule } from '@/types/financial';
+
+// Custom hook for debouncing values
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  
+  return debouncedValue;
+}
 
 interface PurchaseModalProps {
   event: MarketEvent;
@@ -49,28 +61,33 @@ export function PurchaseModal({
 
   const isYes = selectedOutcome === 'YES';
   const sharesNum = parseFloat(shares) || 0;
+  const debouncedShares = useDebouncedValue(sharesNum, 300);
   const currentPrice = event.outcomes[selectedOutcome].price;
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Fetch quote when shares change
+  // Fetch quote when debounced shares change
   useEffect(() => {
-    if (sharesNum <= 0) {
+    if (debouncedShares <= 0) {
       setQuote(null);
       return;
     }
 
     const fetchQuote = async () => {
-      const newQuote = await MarketDataProvider.getQuote(event.id, selectedOutcome, sharesNum);
+      const newQuote = await MarketDataProvider.getQuote(event.id, selectedOutcome, debouncedShares);
       setQuote(newQuote);
     };
 
     fetchQuote();
-  }, [sharesNum, event.id, selectedOutcome]);
+  }, [debouncedShares, event.id, selectedOutcome]);
 
-  // Timer countdown
+  // Timer countdown - optimized with ref
   useEffect(() => {
-    if (priceExpired) return;
+    if (priceExpired) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
 
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           setPriceExpired(true);
@@ -80,7 +97,9 @@ export function PurchaseModal({
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [priceExpired]);
 
   const handleRefreshPrice = useCallback(async () => {
@@ -145,7 +164,7 @@ export function PurchaseModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 animate-fade-in"
       onClick={onClose}
     >
       <div 

@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Clock, TrendingUp, ChevronRight } from 'lucide-react';
+import { useState, memo } from 'react';
+import { TrendingUp, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
 import { MarketStatusBadge } from './MarketStatusBadge';
-import { useMarketStatus, formatCountdown } from '@/hooks/useMarketStatus';
+import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
 interface MarketCardProps {
@@ -15,7 +15,7 @@ interface MarketCardProps {
   onViewDetails?: (eventId: string) => void;
 }
 
-export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
+export const MarketCard = memo(function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
   const [hoveredOutcome, setHoveredOutcome] = useState<'YES' | 'NO' | null>(null);
   const statusInfo = useMarketStatus(event);
 
@@ -38,7 +38,7 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-300 hover:border-primary/30 hover:shadow-elevated">
+    <div className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-card transition-colors duration-200 hover:border-primary/30">
       {/* Header */}
       <div className="p-5 pb-4">
         {/* Tags Row */}
@@ -161,4 +161,4 @@ export function MarketCard({ event, onBuy, onViewDetails }: MarketCardProps) {
       </div>
     </div>
   );
-}
+});

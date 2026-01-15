@@ -51,7 +51,7 @@ export const CompactMarketCard = memo(function CompactMarketCard({
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-xl">
+        <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-2xl">
           {getCategoryIcon(event.category)}
         </div>
         <h3 

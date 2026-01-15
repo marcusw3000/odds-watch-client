@@ -55,12 +55,9 @@ function executeSell(state: LMSRState, outcome: "YES" | "NO", shares: number): L
   }
 }
 
-// Trading fee formula
+// Trading fee - disabled
 function calculateTradingFee(contracts: number, pricePerContract: number): number {
-  const P = Math.max(0.01, Math.min(0.99, pricePerContract));
-  const C = contracts;
-  const rawFee = 0.07 * C * P * (1 - P);
-  return Math.ceil(rawFee * 100) / 100;
+  return 0;
 }
 
 Deno.serve(async (req) => {

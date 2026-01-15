@@ -1,23 +1,8 @@
-import { Calculator, Info, TrendingUp, ArrowDownToLine, ArrowUpFromLine, Scale, HelpCircle } from 'lucide-react';
+import { Calculator, Info, ArrowDownToLine, ArrowUpFromLine, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 
 export function FeesPage() {
-  // Example calculations for the interactive demo
-  const examples = [
-    { contracts: 10, price: 0.50, description: 'Preço médio (50¢)' },
-    { contracts: 25, price: 0.30, description: 'Preço baixo (30¢)' },
-    { contracts: 50, price: 0.70, description: 'Preço alto (70¢)' },
-    { contracts: 100, price: 0.50, description: 'Grande quantidade (50¢)' },
-  ];
-
-  const calculateTradingFee = (contracts: number, price: number) => {
-    const fee = Math.ceil(0.07 * contracts * price * (1 - price) * 100) / 100;
-    return fee;
-  };
-
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       {/* Header */}
@@ -52,131 +37,63 @@ export function FeesPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-orange-500/20 bg-orange-500/5">
+        <Card className="border-success/20 bg-success/5">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <ArrowUpFromLine className="h-4 w-4 text-orange-500" />
+              <ArrowUpFromLine className="h-4 w-4 text-success" />
               Saques
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-orange-500">0%</p>
+            <p className="text-2xl font-bold text-success">0%</p>
             <p className="text-xs text-muted-foreground">Sem taxas de saque</p>
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-success/20 bg-success/5">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4 text-primary" />
+              <Calculator className="h-4 w-4 text-success" />
               Trading
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-primary">Variável</p>
-            <p className="text-xs text-muted-foreground">Baseado em ganhos esperados</p>
+            <p className="text-2xl font-bold text-success">0%</p>
+            <p className="text-xs text-muted-foreground">Sem taxas de trading</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Trading Fee Section */}
+      {/* Zero Fees Info */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Scale className="h-5 w-5" />
-            Taxa de Trading
+            <Info className="h-5 w-5 text-success" />
+            Plataforma 100% Sem Taxas
           </CardTitle>
           <CardDescription>
-            Uma taxa variável baseada nos ganhos esperados do contrato
+            Negocie livremente sem se preocupar com custos ocultos
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Formula */}
-          <div className="p-6 rounded-xl bg-gradient-card border border-border">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Fórmula</h3>
-            <div className="text-center py-4">
-              <code className="text-xl font-mono font-bold text-primary">
-                taxa = arredondar↑(0.07 × C × P × (1-P))
-              </code>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+              <h4 className="font-medium text-sm mb-2">Depósitos Gratuitos</h4>
+              <p className="text-xs text-muted-foreground">
+                Deposite qualquer valor via PIX sem nenhuma taxa. O valor integral é creditado na sua conta.
+              </p>
             </div>
-            <div className="grid gap-3 mt-4 text-sm">
-              <div className="flex items-start gap-3">
-                <Badge variant="secondary" className="font-mono">C</Badge>
-                <span className="text-muted-foreground">Número de contratos sendo negociados</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="secondary" className="font-mono">P</Badge>
-                <span className="text-muted-foreground">Preço do contrato em reais (50 centavos = 0.50)</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="secondary" className="font-mono">P×(1-P)</Badge>
-                <span className="text-muted-foreground">Representa o ganho esperado do contrato</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="secondary" className="font-mono">arredondar↑</Badge>
-                <span className="text-muted-foreground">Arredonda para o próximo centavo</span>
-              </div>
+            <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+              <h4 className="font-medium text-sm mb-2">Saques Gratuitos</h4>
+              <p className="text-xs text-muted-foreground">
+                Retire seus fundos a qualquer momento sem penalidades. Processamento via PIX em até 24h úteis.
+              </p>
             </div>
-          </div>
-
-          {/* Examples Table */}
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Exemplos de Cálculo</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cenário</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Contratos</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Preço (P)</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">P × (1-P)</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Taxa</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {examples.map((example, i) => {
-                    const fee = calculateTradingFee(example.contracts, example.price);
-                    const expectedEarnings = example.price * (1 - example.price);
-                    return (
-                      <tr key={i} className="border-b border-border/50">
-                        <td className="py-3 px-4 text-sm">{example.description}</td>
-                        <td className="py-3 px-4 text-sm text-center font-mono">{example.contracts}</td>
-                        <td className="py-3 px-4 text-sm text-center font-mono">R${example.price.toFixed(2)}</td>
-                        <td className="py-3 px-4 text-sm text-center font-mono">{expectedEarnings.toFixed(4)}</td>
-                        <td className="py-3 px-4 text-sm text-right font-mono font-medium text-primary">R${fee.toFixed(2)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Key Points */}
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-sm mb-1">Ordens Taker</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Taxas são cobradas apenas para ordens imediatamente executadas (taker). 
-                    Ordens que ficam no book não pagam taxa.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-green-500 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-sm mb-1">Taxa Máxima</h4>
-                  <p className="text-xs text-muted-foreground">
-                    O valor P×(1-P) é máximo em P=0.50 (25%), diminuindo para preços extremos. 
-                    Isso beneficia trades de alta convicção.
-                  </p>
-                </div>
-              </div>
+            <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+              <h4 className="font-medium text-sm mb-2">Trading Gratuito</h4>
+              <p className="text-xs text-muted-foreground">
+                Compre e venda contratos sem taxas. Seu lucro é 100% seu.
+              </p>
             </div>
           </div>
         </CardContent>
@@ -193,12 +110,11 @@ export function FeesPage() {
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1">
-              <AccordionTrigger>Por que usamos esse modelo de taxa?</AccordionTrigger>
+              <AccordionTrigger>Como a plataforma se sustenta sem cobrar taxas?</AccordionTrigger>
               <AccordionContent>
-                Este modelo é amplamente reconhecido como o mais justo para mercados de previsão. 
-                Ele cobra taxas proporcionais aos ganhos esperados, não ao valor total da transação. 
-                Isso significa que trades com alta probabilidade (perto de 0 ou 100%) pagam menos taxa, 
-                enquanto trades mais incertos (perto de 50%) pagam um pouco mais.
+                Estamos em fase de crescimento e priorizamos a experiência do usuário. 
+                Nosso modelo de negócio está focado em atrair e reter usuários oferecendo 
+                as melhores condições do mercado.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-2">
@@ -210,28 +126,18 @@ export function FeesPage() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-3">
-              <AccordionTrigger>Como a taxa afeta meu lucro?</AccordionTrigger>
-              <AccordionContent>
-                A taxa é deduzida do valor total da operação. Por exemplo, se você comprar 10 contratos 
-                a R$0.50 cada (custo de R$5.00), a taxa de R$0.18 será adicionada ao custo total (R$5.18). 
-                Na venda, a taxa é deduzida do valor recebido.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-4">
-              <AccordionTrigger>O que é uma ordem "taker" vs "maker"?</AccordionTrigger>
-              <AccordionContent>
-                <strong>Taker:</strong> Ordens que são imediatamente executadas contra ordens existentes no book. 
-                Essas pagam a taxa de trading.<br /><br />
-                <strong>Maker:</strong> Ordens que são colocadas no book e aguardam execução. 
-                Essas não pagam taxa (ajudam a criar liquidez).
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-5">
               <AccordionTrigger>Há taxas na liquidação de mercados?</AccordionTrigger>
               <AccordionContent>
                 Não. Quando um mercado é resolvido (liquidado), não há cobrança de taxas. 
                 Se você tiver contratos vencedores, receberá o valor integral (R$1.00 por contrato vencedor) 
                 sem nenhuma dedução.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger>As taxas podem mudar no futuro?</AccordionTrigger>
+              <AccordionContent>
+                Qualquer mudança na política de taxas será comunicada com antecedência aos usuários. 
+                Nosso compromisso é manter as taxas as mais baixas possíveis do mercado.
               </AccordionContent>
             </AccordionItem>
           </Accordion>

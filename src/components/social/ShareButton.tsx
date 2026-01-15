@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Share2, Twitter, Facebook, Link2, Copy, Check, MessageCircle, Mail } from 'lucide-react';
+import { Share2, Facebook, Link2, Copy, Check, MessageCircle, Mail, Instagram, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,6 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { generateMarketShareLink, generateSocialShareLinks } from '@/lib/deepLinks';
+
+// Custom X (Twitter) icon
+const XIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 
 interface ShareButtonProps {
   title: string;
@@ -35,10 +42,10 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
 
   // Generate deep link with tracking
-  const getShareUrl = (source: 'twitter' | 'facebook' | 'whatsapp' | 'telegram' | 'copy') => {
+  const getShareUrl = (source: 'twitter' | 'facebook' | 'whatsapp' | 'telegram' | 'instagram' | 'copy') => {
     if (url) return url;
     if (marketId) {
-      return generateMarketShareLink(marketId, { outcome, source });
+      return generateMarketShareLink(marketId, { outcome, source: source === 'instagram' ? 'copy' : source });
     }
     return window.location.href;
   };
@@ -74,7 +81,7 @@ export function ShareButton({
     }
   };
 
-  const handleTwitterShare = () => {
+  const handleXShare = () => {
     const shareUrl = getShareUrl('twitter');
     const links = generateSocialShareLinks({
       title,
@@ -103,6 +110,13 @@ export function ShareButton({
       deepLink: shareUrl,
     });
     window.open(links.whatsapp, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleInstagramShare = () => {
+    // Instagram doesn't have a direct share API, copy link instead
+    const shareUrl = getShareUrl('instagram');
+    navigator.clipboard.writeText(`${title}\n\n${shareText}\n\n${shareUrl}`);
+    toast.success('Texto copiado! Cole no Instagram Stories ou Direct.');
   };
 
   const handleTelegramShare = () => {
@@ -144,23 +158,28 @@ export function ShareButton({
           </>
         )}
         
-        <DropdownMenuItem onClick={handleTwitterShare}>
-          <Twitter className="mr-2 h-4 w-4" />
-          Twitter / X
+        <DropdownMenuItem onClick={handleWhatsAppShare} className="text-green-600">
+          <MessageCircle className="mr-2 h-4 w-4" />
+          WhatsApp
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={handleInstagramShare} className="text-pink-600">
+          <Instagram className="mr-2 h-4 w-4" />
+          Instagram
         </DropdownMenuItem>
         
-        <DropdownMenuItem onClick={handleFacebookShare}>
+        <DropdownMenuItem onClick={handleXShare}>
+          <XIcon className="mr-2 h-4 w-4" />
+          X
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem onClick={handleFacebookShare} className="text-blue-600">
           <Facebook className="mr-2 h-4 w-4" />
           Facebook
         </DropdownMenuItem>
         
-        <DropdownMenuItem onClick={handleWhatsAppShare}>
-          <MessageCircle className="mr-2 h-4 w-4" />
-          WhatsApp
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem onClick={handleTelegramShare}>
-          <MessageCircle className="mr-2 h-4 w-4" />
+        <DropdownMenuItem onClick={handleTelegramShare} className="text-sky-500">
+          <Send className="mr-2 h-4 w-4" />
           Telegram
         </DropdownMenuItem>
 

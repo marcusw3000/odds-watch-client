@@ -5,7 +5,7 @@ import { UserPortfolio } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { PortfolioOverview } from '@/components/portfolio/PortfolioOverview';
 import { ContractsList } from '@/components/portfolio/ContractsList';
-import { TransactionHistory } from '@/components/portfolio/TransactionHistory';
+import { BalanceHistoryFiltered } from '@/components/portfolio/BalanceHistoryFiltered';
 import { PaymentHistory } from '@/components/payments/PaymentHistory';
 import { DepositModal } from '@/components/payments/DepositModal';
 import { WithdrawModal } from '@/components/payments/WithdrawModal';
@@ -223,7 +223,7 @@ export function PortfolioPage() {
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">
-          <TransactionHistory transactions={portfolio.transactions} />
+          <BalanceHistoryFiltered transactions={portfolio.transactions} />
         </TabsContent>
 
         <TabsContent value="payments" className="mt-6">

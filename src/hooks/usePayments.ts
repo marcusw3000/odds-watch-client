@@ -44,10 +44,62 @@ export function usePendingPayments() {
       return (data || []) as Payment[];
     },
     enabled: !!user,
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 10000,
   });
 }
 
+export function useCreatePaymentIntent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ amount, method }: { amount: number; method: 'PIX' | 'CARD' }): Promise<{ 
+      clientSecret: string; 
+      paymentIntentId: string;
+    }> => {
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: { amount, method },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-payments'] });
+    },
+  });
+}
+
+export function useConfirmPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (paymentIntentId: string): Promise<{ 
+      success: boolean; 
+      status: string;
+      amount?: number;
+      message?: string;
+    }> => {
+      const { data, error } = await supabase.functions.invoke('confirm-payment', {
+        body: { paymentIntentId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['user-balance'] });
+    },
+  });
+}
+
+// Keep old hooks for backwards compatibility
 export function useCreateDeposit() {
   const queryClient = useQueryClient();
 

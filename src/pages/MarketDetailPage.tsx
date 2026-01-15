@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -39,6 +40,7 @@ export function MarketDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const deepLink = useDeepLink();
+  const { user } = useAuth();
   
   const [event, setEvent] = useState<MarketEvent | null>(null);
   const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
@@ -440,7 +442,13 @@ export function MarketDetailPage() {
                   </div>
                   <Button 
                     variant="yes" 
-                    onClick={() => setSelectedOutcome('YES')}
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=YES` } });
+                        return;
+                      }
+                      setSelectedOutcome('YES');
+                    }}
                     disabled={!statusInfo.canTrade}
                   >
                     Comprar SIM
@@ -459,7 +467,13 @@ export function MarketDetailPage() {
                   </div>
                   <Button 
                     variant="no" 
-                    onClick={() => setSelectedOutcome('NO')}
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=NO` } });
+                        return;
+                      }
+                      setSelectedOutcome('NO');
+                    }}
                     disabled={!statusInfo.canTrade}
                   >
                     Comprar NÃO

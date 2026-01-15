@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,8 +32,12 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  
+  // Get return URL from location state (for after login)
+  const returnTo = (location.state as { returnTo?: string })?.returnTo || '/';
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -71,9 +75,9 @@ export function AuthPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate(returnTo);
     }
-  }, [user, navigate]);
+  }, [user, navigate, returnTo]);
 
   const onLoginSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -93,7 +97,7 @@ export function AuthPage() {
         }
         return;
       }
-      navigate('/');
+      navigate(returnTo);
     } catch (err) {
       setError('Ocorreu um erro. Tente novamente.');
     } finally {
@@ -165,7 +169,7 @@ export function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}${returnTo}`,
         },
       });
 

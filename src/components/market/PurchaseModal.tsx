@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, ChevronUp, ChevronDown } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -249,16 +249,34 @@ export function PurchaseModal({
             <label className="text-sm text-muted-foreground mb-2 block">
               Quantidade de contratos
             </label>
-            <Input
-              type="number"
-              value={shares}
-              onChange={(e) => {
-                setShares(e.target.value);
-                setError(null);
-              }}
-              placeholder="Quantos contratos deseja comprar?"
-              className="h-12 text-lg font-mono"
-            />
+            <div className="relative flex items-center">
+              <Input
+                type="number"
+                value={shares}
+                onChange={(e) => {
+                  setShares(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Quantos contratos?"
+                className="h-12 text-lg font-mono pr-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <div className="absolute right-1 flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShares(String(Math.max(1, sharesNum + 1)))}
+                  className="flex items-center justify-center h-5 w-10 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShares(String(Math.max(1, sharesNum - 1)))}
+                  className="flex items-center justify-center h-5 w-10 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
             <div className="flex gap-2 mt-3">
               {quickShares.map((amt) => (
                 <Button

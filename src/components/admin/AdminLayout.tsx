@@ -17,12 +17,12 @@ import {
   Users,
   Activity,
   Gift,
-  Palette
+  Palette,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { AdminRepository } from '@/services/AdminRepository';
-import { MOCK_ADMIN } from '@/types/admin';
+import { useAuth } from '@/hooks/useAuth';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -46,19 +46,20 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAdmin, loading, signOut } = useAuth();
 
   useEffect(() => {
-    const auth = AdminRepository.isAuthenticated();
-    setIsAuthenticated(auth);
-    
-    if (!auth) {
+    // Wait for loading to complete
+    if (loading) return;
+
+    // If not authenticated or not admin, redirect to login
+    if (!user || !isAdmin) {
       navigate('/admin/login');
     }
-  }, [navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
-  const handleLogout = () => {
-    AdminRepository.logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/admin/login');
   };
 
@@ -67,7 +68,20 @@ export function AdminLayout() {
     return location.pathname.startsWith(path);
   };
 
-  if (!isAuthenticated) {
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated or not admin
+  if (!user || !isAdmin) {
     return null;
   }
 
@@ -140,7 +154,7 @@ export function AdminLayout() {
           {sidebarOpen && (
             <div className="px-3 py-2 mb-2">
               <p className="text-xs text-muted-foreground">Logado como</p>
-              <p className="text-sm font-medium truncate">{MOCK_ADMIN.name}</p>
+              <p className="text-sm font-medium truncate">{user.email}</p>
             </div>
           )}
           <Button

@@ -6,7 +6,6 @@ import { MarketEvent, AuditLog, EventFormData, MOCK_ADMIN, EventStatus } from '@
 const STORAGE_KEYS = {
   EVENTS: 'pm_admin_events',
   AUDIT: 'pm_admin_audit',
-  AUTH: 'pm_admin_auth',
 };
 
 // Generate unique ID
@@ -127,20 +126,6 @@ function parseAuditLog(log: any): AuditLog {
 }
 
 export const AdminRepository = {
-  // ============= AUTH =============
-  
-  isAuthenticated(): boolean {
-    return localStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
-  },
-
-  login(): void {
-    localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
-  },
-
-  logout(): void {
-    localStorage.removeItem(STORAGE_KEYS.AUTH);
-  },
-
   // ============= EVENTS =============
 
   getEvents(): MarketEvent[] {

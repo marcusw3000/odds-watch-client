@@ -1254,6 +1254,10 @@ export type Database = {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
       }
+      check_and_grant_achievements: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       decrement_comment_likes: {
         Args: { p_comment_id: string }
         Returns: undefined

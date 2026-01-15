@@ -47,7 +47,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
   return (
     <div 
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200",
+        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 h-[260px] flex flex-col",
         "hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -60,7 +60,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
       )} />
 
       {/* Header with percentage */}
-      <div className="flex items-start justify-between gap-3 mb-2">
+      <div className="flex items-start justify-between gap-3 min-h-[56px]">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div className={cn(
             "flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden relative bg-secondary",
@@ -85,7 +85,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
           </div>
 
           <h3 
-            className="flex-1 text-sm font-semibold leading-tight line-clamp-3 cursor-pointer hover:text-primary transition-colors"
+            className="flex-1 text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
             onClick={() => onViewDetails?.(event.id)}
           >
             {event.title}
@@ -100,8 +100,8 @@ export const CardStyleSimple = memo(function CardStyleSimple({
         </span>
       </div>
 
-      {/* Status badge (always) or spacer for consistency */}
-      <div className="mb-3 min-h-[24px]">
+      {/* Status badge */}
+      <div className="mt-2 h-[24px]">
         <MarketStatusBadge 
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
@@ -110,53 +110,55 @@ export const CardStyleSimple = memo(function CardStyleSimple({
         />
       </div>
 
-      {/* Simple Yes/No buttons or locked state */}
-      {statusInfo.canTrade ? (
-        <div className="flex gap-2 mb-3">
-          <Button
-            variant="outline"
-            className="flex-1 h-9 border-yes/40 text-yes hover:bg-yes/10 hover:border-yes font-medium"
-            onClick={() => onBuy(event.id, 'YES')}
-          >
-            Yes
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 h-9 border-no/40 text-no hover:bg-no/10 hover:border-no font-medium"
-            onClick={() => onBuy(event.id, 'NO')}
-          >
-            No
-          </Button>
-        </div>
-      ) : (
-        <div className="flex gap-2 mb-3">
-          <div className={cn(
-            "flex-1 h-9 rounded-md flex items-center justify-center font-medium text-sm border",
-            isSettled && resultIsYes 
-              ? "bg-yes/10 text-yes border-yes/30" 
-              : "bg-muted/50 text-muted-foreground border-border"
-          )}>
-            {isSettled ? (resultIsYes ? '✓ Yes' : 'Yes') : <Lock className="h-4 w-4" />}
+      {/* Buttons - grows to fill space */}
+      <div className="flex-1 flex flex-col justify-center my-3">
+        {statusInfo.canTrade ? (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-9 border-yes/40 text-yes hover:bg-yes/10 hover:border-yes font-medium"
+              onClick={() => onBuy(event.id, 'YES')}
+            >
+              Yes
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 h-9 border-no/40 text-no hover:bg-no/10 hover:border-no font-medium"
+              onClick={() => onBuy(event.id, 'NO')}
+            >
+              No
+            </Button>
           </div>
-          <div className={cn(
-            "flex-1 h-9 rounded-md flex items-center justify-center font-medium text-sm border",
-            isSettled && !resultIsYes 
-              ? "bg-no/10 text-no border-no/30" 
-              : "bg-muted/50 text-muted-foreground border-border"
-          )}>
-            {isSettled ? (!resultIsYes ? '✓ No' : 'No') : <Lock className="h-4 w-4" />}
+        ) : (
+          <div className="flex gap-2">
+            <div className={cn(
+              "flex-1 h-9 rounded-md flex items-center justify-center font-medium text-sm border",
+              isSettled && resultIsYes 
+                ? "bg-yes/10 text-yes border-yes/30" 
+                : "bg-muted/50 text-muted-foreground border-border"
+            )}>
+              {isSettled ? (resultIsYes ? '✓ Yes' : 'Yes') : <Lock className="h-4 w-4" />}
+            </div>
+            <div className={cn(
+              "flex-1 h-9 rounded-md flex items-center justify-center font-medium text-sm border",
+              isSettled && !resultIsYes 
+                ? "bg-no/10 text-no border-no/30" 
+                : "bg-muted/50 text-muted-foreground border-border"
+            )}>
+              {isSettled ? (!resultIsYes ? '✓ No' : 'No') : <Lock className="h-4 w-4" />}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Payout info */}
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>R$1 → <span className={cn("font-medium", isSettled && resultIsYes ? "text-yes" : "text-yes")}>R${(100 / yesPrice).toFixed(2)}</span></span>
-        <span>R$1 → <span className={cn("font-medium", isSettled && !resultIsYes ? "text-no" : "text-no")}>R${(100 / event.outcomes.NO.price).toFixed(2)}</span></span>
+        {/* Payout info */}
+        <div className="flex justify-between text-xs text-muted-foreground mt-3">
+          <span>R$1 → <span className="font-medium text-yes">R${(100 / yesPrice).toFixed(2)}</span></span>
+          <span>R$1 → <span className="font-medium text-no">R${(100 / event.outcomes.NO.price).toFixed(2)}</span></span>
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
+      {/* Footer - always at bottom */}
+      <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <TrendingUp className="h-3 w-3" />
           <span>{formatVolume(event.volume)}</span>

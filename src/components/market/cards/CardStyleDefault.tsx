@@ -51,7 +51,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
   return (
     <div 
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200",
+        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 h-[260px] flex flex-col",
         "hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -64,7 +64,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
       )} />
 
       {/* Header with image and title */}
-      <div className="flex items-start gap-3 mb-2">
+      <div className="flex items-start gap-3 min-h-[48px]">
         <div className={cn(
           "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
           !statusInfo.canTrade && "grayscale"
@@ -105,8 +105,8 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         </h3>
       </div>
 
-      {/* Status badge (always) or spacer for consistency */}
-      <div className="mb-3 min-h-[24px]">
+      {/* Status badge */}
+      <div className="mt-2 h-[24px]">
         <MarketStatusBadge 
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
@@ -115,8 +115,8 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         />
       </div>
 
-      {/* Options */}
-      <div className="space-y-2 mb-4">
+      {/* Options - grows to fill space */}
+      <div className="flex-1 flex flex-col justify-center space-y-2 my-3">
         <div className="flex items-center justify-between">
           <span className={cn(
             "text-xs text-muted-foreground truncate max-w-[100px]",
@@ -206,8 +206,8 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-border">
+      {/* Footer - always at bottom */}
+      <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <TrendingUp className="h-3 w-3" />
           <span>{formatVolume(event.volume)}</span>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2, Check, Plus } from 'lucide-react';
+import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2, Check, Plus, Copy, CheckCircle } from 'lucide-react';
 import { Elements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { useCreatePaymentIntent, useConfirmPayment } from '@/hooks/usePayments';
+import { useCreatePaymentIntent, useConfirmPayment, useCheckPixStatus } from '@/hooks/usePayments';
 import { useSavedCards, useChargeSavedCard } from '@/hooks/useSavedCards';
 import { stripePromise } from '@/lib/stripe';
 import { StripePaymentForm } from './StripePaymentForm';
@@ -21,15 +21,7 @@ interface DepositModalProps {
 
 const quickAmounts = [50, 100, 200, 500, 1000];
 
-type Step = 'amount' | 'payment';
-
-const cardBrandIcons: Record<string, string> = {
-  visa: '💳',
-  mastercard: '💳',
-  amex: '💳',
-  discover: '💳',
-  unknown: '💳',
-};
+type Step = 'amount' | 'payment' | 'pix-waiting';
 
 const formatCardBrand = (brand: string) => {
   const brands: Record<string, string> = {
@@ -54,9 +46,17 @@ export function DepositModal({ onClose }: DepositModalProps) {
   const [saveCard, setSaveCard] = useState(true);
   const [selectedSavedCard, setSelectedSavedCard] = useState<string | null>(null);
   const [useNewCard, setUseNewCard] = useState(false);
+  const [pixQrCode, setPixQrCode] = useState<string | null>(null);
+  const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
+  const [pixExpiresAt, setPixExpiresAt] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [pixConfirmed, setPixConfirmed] = useState(false);
+  
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const createPaymentIntent = useCreatePaymentIntent();
   const confirmPayment = useConfirmPayment();
+  const checkPixStatus = useCheckPixStatus();
   const chargeSavedCard = useChargeSavedCard();
   const { data: savedCards, isLoading: isLoadingSavedCards } = useSavedCards();
   const { toast } = useToast();
@@ -78,7 +78,66 @@ export function DepositModal({ onClose }: DepositModalProps) {
     requestAnimationFrame(() => setIsVisible(true));
   }, []);
 
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const checkPixPaymentStatus = useCallback(async () => {
+    if (!paymentIntentId || pixConfirmed) return;
+
+    try {
+      const result = await checkPixStatus.mutateAsync(paymentIntentId);
+      
+      // Update PIX data if available
+      if (result.pixQrCode) setPixQrCode(result.pixQrCode);
+      if (result.pixCopyPaste) setPixCopyPaste(result.pixCopyPaste);
+      if (result.expiresAt) setPixExpiresAt(result.expiresAt);
+      
+      if (result.status === 'succeeded') {
+        setPixConfirmed(true);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+        toast({
+          title: 'PIX confirmado!',
+          description: `R$ ${numericAmount.toFixed(2)} foi adicionado ao seu saldo.`,
+        });
+        // Wait a bit for the user to see the success state
+        setTimeout(() => {
+          handleClose();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error checking PIX status:', error);
+    }
+  }, [paymentIntentId, pixConfirmed, numericAmount, toast]);
+
+  // Start polling when in PIX waiting step
+  useEffect(() => {
+    if (step === 'pix-waiting' && paymentIntentId && !pixConfirmed) {
+      // Initial check
+      checkPixPaymentStatus();
+      
+      // Start polling every 3 seconds
+      pollingIntervalRef.current = setInterval(checkPixPaymentStatus, 3000);
+      
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
+  }, [step, paymentIntentId, pixConfirmed, checkPixPaymentStatus]);
+
   const handleClose = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
     setIsClosing(true);
     setIsVisible(false);
     setTimeout(onClose, 200);
@@ -119,7 +178,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
       }
     }
 
-    // Otherwise, create a new payment intent
+    // Create a new payment intent
     try {
       const result = await createPaymentIntent.mutateAsync({ 
         amount: numericAmount, 
@@ -130,7 +189,12 @@ export function DepositModal({ onClose }: DepositModalProps) {
       if (result.clientSecret) {
         setClientSecret(result.clientSecret);
         setPaymentIntentId(result.paymentIntentId);
-        setStep('payment');
+        
+        if (method === 'PIX') {
+          setStep('pix-waiting');
+        } else {
+          setStep('payment');
+        }
       }
     } catch (error) {
       toast({
@@ -151,7 +215,6 @@ export function DepositModal({ onClose }: DepositModalProps) {
         });
         handleClose();
       } catch (error) {
-        // Even if confirmation fails, the payment went through
         toast({
           title: 'Pagamento processado',
           description: 'Seu saldo será atualizado em instantes.',
@@ -170,9 +233,16 @@ export function DepositModal({ onClose }: DepositModalProps) {
   };
 
   const handleBack = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
     setStep('amount');
     setClientSecret(null);
     setPaymentIntentId(null);
+    setPixQrCode(null);
+    setPixCopyPaste(null);
+    setPixExpiresAt(null);
+    setPixConfirmed(false);
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -189,6 +259,26 @@ export function DepositModal({ onClose }: DepositModalProps) {
   const handleSelectSavedCard = (cardId: string) => {
     setSelectedSavedCard(cardId);
     setUseNewCard(false);
+  };
+
+  const handleCopyPixCode = async () => {
+    if (pixCopyPaste) {
+      try {
+        await navigator.clipboard.writeText(pixCopyPaste);
+        setCopied(true);
+        toast({
+          title: 'Código copiado!',
+          description: 'Cole o código no seu app de banco para pagar.',
+        });
+        setTimeout(() => setCopied(false), 3000);
+      } catch {
+        toast({
+          title: 'Erro ao copiar',
+          description: 'Tente selecionar e copiar manualmente.',
+          variant: 'destructive',
+        });
+      }
+    }
   };
 
   const stripeAppearance = {
@@ -227,6 +317,18 @@ export function DepositModal({ onClose }: DepositModalProps) {
 
   const isProcessing = createPaymentIntent.isPending || chargeSavedCard.isPending;
 
+  // Calculate time remaining for PIX
+  const getTimeRemaining = () => {
+    if (!pixExpiresAt) return null;
+    const now = new Date();
+    const expires = new Date(pixExpiresAt);
+    const diff = expires.getTime() - now.getTime();
+    if (diff <= 0) return 'Expirado';
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   const modalContent = (
     <div 
       className={cn(
@@ -247,7 +349,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2">
-            {step === 'payment' && (
+            {(step === 'payment' || step === 'pix-waiting') && !pixConfirmed && (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -260,7 +362,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
             )}
             <ArrowDownToLine className="h-5 w-5 text-green-500" />
             <h2 className="text-lg font-semibold">
-              {step === 'amount' ? 'Depositar' : 'Pagamento'}
+              {step === 'amount' ? 'Depositar' : step === 'pix-waiting' ? 'Aguardando PIX' : 'Pagamento'}
             </h2>
           </div>
           <Button variant="ghost" size="icon" onClick={handleClose} type="button">
@@ -477,6 +579,74 @@ export function DepositModal({ onClose }: DepositModalProps) {
                 )}
               </Button>
             </>
+          ) : step === 'pix-waiting' ? (
+            <div className="space-y-6">
+              {pixConfirmed ? (
+                <div className="text-center space-y-4 py-6">
+                  <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
+                    <CheckCircle className="h-10 w-10 text-green-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-green-500">Pagamento Confirmado!</h3>
+                    <p className="text-muted-foreground mt-1">
+                      R$ {numericAmount.toFixed(2)} foi adicionado ao seu saldo.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Amount summary */}
+                  <div className="p-4 rounded-lg bg-muted/30">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Valor a pagar</span>
+                      <span className="text-xl font-bold text-foreground">
+                        R$ {numericAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* QR Code or Loading */}
+                  {!stripePromise || !clientSecret ? (
+                    <div className="space-y-4 py-6">
+                      <Skeleton className="h-48 w-48 mx-auto" />
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Gerando código PIX...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <Elements 
+                      stripe={stripePromise} 
+                      options={{
+                        clientSecret,
+                        appearance: stripeAppearance,
+                        locale: 'pt-BR',
+                      }}
+                    >
+                      <PixPaymentContent
+                        pixQrCode={pixQrCode}
+                        pixCopyPaste={pixCopyPaste}
+                        expiresAt={pixExpiresAt}
+                        onCopy={handleCopyPixCode}
+                        copied={copied}
+                        getTimeRemaining={getTimeRemaining}
+                        isChecking={checkPixStatus.isPending}
+                      />
+                    </Elements>
+                  )}
+
+                  {/* Status */}
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Aguardando pagamento...</span>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    O pagamento será confirmado automaticamente após a transferência PIX.
+                  </p>
+                </>
+              )}
+            </div>
           ) : (
             <div className="space-y-4">
               {!stripePromise ? (
@@ -526,4 +696,92 @@ export function DepositModal({ onClose }: DepositModalProps) {
   );
 
   return createPortal(modalContent, document.body);
+}
+
+// Separate component for PIX payment content (needs to be inside Elements)
+function PixPaymentContent({
+  pixQrCode,
+  pixCopyPaste,
+  expiresAt,
+  onCopy,
+  copied,
+  getTimeRemaining,
+  isChecking,
+}: {
+  pixQrCode: string | null;
+  pixCopyPaste: string | null;
+  expiresAt: string | null;
+  onCopy: () => void;
+  copied: boolean;
+  getTimeRemaining: () => string | null;
+  isChecking: boolean;
+}) {
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
+
+  // Update time remaining every second
+  useEffect(() => {
+    const updateTime = () => {
+      setTimeRemaining(getTimeRemaining());
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [getTimeRemaining]);
+
+  return (
+    <div className="space-y-4">
+      {/* QR Code */}
+      {pixQrCode ? (
+        <div className="flex flex-col items-center space-y-4">
+          <div className="p-4 bg-white rounded-lg">
+            <img 
+              src={pixQrCode} 
+              alt="QR Code PIX" 
+              className="w-48 h-48"
+            />
+          </div>
+          
+          {timeRemaining && (
+            <p className="text-sm text-muted-foreground">
+              Expira em: <span className="font-mono font-bold">{timeRemaining}</span>
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center space-y-4 py-4">
+          <Skeleton className="h-48 w-48" />
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Carregando QR Code...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Copy/Paste code */}
+      {pixCopyPaste && (
+        <div className="space-y-2">
+          <Label>Código PIX Copia e Cola</Label>
+          <div className="flex gap-2">
+            <Input 
+              value={pixCopyPaste} 
+              readOnly 
+              className="font-mono text-xs"
+            />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={onCopy}
+              className="shrink-0"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

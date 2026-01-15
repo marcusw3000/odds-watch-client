@@ -99,6 +99,37 @@ export function useConfirmPayment() {
   });
 }
 
+export function useCheckPixStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (paymentIntentId: string): Promise<{ 
+      status: string;
+      pixQrCode?: string;
+      pixCopyPaste?: string;
+      expiresAt?: string;
+      amount?: number;
+      message?: string;
+    }> => {
+      const { data, error } = await supabase.functions.invoke('check-pix-status', {
+        body: { paymentIntentId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.status === 'succeeded') {
+        queryClient.invalidateQueries({ queryKey: ['payments'] });
+        queryClient.invalidateQueries({ queryKey: ['pending-payments'] });
+        queryClient.invalidateQueries({ queryKey: ['user-balance'] });
+      }
+    },
+  });
+}
+
 // Keep old hooks for backwards compatibility
 export function useCreateDeposit() {
   const queryClient = useQueryClient();

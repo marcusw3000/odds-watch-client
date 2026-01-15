@@ -543,7 +543,7 @@ export const MarketDataProvider = {
     return getSellQuote(market.lmsr, outcome, shares);
   },
 
-  // Compra de contrato usando LMSR
+  // Compra de contrato usando edge function (server-side)
   async purchaseContract(
     eventId: string,
     outcome: 'YES' | 'NO',
@@ -563,7 +563,55 @@ export const MarketDataProvider = {
     if (market.status !== 'OPEN') {
       return { success: false, message: 'Este mercado não está aberto para negociação.' };
     }
+
+    // Check if this is a mock market (non-UUID ID) - handle locally for demo purposes
+    const isMockMarket = eventId.startsWith('mock-');
     
+    if (isMockMarket) {
+      // For mock markets, use client-side logic (demo only)
+      return this.purchaseContractMock(eventId, outcome, shares, maxCost, market, user.id);
+    }
+
+    // For real markets, use server-side edge function
+    try {
+      const { data, error } = await supabase.functions.invoke('execute-trade', {
+        body: { marketId: eventId, outcome, shares, maxCost }
+      });
+
+      if (error) {
+        console.error('Trade error:', error);
+        return { success: false, message: error.message || 'Erro ao executar compra.' };
+      }
+
+      if (!data.success) {
+        return { 
+          success: false, 
+          message: data.message || 'Erro ao executar compra.',
+          quote: data.quote,
+        };
+      }
+
+      return {
+        success: true,
+        message: data.message,
+        contract: data.contract,
+        quote: data.quote,
+      };
+    } catch (err) {
+      console.error('Trade error:', err);
+      return { success: false, message: 'Erro ao processar compra.' };
+    }
+  },
+
+  // Mock market purchase (for demo purposes only - no real DB changes)
+  async purchaseContractMock(
+    eventId: string,
+    outcome: 'YES' | 'NO',
+    shares: number,
+    maxCost: number,
+    market: MarketEvent,
+    userId: string
+  ): Promise<{ success: boolean; message: string; contract?: UserContract; quote?: TradeQuote }> {
     const quote = getQuote(market.lmsr, outcome, shares);
     
     if (quote.cost > maxCost * 1.05) {
@@ -578,170 +626,25 @@ export const MarketDataProvider = {
     const { data: balanceData } = await supabase
       .from('user_balances')
       .select('balance')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (!balanceData || balanceData.balance < quote.cost) {
       return { success: false, message: 'Saldo insuficiente.', quote };
     }
 
-    // Execute trade - update market LMSR state
-    const newState = executeBuy(market.lmsr, outcome, shares);
-    const newYesPrice = getPriceYes(newState);
-    const newNoPrice = getPriceNo(newState);
-
-    // Check if this is a mock market (non-UUID ID)
-    const isMockMarket = eventId.startsWith('mock-');
-
-    // Update market in database (skip for mock markets)
-    if (!isMockMarket) {
-      const { error: marketError } = await supabase
-        .from('markets')
-        .update({
-          yes_shares: newState.qYes,
-          no_shares: newState.qNo,
-          current_yes_price: newYesPrice / 100,
-          current_no_price: newNoPrice / 100,
-          total_volume: market.volume + quote.cost,
-        })
-        .eq('id', eventId);
-
-      if (marketError) {
-        console.error('Error updating market:', marketError);
-        return { success: false, message: 'Erro ao processar compra.' };
-      }
-    }
-
-    // Get or create wallet for fee processing
-    let wallet = await supabase
-      .from('wallets')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    // Calculate fee using trading formula: fee = roundUp(0.07 × C × P × (1-P))
-    // P = price per contract (as decimal 0-1), C = number of contracts
-    const pricePerContract = quote.avgPrice / 100; // Convert from cents to decimal (0-1)
+    // Calculate fee
+    const pricePerContract = quote.avgPrice / 100;
     const feeResult = FeeEngine.calculateTradeFee(shares, pricePerContract, quote.cost);
     const feeAmount = feeResult.feeAmount;
-    
-    // Create fee snapshot for audit
-    const feeSnapshotId = await FeeEngine.createSnapshot(feeResult.appliedRule, feeResult.tier);
-
     const totalDeduction = quote.cost + feeAmount;
 
-    // Check if balance is sufficient including fee
     if (balanceData.balance < totalDeduction) {
       return { success: false, message: 'Saldo insuficiente (incluindo taxas).', quote };
     }
 
-    // Deduct balance (includes fee)
-    const { error: balanceError } = await supabase
-      .from('user_balances')
-      .update({ balance: balanceData.balance - totalDeduction })
-      .eq('user_id', user.id);
-
-    if (balanceError) {
-      console.error('Error updating balance:', balanceError);
-      return { success: false, message: 'Erro ao atualizar saldo.' };
-    }
-
-    // Record ledger entry if wallet exists
-    if (wallet.data?.id && feeSnapshotId) {
-      await FeeEngine.recordLedgerEntry({
-        userId: user.id,
-        walletId: wallet.data.id,
-        refType: 'TRADE',
-        refId: eventId,
-        direction: 'DEBIT',
-        amount: quote.cost,
-        feeAmount,
-        netAmount: quote.cost,
-        platformRevenue: feeAmount,
-        feeSnapshotId,
-        status: 'COMPLETED',
-        meta: { action: 'BUY', outcome, shares, marketId: eventId }
-      });
-
-      // Aggregate platform revenue
-      if (feeAmount > 0) {
-        await FeeEngine.aggregateRevenue('TRADE', feeAmount);
-      }
-    }
-
-    // Record transaction (for all markets including mock)
-    await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        market_id: isMockMarket ? '00000000-0000-0000-0000-000000000000' : eventId,
-        type: 'BUY',
-        position: outcome,
-        shares,
-        price_per_share: quote.avgPrice / 100,
-        total_amount: -totalDeduction,
-      });
-
-    // For mock markets, return success after processing balance
-    if (isMockMarket) {
-      const newContract: UserContract = {
-        id: `ctr-${Date.now()}`,
-        eventId,
-        eventTitle: market.title,
-        outcome,
-        quantity: shares,
-        priceAtPurchase: quote.avgPrice,
-        purchasedAt: new Date(),
-        status: 'ACTIVE',
-      };
-      
-      return {
-        success: true,
-        message: feeAmount > 0 
-          ? `Compra realizada! Taxa: R$ ${feeAmount.toFixed(2)}`
-          : 'Compra realizada com sucesso!',
-        contract: newContract,
-        quote,
-      };
-    }
-
-    // For real markets (non-mock), also update contracts in DB
-    if (!isMockMarket) {
-      // Create or update contract
-      const { data: existingContract } = await supabase
-        .from('user_contracts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('market_id', eventId)
-        .eq('position', outcome)
-        .maybeSingle();
-
-      if (existingContract) {
-        const newShares = existingContract.shares + shares;
-        const newTotalInvested = existingContract.total_invested + quote.cost;
-        const newAvgPrice = newTotalInvested / newShares;
-
-        await supabase
-          .from('user_contracts')
-          .update({
-            shares: newShares,
-            total_invested: newTotalInvested,
-            average_price: newAvgPrice,
-          })
-          .eq('id', existingContract.id);
-      } else {
-        await supabase
-          .from('user_contracts')
-          .insert({
-            user_id: user.id,
-            market_id: eventId,
-            position: outcome,
-            shares,
-            average_price: quote.avgPrice / 100,
-            total_invested: quote.cost,
-          });
-      }
-    }
+    // Note: For mock markets, we can't update balance due to RLS restrictions
+    // This is expected - mock markets are for UI demonstration only
 
     const newContract: UserContract = {
       id: `ctr-${Date.now()}`,
@@ -757,14 +660,14 @@ export const MarketDataProvider = {
     return {
       success: true,
       message: feeAmount > 0 
-        ? `Compra realizada com sucesso! Taxa: R$ ${feeAmount.toFixed(2)}`
-        : 'Compra realizada com sucesso!',
+        ? `Compra simulada! Taxa: R$ ${feeAmount.toFixed(2)} (mercado demo)`
+        : 'Compra simulada! (mercado demo)',
       contract: newContract,
       quote,
     };
   },
 
-  // Venda de contrato
+  // Venda de contrato usando edge function (server-side)
   async sellContract(
     contractId: string,
     minValue: number
@@ -774,134 +677,35 @@ export const MarketDataProvider = {
       return { success: false, message: 'Usuário não autenticado.' };
     }
 
-    // Get contract
-    const { data: contract } = await supabase
-      .from('user_contracts')
-      .select('*, markets(title, yes_shares, no_shares, lmsr_b, status)')
-      .eq('id', contractId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!contract) {
-      return { success: false, message: 'Contrato não encontrado.' };
-    }
-
-    const market = contract.markets as any;
-    if (market.status !== 'OPEN') {
-      return { success: false, message: 'Este mercado não está aberto para negociação.' };
-    }
-
-    const lmsr: LMSRState = {
-      b: market.lmsr_b,
-      qYes: market.yes_shares,
-      qNo: market.no_shares,
-    };
-
-    const quote = getSellQuote(lmsr, contract.position as 'YES' | 'NO', contract.shares);
-    
-    if (quote.cost < minValue * 0.95) {
-      return { 
-        success: false, 
-        message: 'O preço mudou significativamente. Por favor, atualize e tente novamente.',
-        quote,
-      };
-    }
-
-    // Calculate fee using trading formula: fee = roundUp(0.07 × C × P × (1-P))
-    // P = price per contract (as decimal 0-1), C = number of contracts
-    const pricePerContract = quote.avgPrice / 100; // Convert from cents to decimal (0-1)
-    const feeResult = FeeEngine.calculateTradeFee(contract.shares, pricePerContract, quote.cost);
-    const feeAmount = feeResult.feeAmount;
-    const netProceeds = quote.cost - feeAmount;
-    
-    // Create fee snapshot for audit
-    const feeSnapshotId = await FeeEngine.createSnapshot(feeResult.appliedRule, feeResult.tier);
-
-    // Execute sell
-    const newState = executeSell(lmsr, contract.position as 'YES' | 'NO', contract.shares);
-    const newYesPrice = getPriceYes(newState);
-    const newNoPrice = getPriceNo(newState);
-
-    // Update market
-    await supabase
-      .from('markets')
-      .update({
-        yes_shares: newState.qYes,
-        no_shares: newState.qNo,
-        current_yes_price: newYesPrice / 100,
-        current_no_price: newNoPrice / 100,
-      })
-      .eq('id', contract.market_id);
-
-    // Add balance (net of fee)
-    const { data: balanceData } = await supabase
-      .from('user_balances')
-      .select('balance')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    await supabase
-      .from('user_balances')
-      .update({ balance: (balanceData?.balance || 0) + netProceeds })
-      .eq('user_id', user.id);
-
-    // Get wallet for ledger entry
-    const wallet = await supabase
-      .from('wallets')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    // Record ledger entry if wallet exists
-    if (wallet.data?.id && feeSnapshotId) {
-      await FeeEngine.recordLedgerEntry({
-        userId: user.id,
-        walletId: wallet.data.id,
-        refType: 'TRADE',
-        refId: contract.market_id,
-        direction: 'CREDIT',
-        amount: quote.cost,
-        feeAmount,
-        netAmount: netProceeds,
-        platformRevenue: feeAmount,
-        feeSnapshotId,
-        status: 'COMPLETED',
-        meta: { action: 'SELL', position: contract.position, shares: contract.shares, contractId }
+    // Use server-side edge function for secure trade execution
+    try {
+      const { data, error } = await supabase.functions.invoke('execute-sell', {
+        body: { contractId, minValue }
       });
 
-      // Aggregate platform revenue
-      if (feeAmount > 0) {
-        await FeeEngine.aggregateRevenue('TRADE', feeAmount);
+      if (error) {
+        console.error('Sell error:', error);
+        return { success: false, message: error.message || 'Erro ao executar venda.' };
       }
+
+      if (!data.success) {
+        return { 
+          success: false, 
+          message: data.message || 'Erro ao executar venda.',
+          quote: data.quote,
+        };
+      }
+
+      return {
+        success: true,
+        message: data.message,
+        saleValue: data.saleValue,
+        quote: data.quote,
+      };
+    } catch (err) {
+      console.error('Sell error:', err);
+      return { success: false, message: 'Erro ao processar venda.' };
     }
-
-    // Delete contract
-    await supabase
-      .from('user_contracts')
-      .delete()
-      .eq('id', contractId);
-
-    // Record transaction
-    await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        market_id: contract.market_id,
-        type: 'SELL',
-        position: contract.position,
-        shares: contract.shares,
-        price_per_share: quote.avgPrice / 100,
-        total_amount: netProceeds, // Net of fee
-      });
-
-    return {
-      success: true,
-      message: feeAmount > 0 
-        ? `Venda realizada com sucesso! Taxa: R$ ${feeAmount.toFixed(2)}`
-        : 'Venda realizada com sucesso!',
-      saleValue: netProceeds,
-      quote,
-    };
   },
 
   // Get current price for contract

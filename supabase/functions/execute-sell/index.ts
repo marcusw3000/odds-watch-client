@@ -183,24 +183,17 @@ Deno.serve(async (req) => {
       })
       .eq("id", contract.market_id);
 
-    // Get and update balance
-    const { data: balanceData } = await supabaseAdmin
-      .from("user_balances")
-      .select("balance")
+    // Get wallet and update balance
+    const { data: walletData } = await supabaseAdmin
+      .from("wallets")
+      .select("id, balance_available")
       .eq("user_id", userId)
       .single();
 
     await supabaseAdmin
-      .from("user_balances")
-      .update({ balance: (balanceData?.balance || 0) + netProceeds })
-      .eq("user_id", userId);
-
-    // Get wallet for ledger entry
-    const { data: wallet } = await supabaseAdmin
       .from("wallets")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
+      .update({ balance_available: (walletData?.balance_available || 0) + netProceeds })
+      .eq("user_id", userId);
 
     // Create fee snapshot
     const { data: feeSnapshot } = await supabaseAdmin
@@ -214,10 +207,10 @@ Deno.serve(async (req) => {
       .single();
 
     // Record ledger entry
-    if (wallet?.id && feeSnapshot?.id) {
+    if (walletData?.id && feeSnapshot?.id) {
       await supabaseAdmin.from("ledger_entries").insert({
         user_id: userId,
-        wallet_id: wallet.id,
+        wallet_id: walletData.id,
         ref_type: "TRADE",
         ref_id: contract.market_id,
         direction: "CREDIT",

@@ -96,65 +96,31 @@ serve(async (req) => {
       // Update payment record
       const { error: updateError } = await supabaseAdmin
         .from("payments")
-        .update({ status: "COMPLETED" })
+        .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
         .eq("stripe_session_id", paymentIntentId);
 
       if (updateError) {
         logStep("Error updating payment", { error: updateError });
       }
 
-      // Update user balance
-      const { error: balanceError } = await supabaseAdmin.rpc("", {}).then(() => 
-        supabaseAdmin
-          .from("user_balances")
-          .update({ 
-            balance: supabaseAdmin.rpc as any // This won't work, need raw SQL
-          })
-          .eq("user_id", user.id)
-      );
+      // Use atomic deposit function to update wallet balance
+      const { data: depositSuccess, error: depositError } = await supabaseAdmin
+        .rpc('atomic_deposit_balance', {
+          p_user_id: user.id,
+          p_amount: amount
+        });
 
-      // Use upsert for balance update
-      const { data: currentBalance } = await supabaseAdmin
-        .from("user_balances")
-        .select("balance, total_deposited")
-        .eq("user_id", user.id)
-        .single();
-
-      if (currentBalance) {
-        const { error: balanceUpdateError } = await supabaseAdmin
-          .from("user_balances")
-          .update({
-            balance: currentBalance.balance + amount,
-            total_deposited: currentBalance.total_deposited + amount,
-          })
-          .eq("user_id", user.id);
-
-        if (balanceUpdateError) {
-          logStep("Error updating balance", { error: balanceUpdateError });
-          throw new Error("Failed to update balance");
-        }
-        logStep("Balance updated", { newBalance: currentBalance.balance + amount });
-      } else {
-        // Create new balance record
-        const { error: insertBalanceError } = await supabaseAdmin
-          .from("user_balances")
-          .insert({
-            user_id: user.id,
-            balance: amount,
-            total_deposited: amount,
-          });
-
-        if (insertBalanceError) {
-          logStep("Error creating balance", { error: insertBalanceError });
-          throw new Error("Failed to create balance");
-        }
-        logStep("Balance created", { balance: amount });
+      if (depositError) {
+        logStep("Error with atomic deposit", { error: depositError });
+        throw new Error("Failed to update balance");
       }
+
+      logStep("Balance updated atomically", { amount });
 
       // Create notification
       await supabaseAdmin.from("notifications").insert({
         user_id: user.id,
-        type: "DEPOSIT",
+        type: "TRADE_EXECUTED",
         title: "Depósito confirmado",
         message: `Seu depósito de R$ ${amount.toFixed(2)} foi confirmado com sucesso!`,
       });

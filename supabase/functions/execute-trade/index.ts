@@ -184,14 +184,14 @@ Deno.serve(async (req) => {
     const feeAmount = calculateTradingFee(shares, pricePerContract);
     const totalDeduction = cost + feeAmount;
 
-    // Get user balance with lock (using service role)
-    const { data: balanceData, error: balanceError } = await supabaseAdmin
-      .from("user_balances")
-      .select("balance")
+    // Get user wallet balance with lock (using service role)
+    const { data: walletData, error: walletError } = await supabaseAdmin
+      .from("wallets")
+      .select("id, balance_available")
       .eq("user_id", userId)
       .single();
 
-    if (balanceError || !balanceData) {
+    if (walletError || !walletData) {
       return new Response(
         JSON.stringify({ success: false, message: "Erro ao verificar saldo" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
     }
 
     // Check sufficient balance
-    if (balanceData.balance < totalDeduction) {
+    if (walletData.balance_available < totalDeduction) {
       return new Response(
         JSON.stringify({ success: false, message: "Saldo insuficiente" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -230,10 +230,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Deduct balance
+    // Deduct balance from wallet
     const { error: deductError } = await supabaseAdmin
-      .from("user_balances")
-      .update({ balance: balanceData.balance - totalDeduction })
+      .from("wallets")
+      .update({ balance_available: walletData.balance_available - totalDeduction })
       .eq("user_id", userId);
 
     if (deductError) {
@@ -256,13 +256,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get or create wallet for ledger entry
-    const { data: wallet } = await supabaseAdmin
-      .from("wallets")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-
     // Create fee snapshot
     const { data: feeSnapshot } = await supabaseAdmin
       .from("fee_policy_snapshots")
@@ -275,10 +268,10 @@ Deno.serve(async (req) => {
       .single();
 
     // Record ledger entry
-    if (wallet?.id && feeSnapshot?.id) {
+    if (walletData?.id && feeSnapshot?.id) {
       await supabaseAdmin.from("ledger_entries").insert({
         user_id: userId,
-        wallet_id: wallet.id,
+        wallet_id: walletData.id,
         ref_type: "TRADE",
         ref_id: marketId,
         direction: "DEBIT",

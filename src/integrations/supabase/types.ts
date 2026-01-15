@@ -1115,36 +1115,6 @@ export type Database = {
           },
         ]
       }
-      user_balances: {
-        Row: {
-          balance: number
-          created_at: string
-          id: string
-          total_deposited: number
-          total_withdrawn: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          balance?: number
-          created_at?: string
-          id?: string
-          total_deposited?: number
-          total_withdrawn?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          balance?: number
-          created_at?: string
-          id?: string
-          total_deposited?: number
-          total_withdrawn?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_contracts: {
         Row: {
           average_price: number

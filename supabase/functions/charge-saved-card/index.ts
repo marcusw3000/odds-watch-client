@@ -123,42 +123,20 @@ serve(async (req) => {
       logStep("Error inserting payment record", { error: insertError });
     }
 
-    // Update user balance if payment succeeded
+    // Update wallet balance if payment succeeded
     if (paymentIntent.status === 'succeeded') {
-      const { error: balanceError } = await supabaseAdmin.rpc('increment_balance', {
-        p_user_id: user.id,
-        p_amount: amount,
-      });
+      const { error: depositError } = await supabaseAdmin
+        .rpc('atomic_deposit_balance', {
+          p_user_id: user.id,
+          p_amount: amount
+        });
 
-      if (balanceError) {
-        logStep("Error updating balance", { error: balanceError });
-        // Try alternate method
-        const { data: existingBalance } = await supabaseAdmin
-          .from('user_balances')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (existingBalance) {
-          await supabaseAdmin
-            .from('user_balances')
-            .update({ 
-              balance: existingBalance.balance + amount,
-              total_deposited: existingBalance.total_deposited + amount,
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', user.id);
-        } else {
-          await supabaseAdmin
-            .from('user_balances')
-            .insert({
-              user_id: user.id,
-              balance: amount,
-              total_deposited: amount,
-            });
-        }
+      if (depositError) {
+        logStep("Error with atomic deposit", { error: depositError });
+        throw new Error("Failed to update balance");
       }
-      logStep("Balance updated");
+
+      logStep("Balance updated atomically", { amount });
     }
 
     return new Response(

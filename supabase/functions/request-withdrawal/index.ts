@@ -59,21 +59,23 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Check user balance
-    const { data: balance, error: balanceError } = await supabaseAdmin
-      .from("user_balances")
-      .select("balance")
-      .eq("user_id", user.id)
-      .single();
+    // Use atomic withdrawal to prevent race conditions
+    // This locks the row and checks/deducts balance atomically
+    const { data: withdrawSuccess, error: withdrawError } = await supabaseAdmin
+      .rpc('atomic_withdraw_balance', {
+        p_user_id: user.id,
+        p_amount: amount
+      });
 
-    if (balanceError || !balance) {
-      throw new Error("Não foi possível verificar seu saldo");
+    if (withdrawError) {
+      logStep("Atomic withdraw error", { error: withdrawError.message });
+      throw new Error("Erro ao processar saque. Tente novamente.");
     }
 
-    if (balance.balance < amount) {
-      throw new Error(`Saldo insuficiente. Seu saldo é R$${balance.balance.toFixed(2)}`);
+    if (!withdrawSuccess) {
+      throw new Error("Saldo insuficiente para este saque");
     }
-    logStep("Balance verified", { currentBalance: balance.balance });
+    logStep("Balance atomically deducted", { amount });
 
     // No withdrawal fee
     const fee = 0;
@@ -100,15 +102,7 @@ serve(async (req) => {
       throw new Error("Erro ao criar solicitação de saque");
     }
     logStep("Withdrawal request created", { paymentId: payment.id });
-
-    // Lock the amount in user balance
-    await supabaseAdmin
-      .from("user_balances")
-      .update({
-        balance: balance.balance - amount,
-      })
-      .eq("user_id", user.id);
-    logStep("Balance locked");
+    // Note: Balance was already atomically deducted by atomic_withdraw_balance
 
     // Create notification
     await supabaseAdmin

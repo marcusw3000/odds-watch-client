@@ -60,7 +60,7 @@ export function SellModal({
     fetchQuote();
   }, [fetchQuote]);
 
-  // Kalshi fee formula: fee = roundUp(0.07 × C × P × (1-P))
+  // Trading fee formula: fee = roundUp(0.07 × C × P × (1-P))
   const grossSaleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
   const P = currentMarketPrice / 100; // Convert cents to decimal (0-1)
   const C = contract.quantity;
@@ -225,10 +225,10 @@ export function SellModal({
                 <span className="font-mono font-medium">R${grossSaleValue.toFixed(2)}</span>
               </div>
               
-              {/* Fee display - Kalshi model */}
+              {/* Fee display */}
               <div className="flex justify-between text-warning">
                 <span className="flex items-center gap-1">
-                  Taxa Kalshi (7% × P × (1-P))
+                  Taxa de trading (7% × P × (1-P))
                 </span>
                 <span className="font-mono font-medium">-R${feeAmount.toFixed(2)}</span>
               </div>

@@ -518,7 +518,7 @@ export const MarketDataProvider = {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Calculate fee using Kalshi formula: fee = roundUp(0.07 × C × P × (1-P))
+    // Calculate fee using trading formula: fee = roundUp(0.07 × C × P × (1-P))
     // P = price per contract (as decimal 0-1), C = number of contracts
     const pricePerContract = quote.avgPrice / 100; // Convert from cents to decimal (0-1)
     const feeResult = FeeEngine.calculateTradeFee(shares, pricePerContract, quote.cost);
@@ -706,7 +706,7 @@ export const MarketDataProvider = {
       };
     }
 
-    // Calculate fee using Kalshi formula: fee = roundUp(0.07 × C × P × (1-P))
+    // Calculate fee using trading formula: fee = roundUp(0.07 × C × P × (1-P))
     // P = price per contract (as decimal 0-1), C = number of contracts
     const pricePerContract = quote.avgPrice / 100; // Convert from cents to decimal (0-1)
     const feeResult = FeeEngine.calculateTradeFee(contract.shares, pricePerContract, quote.cost);

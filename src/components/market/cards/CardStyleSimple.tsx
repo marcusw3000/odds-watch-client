@@ -59,20 +59,8 @@ export const CardStyleSimple = memo(function CardStyleSimple({
         statusColors.bg
       )} />
 
-      {/* Status badge for non-tradeable markets */}
-      {!statusInfo.canTrade && (
-        <div className="absolute top-2 right-2 z-10">
-          <MarketStatusBadge 
-            status={statusInfo.status}
-            timeToEvent={statusInfo.timeToEvent}
-            result={event.result}
-            size="sm"
-          />
-        </div>
-      )}
-
       {/* Header with percentage */}
-      <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div className={cn(
             "flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden relative bg-secondary",
@@ -97,7 +85,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
           </div>
 
           <h3 
-            className="flex-1 text-sm font-semibold leading-tight line-clamp-3 cursor-pointer hover:text-primary transition-colors pr-8"
+            className="flex-1 text-sm font-semibold leading-tight line-clamp-3 cursor-pointer hover:text-primary transition-colors"
             onClick={() => onViewDetails?.(event.id)}
           >
             {event.title}
@@ -111,6 +99,18 @@ export const CardStyleSimple = memo(function CardStyleSimple({
           {yesPrice}%
         </span>
       </div>
+
+      {/* Status badge for non-tradeable markets */}
+      {!statusInfo.canTrade && (
+        <div className="mb-3">
+          <MarketStatusBadge 
+            status={statusInfo.status}
+            timeToEvent={statusInfo.timeToEvent}
+            result={event.result}
+            size="sm"
+          />
+        </div>
+      )}
 
       {/* Simple Yes/No buttons or locked state */}
       {statusInfo.canTrade ? (

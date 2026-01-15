@@ -63,20 +63,8 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         statusColors.bg
       )} />
 
-      {/* Status badge for non-tradeable markets */}
-      {!statusInfo.canTrade && (
-        <div className="absolute top-2 right-2 z-10">
-          <MarketStatusBadge 
-            status={statusInfo.status}
-            timeToEvent={statusInfo.timeToEvent}
-            result={event.result}
-            size="sm"
-          />
-        </div>
-      )}
-
       {/* Header with image and title */}
-      <div className="flex items-start gap-3 mb-4">
+      <div className="flex items-start gap-3 mb-2">
         <div className={cn(
           "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
           !statusInfo.canTrade && "grayscale"
@@ -110,12 +98,24 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         </div>
 
         <h3 
-          className="flex-1 text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors pr-16"
+          className="flex-1 text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
           onClick={() => onViewDetails?.(event.id)}
         >
           {event.title}
         </h3>
       </div>
+
+      {/* Status badge for non-tradeable markets */}
+      {!statusInfo.canTrade && (
+        <div className="mb-3">
+          <MarketStatusBadge 
+            status={statusInfo.status}
+            timeToEvent={statusInfo.timeToEvent}
+            result={event.result}
+            size="sm"
+          />
+        </div>
+      )}
 
       {/* Options */}
       <div className="space-y-2 mb-4">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
@@ -30,6 +30,8 @@ export function MarketsPage() {
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
   const [trendingIndex, setTrendingIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const fetchData = async (showLoading = true) => {
@@ -113,11 +115,30 @@ export function MarketsPage() {
     }
   };
 
+  // Auto-play carousel every 5 seconds
+  useEffect(() => {
+    const trendingCount = Math.min(3, events.length);
+    
+    if (isAutoPlaying && trendingCount > 1 && !isLoading) {
+      autoPlayRef.current = setInterval(() => {
+        setTrendingIndex((prev) => (prev < trendingCount - 1 ? prev + 1 : 0));
+      }, 5000);
+    }
+
+    return () => {
+      if (autoPlayRef.current) {
+        clearInterval(autoPlayRef.current);
+      }
+    };
+  }, [isAutoPlaying, events.length, isLoading]);
+
   const handlePrevTrending = useCallback(() => {
+    setIsAutoPlaying(false); // Pause auto-play on manual interaction
     setTrendingIndex((prev) => (prev > 0 ? prev - 1 : Math.min(2, events.length - 1)));
   }, [events.length]);
 
   const handleNextTrending = useCallback(() => {
+    setIsAutoPlaying(false); // Pause auto-play on manual interaction
     setTrendingIndex((prev) => (prev < Math.min(2, events.length - 1) ? prev + 1 : 0));
   }, [events.length]);
 

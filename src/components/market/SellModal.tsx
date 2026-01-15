@@ -60,9 +60,11 @@ export function SellModal({
     fetchQuote();
   }, [fetchQuote]);
 
-  const feePercent = feeRule?.percent_value || 0.02; // fallback to 2%
+  // Kalshi fee formula: fee = roundUp(0.07 × C × P × (1-P))
   const grossSaleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
-  const feeAmount = grossSaleValue * feePercent;
+  const P = currentMarketPrice / 100; // Convert cents to decimal (0-1)
+  const C = contract.quantity;
+  const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
   const saleValue = grossSaleValue - feeAmount;
   const profitLoss = saleValue - purchaseCost;
   const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(1) : '0.0';
@@ -223,10 +225,10 @@ export function SellModal({
                 <span className="font-mono font-medium">R${grossSaleValue.toFixed(2)}</span>
               </div>
               
-              {/* Fee display */}
+              {/* Fee display - Kalshi model */}
               <div className="flex justify-between text-warning">
                 <span className="flex items-center gap-1">
-                  Taxa de operação ({(feePercent * 100).toFixed(1)}%)
+                  Taxa Kalshi (7% × P × (1-P))
                 </span>
                 <span className="font-mono font-medium">-R${feeAmount.toFixed(2)}</span>
               </div>

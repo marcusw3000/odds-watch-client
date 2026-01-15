@@ -294,8 +294,10 @@ export function PurchaseModal({
 
           {/* Summary with LMSR data */}
           {quote && sharesNum > 0 && (() => {
-            const feePercent = feeRule?.percent_value || 0.02; // fallback to 2%
-            const feeAmount = quote.cost * feePercent;
+            // Kalshi formula: fee = roundUp(0.07 × C × P × (1-P))
+            const P = quote.avgPrice / 100; // Convert cents to decimal (0-1)
+            const C = sharesNum;
+            const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
             const totalWithFee = quote.cost + feeAmount;
             const potentialProfit = sharesNum - totalWithFee;
             
@@ -320,10 +322,10 @@ export function PurchaseModal({
                     <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
                   </div>
                   
-                  {/* Fee display */}
+                  {/* Fee display - Kalshi model */}
                   <div className="flex justify-between text-warning">
                     <span className="flex items-center gap-1">
-                      Taxa de operação ({(feePercent * 100).toFixed(1)}%)
+                      Taxa Kalshi (7% × P × (1-P))
                     </span>
                     <span className="font-mono font-medium">R${feeAmount.toFixed(2)}</span>
                   </div>

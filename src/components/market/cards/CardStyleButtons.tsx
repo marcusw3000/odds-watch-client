@@ -48,7 +48,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   return (
     <div 
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200",
+        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 h-[260px] flex flex-col",
         "hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -61,7 +61,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
       )} />
 
       {/* Header */}
-      <div className="flex items-start gap-3 mb-2">
+      <div className="flex items-start gap-3 min-h-[56px]">
         <div className={cn(
           "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
           !statusInfo.canTrade && "grayscale"
@@ -95,8 +95,8 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         </div>
       </div>
 
-      {/* Status badge (always) or spacer for consistency */}
-      <div className="mb-3 min-h-[24px]">
+      {/* Status badge */}
+      <div className="mt-2 h-[24px]">
         <MarketStatusBadge 
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
@@ -105,51 +105,53 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         />
       </div>
 
-      {/* Two colored buttons or locked state */}
-      {statusInfo.canTrade ? (
-        <div className="flex gap-2 mb-3">
-          <Button
-            className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-            onClick={() => onBuy(event.id, 'YES')}
-          >
-            SIM {yesPrice}¢
-          </Button>
-          <Button
-            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
-            onClick={() => onBuy(event.id, 'NO')}
-          >
-            NÃO {noPrice}¢
-          </Button>
-        </div>
-      ) : (
-        <div className="flex gap-2 mb-3">
-          <div className={cn(
-            "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
-            isSettled && resultIsYes 
-              ? "bg-yes/20 text-yes border border-yes/30" 
-              : "bg-muted text-muted-foreground"
-          )}>
-            {isSettled ? (resultIsYes ? '✓ SIM' : 'SIM') : <Lock className="h-4 w-4" />}
+      {/* Buttons - grows to fill space */}
+      <div className="flex-1 flex flex-col justify-center my-3">
+        {statusInfo.canTrade ? (
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              onClick={() => onBuy(event.id, 'YES')}
+            >
+              SIM {yesPrice}¢
+            </Button>
+            <Button
+              className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              onClick={() => onBuy(event.id, 'NO')}
+            >
+              NÃO {noPrice}¢
+            </Button>
           </div>
-          <div className={cn(
-            "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
-            isSettled && !resultIsYes 
-              ? "bg-no/20 text-no border border-no/30" 
-              : "bg-muted text-muted-foreground"
-          )}>
-            {isSettled ? (!resultIsYes ? '✓ NÃO' : 'NÃO') : <Lock className="h-4 w-4" />}
+        ) : (
+          <div className="flex gap-2">
+            <div className={cn(
+              "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
+              isSettled && resultIsYes 
+                ? "bg-yes/20 text-yes border border-yes/30" 
+                : "bg-muted text-muted-foreground"
+            )}>
+              {isSettled ? (resultIsYes ? '✓ SIM' : 'SIM') : <Lock className="h-4 w-4" />}
+            </div>
+            <div className={cn(
+              "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
+              isSettled && !resultIsYes 
+                ? "bg-no/20 text-no border border-no/30" 
+                : "bg-muted text-muted-foreground"
+            )}>
+              {isSettled ? (!resultIsYes ? '✓ NÃO' : 'NÃO') : <Lock className="h-4 w-4" />}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Payout info */}
-      <div className="flex justify-between text-xs text-muted-foreground mb-3">
-        <span>R$1 → R${(100 / yesPrice).toFixed(2)}</span>
-        <span>R$1 → R${(100 / noPrice).toFixed(2)}</span>
+        {/* Payout info */}
+        <div className="flex justify-between text-xs text-muted-foreground mt-3">
+          <span>R$1 → R${(100 / yesPrice).toFixed(2)}</span>
+          <span>R$1 → R${(100 / noPrice).toFixed(2)}</span>
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-border">
+      {/* Footer - always at bottom */}
+      <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <TrendingUp className="h-3 w-3" />
           <span>{formatVolume(event.volume)}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Info } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Info, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,11 +30,11 @@ import {
   OddsMode,
   SpreadPolicy 
 } from '@/types/admin';
+import { ImageEditor } from '@/components/admin/ImageEditor';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
 
 export function AdminEventFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,6 +62,13 @@ export function AdminEventFormPage() {
   const [oddsYes, setOddsYes] = useState(50);
   const [oddsNo, setOddsNo] = useState(50);
   const [oddsChangeReason, setOddsChangeReason] = useState('');
+
+  // Image state
+  const [imageData, setImageData] = useState<{ url: string; zoom: number; position: { x: number; y: number } }>({
+    url: '',
+    zoom: 1,
+    position: { x: 50, y: 50 },
+  });
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -106,6 +113,7 @@ export function AdminEventFormPage() {
     if (!sourceName.trim()) newErrors.sourceName = 'Nome da fonte é obrigatório';
     if (!sourceUrl.trim()) newErrors.sourceUrl = 'URL da fonte é obrigatória';
     if (!sourceRule.trim()) newErrors.sourceRule = 'Regra de resolução é obrigatória';
+    if (!imageData.url) newErrors.image = 'Imagem é obrigatória';
     
     if (oddsYes < 1 || oddsYes > 99) newErrors.oddsYes = 'Odds SIM deve estar entre 1 e 99';
     if (oddsNo < 1 || oddsNo > 99) newErrors.oddsNo = 'Odds NÃO deve estar entre 1 e 99';
@@ -283,6 +291,13 @@ export function AdminEventFormPage() {
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* Image Editor */}
+            <ImageEditor
+              value={imageData.url}
+              onChange={setImageData}
+              error={errors.image}
+            />
           </CardContent>
         </Card>
 

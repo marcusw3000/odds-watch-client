@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { TrendingUp, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +28,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
   totalCount = 1,
 }: TrendingMarketCardProps) {
   const statusInfo = useMarketStatus(event);
+  const [isHovered, setIsHovered] = useState(false);
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
@@ -36,8 +37,25 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     return `R$${vol}`;
   };
 
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      Economia: '🏛️',
+      Câmbio: '💱',
+      Esportes: '⚽',
+      Mercado: '📈',
+      Política: '🗳️',
+    };
+    return icons[category] || '📊';
+  };
+
+  const hasImage = Boolean(event.imageUrl);
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+    <div 
+      className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
         {/* Left Side - Market Info */}
         <div className="p-6 lg:p-8 flex flex-col">
@@ -145,60 +163,53 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
           </div>
         </div>
 
-        {/* Right Side - Chart Area */}
-        <div className="hidden lg:flex flex-col p-6 lg:p-8 bg-secondary/30 border-l border-border">
-          {/* Mini Chart Visualization */}
-          <div className="flex-1 flex items-center justify-center">
-            <div className="w-full h-48 relative">
-              {/* Simplified chart representation */}
-              <svg viewBox="0 0 400 150" className="w-full h-full">
-                {/* Grid lines */}
-                <line x1="0" y1="37.5" x2="400" y2="37.5" stroke="currentColor" strokeOpacity="0.1" />
-                <line x1="0" y1="75" x2="400" y2="75" stroke="currentColor" strokeOpacity="0.1" />
-                <line x1="0" y1="112.5" x2="400" y2="112.5" stroke="currentColor" strokeOpacity="0.1" />
-                
-                {/* YES line */}
-                <path
-                  d={`M 0 ${150 - (event.outcomes.YES.price * 1.5)} 
-                      Q 100 ${150 - (event.outcomes.YES.price * 1.4)} 
-                        200 ${150 - (event.outcomes.YES.price * 1.45)}
-                      T 400 ${150 - (event.outcomes.YES.price * 1.5)}`}
-                  fill="none"
-                  stroke="hsl(var(--yes))"
-                  strokeWidth="2"
-                  className="drop-shadow-sm"
-                />
-                
-                {/* Current price label */}
-                <text 
-                  x="385" 
-                  y={150 - (event.outcomes.YES.price * 1.5) - 8} 
-                  fill="hsl(var(--yes))" 
-                  fontSize="12" 
-                  fontWeight="bold"
-                  textAnchor="end"
-                >
-                  {event.outcomes.YES.price}%
-                </text>
-              </svg>
+        {/* Right Side - Image/Chart Area */}
+        <div className="hidden lg:flex flex-col border-l border-border overflow-hidden">
+          {hasImage ? (
+            <div className="flex-1 relative overflow-hidden">
+              <div
+                className={cn(
+                  "absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-out",
+                  isHovered && "scale-110"
+                )}
+                style={{
+                  backgroundImage: `url(${event.imageUrl})`,
+                  backgroundPosition: event.imagePosition 
+                    ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
+                    : 'center',
+                  transform: isHovered 
+                    ? `scale(${(event.imageZoom || 1) * 1.1})` 
+                    : `scale(${event.imageZoom || 1})`,
+                }}
+              />
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent to-card/20" />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col p-6 lg:p-8 bg-secondary/30">
+              {/* Mini Chart Visualization */}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-full h-48 relative">
+                  {/* Category Icon Fallback */}
+                  <div 
+                    className={cn(
+                      "absolute inset-0 flex items-center justify-center text-8xl transition-transform duration-300",
+                      isHovered && "scale-110"
+                    )}
+                  >
+                    {getCategoryIcon(event.category)}
+                  </div>
+                </div>
+              </div>
               
-              {/* Y-axis labels */}
-              <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-xs text-muted-foreground pr-2">
-                <span>100%</span>
-                <span>75%</span>
-                <span>50%</span>
-                <span>25%</span>
-                <span>0%</span>
+              {/* Date labels */}
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                <span>{format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'd MMM', { locale: ptBR })}</span>
+                <span>{format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'd MMM', { locale: ptBR })}</span>
+                <span>{format(new Date(), 'd MMM', { locale: ptBR })}</span>
               </div>
             </div>
-          </div>
-          
-          {/* Date labels */}
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
-            <span>{format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'd MMM', { locale: ptBR })}</span>
-            <span>{format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'd MMM', { locale: ptBR })}</span>
-            <span>{format(new Date(), 'd MMM', { locale: ptBR })}</span>
-          </div>
+          )}
         </div>
       </div>
 

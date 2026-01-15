@@ -42,12 +42,13 @@ export function AdminSettlementsPage() {
   const [confirmDialog, setConfirmDialog] = useState(false);
 
   useEffect(() => {
-    const events = AdminRepository.getEvents().filter(e => e.status === 'CLOSED');
+    // Events that are PENDING or CONTESTED can be settled
+    const events = AdminRepository.getEvents().filter(e => e.status === 'PENDING' || e.status === 'CONTESTED');
     setClosedEvents(events);
 
     if (eventId) {
       const event = AdminRepository.getEvent(eventId);
-      if (event && event.status === 'CLOSED') {
+      if (event && (event.status === 'PENDING' || event.status === 'CONTESTED')) {
         setSelectedEvent(event);
       }
     }
@@ -71,7 +72,7 @@ export function AdminSettlementsPage() {
       setSelectedEvent(null);
       setResult(null);
       setEvidence('');
-      setClosedEvents(AdminRepository.getEvents().filter(e => e.status === 'CLOSED'));
+      setClosedEvents(AdminRepository.getEvents().filter(e => e.status === 'PENDING' || e.status === 'CONTESTED'));
       navigate('/admin/settlements');
     } else {
       toast.error('Erro ao liquidar evento');

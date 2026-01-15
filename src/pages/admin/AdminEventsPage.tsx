@@ -48,7 +48,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AdminRepository } from '@/services/AdminRepository';
-import { MarketEvent, EventStatus, EVENT_CATEGORIES } from '@/types/admin';
+import { MarketEvent, EVENT_CATEGORIES } from '@/types/admin';
+import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/types/market';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -96,10 +97,10 @@ export function AdminEventsPage() {
   const confirmStatusChange = () => {
     if (!statusDialog.event || !statusDialog.action) return;
 
-    const statusMap: Record<string, EventStatus> = {
-      pause: 'PAUSED',
+    const statusMap: Record<string, MarketStatus> = {
+      pause: 'HALTED',
       resume: 'OPEN',
-      close: 'CLOSED',
+      close: 'PENDING',
     };
 
     const result = AdminRepository.updateStatus(
@@ -133,16 +134,8 @@ export function AdminEventsPage() {
     setDeleteDialog({ open: false, event: null });
   };
 
-  const getStatusBadge = (status: EventStatus) => {
-    const variants: Record<EventStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
-      DRAFT: { variant: 'outline', label: 'Rascunho' },
-      OPEN: { variant: 'default', label: 'Aberto' },
-      PAUSED: { variant: 'secondary', label: 'Pausado' },
-      CLOSED: { variant: 'destructive', label: 'Fechado' },
-      SETTLED: { variant: 'outline', label: 'Liquidado' },
-    };
-    const { variant, label } = variants[status];
-    return <Badge variant={variant}>{label}</Badge>;
+  const getStatusBadge = (status: MarketStatus) => {
+    return <Badge variant={MARKET_STATUS_VARIANTS[status]}>{MARKET_STATUS_LABELS[status]}</Badge>;
   };
 
   const getSourceTypeBadge = (type: string) => {
@@ -193,11 +186,11 @@ export function AdminEventsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="DRAFT">Rascunho</SelectItem>
             <SelectItem value="OPEN">Aberto</SelectItem>
-            <SelectItem value="PAUSED">Pausado</SelectItem>
-            <SelectItem value="CLOSED">Fechado</SelectItem>
-            <SelectItem value="SETTLED">Liquidado</SelectItem>
+            <SelectItem value="HALTED">Pausado</SelectItem>
+            <SelectItem value="PENDING">Aguardando Resultado</SelectItem>
+            <SelectItem value="CONTESTED">Em Contestação</SelectItem>
+            <SelectItem value="SETTLED">Encerrado</SelectItem>
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -304,21 +297,27 @@ export function AdminEventsPage() {
                               </DropdownMenuItem>
                             )}
                             
-                            {event.status === 'PAUSED' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(event, 'resume')}>
-                                <Play className="h-4 w-4 mr-2" />
-                                Reabrir
-                              </DropdownMenuItem>
+                            {event.status === 'HALTED' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleStatusChange(event, 'resume')}>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  Abrir Mercado
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(event, 'close')}>
+                                  <Lock className="h-4 w-4 mr-2" />
+                                  Submeter para Liquidação
+                                </DropdownMenuItem>
+                              </>
                             )}
                             
-                            {(event.status === 'OPEN' || event.status === 'PAUSED') && (
+                            {(event.status === 'OPEN') && (
                               <DropdownMenuItem onClick={() => handleStatusChange(event, 'close')}>
                                 <Lock className="h-4 w-4 mr-2" />
                                 Fechar Mercado
                               </DropdownMenuItem>
                             )}
                             
-                            {event.status === 'CLOSED' && (
+                            {(event.status === 'PENDING' || event.status === 'CONTESTED') && (
                               <DropdownMenuItem onClick={() => navigate(`/admin/settlements?event=${event.id}`)}>
                                 <Scale className="h-4 w-4 mr-2" />
                                 Liquidar
@@ -333,7 +332,7 @@ export function AdminEventsPage() {
                           Visualizar
                         </DropdownMenuItem>
                         
-                        {event.status === 'DRAFT' && (
+                        {event.status === 'HALTED' && (
                           <DropdownMenuItem 
                             onClick={() => handleDelete(event)}
                             className="text-destructive focus:text-destructive"

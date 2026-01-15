@@ -183,8 +183,8 @@ export function AdminEventFormPage() {
     }
   };
 
-  const isSourceEditable = !isEditing || event?.status === 'DRAFT';
-  const isOddsEditable = !isEditing || event?.status === 'OPEN' || event?.status === 'DRAFT';
+  const isSourceEditable = !isEditing || event?.status === 'HALTED';
+  const isOddsEditable = !isEditing || event?.status === 'OPEN' || event?.status === 'HALTED';
 
   return (
     <div className="space-y-6 max-w-4xl">

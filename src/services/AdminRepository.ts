@@ -1,7 +1,8 @@
 // ============= Admin Repository (localStorage Mock) =============
 // Easy to replace with real API in the future
 
-import { MarketEvent, AuditLog, EventFormData, MOCK_ADMIN, EventStatus } from '@/types/admin';
+import { MarketEvent, AuditLog, EventFormData, MOCK_ADMIN } from '@/types/admin';
+import { MarketStatus } from '@/types/market';
 
 const STORAGE_KEYS = {
   EVENTS: 'pm_admin_events',
@@ -60,7 +61,7 @@ const SEED_EVENTS: MarketEvent[] = [
     title: 'Brasil vence a Copa América 2025?',
     description: 'A seleção brasileira será campeã da Copa América 2025.',
     category: 'Esportes',
-    status: 'DRAFT',
+    status: 'HALTED',
     expiryAt: new Date('2025-07-15'),
     odds: { yes: 45, no: 55 },
     oddsConfig: { mode: 'MANUAL_PROBABILITY', spreadPolicy: 'AUTO_COMPLEMENT' },
@@ -80,7 +81,7 @@ const SEED_EVENTS: MarketEvent[] = [
     title: 'IPCA acumulado 2024 acima de 5%?',
     description: 'Inflação medida pelo IPCA no acumulado de 12 meses.',
     category: 'Economia',
-    status: 'CLOSED',
+    status: 'PENDING',
     expiryAt: new Date('2025-01-10'),
     odds: { yes: 80, no: 20 },
     oddsConfig: { mode: 'MANUAL_PROBABILITY', spreadPolicy: 'AUTO_COMPLEMENT' },
@@ -148,7 +149,7 @@ export const AdminRepository = {
       title: formData.title,
       description: formData.description,
       category: formData.category,
-      status: 'DRAFT',
+      status: 'HALTED', // New events start as HALTED (paused) - admin needs to open them
       expiryAt: formData.expiryAt,
       odds: { yes: formData.oddsYes, no: formData.oddsNo },
       oddsConfig: formData.oddsConfig,
@@ -226,7 +227,7 @@ export const AdminRepository = {
     return updated;
   },
 
-  updateStatus(id: string, status: EventStatus, reason?: string): MarketEvent | null {
+  updateStatus(id: string, status: MarketStatus, reason?: string): MarketEvent | null {
     const events = this.getEvents();
     const index = events.findIndex(e => e.id === id);
     
@@ -244,11 +245,11 @@ export const AdminRepository = {
 
     localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events));
 
-    // Determine action type
+    // Determine action type based on new MarketStatus values
     let action: AuditLog['action'] = 'STATUS_CHANGED';
-    if (status === 'PAUSED') action = 'PAUSED';
-    if (status === 'OPEN' && previousStatus === 'PAUSED') action = 'RESUMED';
-    if (status === 'CLOSED') action = 'CLOSED';
+    if (status === 'HALTED') action = 'PAUSED';
+    if (status === 'OPEN' && previousStatus === 'HALTED') action = 'RESUMED';
+    if (status === 'PENDING') action = 'CLOSED';
 
     this.addAuditLog({
       eventId: id,
@@ -341,10 +342,10 @@ export const AdminRepository = {
     return {
       totalEvents: events.length,
       openEvents: events.filter(e => e.status === 'OPEN').length,
-      pausedEvents: events.filter(e => e.status === 'PAUSED').length,
-      closedEvents: events.filter(e => e.status === 'CLOSED').length,
+      pausedEvents: events.filter(e => e.status === 'HALTED').length,
+      closedEvents: events.filter(e => e.status === 'PENDING').length,
       awaitingSettlement: events.filter(e => 
-        e.status === 'CLOSED' && new Date(e.expiryAt) < new Date()
+        e.status === 'PENDING' && new Date(e.expiryAt) < new Date()
       ).length,
       settledEvents: events.filter(e => e.status === 'SETTLED').length,
     };

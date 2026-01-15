@@ -1,11 +1,10 @@
 import { memo, useState, useMemo } from 'react';
-import { TrendingUp, ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
-import { format, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns';
+import { TrendingUp, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
-import { MarketStatusBadge } from './MarketStatusBadge';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
@@ -33,9 +32,9 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
 
   const formatVolume = (vol?: number) => {
     if (!vol) return 'R$0';
-    if (vol >= 1000000) return `R$${(vol / 1000000).toFixed(1)}M`;
+    if (vol >= 1000000) return `R$${(vol / 1000000).toFixed(3).replace('.', ',')}`;
     if (vol >= 1000) return `R$${(vol / 1000).toFixed(0)}k`;
-    return `R$${vol}`;
+    return `R$${vol.toLocaleString('pt-BR')}`;
   };
 
   const getCategoryIcon = (category: string) => {
@@ -51,28 +50,14 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     return icons[category] || '📊';
   };
 
-  // Format time until event
-  const getTimeUntil = () => {
-    const now = new Date();
-    const target = event.tradingHaltAt;
-    const hours = differenceInHours(target, now);
-    const minutes = differenceInMinutes(target, now) % 60;
-    
-    if (hours > 24) {
-      const days = differenceInDays(target, now);
-      return `${days}d`;
-    }
-    return `${hours}h ${minutes}m`;
-  };
-
   const hasImage = Boolean(event.imageUrl);
 
-  // Generate mock price history data
+  // Generate mock price history data with dates
   const priceHistory = useMemo(() => {
     const createdAt = event.createdAt ? new Date(event.createdAt) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const now = new Date();
     const daysDiff = Math.max(differenceInDays(now, createdAt), 1);
-    const dataPoints = Math.min(Math.max(daysDiff * 4, 20), 50);
+    const dataPoints = Math.min(Math.max(daysDiff * 6, 30), 80);
     
     const data = [];
     const currentYesPrice = event.outcomes.YES.price;
@@ -85,14 +70,14 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     
     for (let i = 0; i <= dataPoints; i++) {
       const date = new Date(createdAt.getTime() + (i * (now.getTime() - createdAt.getTime()) / dataPoints));
-      const randomVariation = (Math.random() - 0.5) * 8;
+      const randomVariation = (Math.random() - 0.5) * 6;
       
       yesPrice = Math.max(5, Math.min(95, yesPrice + yesStep + randomVariation));
       noPrice = 100 - yesPrice;
       
       data.push({
-        time: format(date, 'HH:mm', { locale: ptBR }),
-        date: format(date, 'd MMM', { locale: ptBR }),
+        date: format(date, "d 'de' MMM", { locale: ptBR }),
+        fullDate: format(date, "d MMM, HH:mm", { locale: ptBR }),
         yes: Math.round(yesPrice),
         no: Math.round(noPrice),
       });
@@ -107,122 +92,129 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     return data;
   }, [event.createdAt, event.outcomes.YES.price, event.outcomes.NO.price]);
 
-  // Calculate potential payout
-  const yesPayoutMultiplier = (100 / event.outcomes.YES.price).toFixed(1);
-  const noPayoutMultiplier = (100 / event.outcomes.NO.price).toFixed(1);
-
   return (
     <div 
-      className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+      className="relative overflow-hidden rounded-2xl border border-border bg-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
         {/* Left Side - Market Info */}
-        <div className="p-6 lg:p-8 flex flex-col">
-          {/* Header with image, category and countdown */}
-          <div className="flex items-start gap-4 mb-4">
+        <div className="p-6 flex flex-col">
+          {/* Header with image and title */}
+          <div className="flex items-start gap-4 mb-6">
             {/* Image/Icon */}
-            <div className="flex-shrink-0">
-              {hasImage ? (
-                <div className="w-16 h-16 rounded-xl overflow-hidden relative">
-                  <div
-                    className={cn(
-                      "absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out",
-                      isHovered && "scale-110"
-                    )}
-                    style={{
-                      backgroundImage: `url(${event.imageUrl})`,
-                      backgroundPosition: event.imagePosition 
-                        ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
-                        : 'center',
-                      transform: isHovered 
-                        ? `scale(${(event.imageZoom || 1) * 1.1})` 
-                        : `scale(${event.imageZoom || 1})`,
-                    }}
-                  />
-                </div>
-              ) : (
-                <div 
+            {hasImage ? (
+              <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative">
+                <div
                   className={cn(
-                    "w-16 h-16 rounded-xl bg-secondary flex items-center justify-center text-3xl transition-transform duration-300",
-                    isHovered && "scale-105"
+                    "absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out",
+                    isHovered && "scale-110"
                   )}
-                >
-                  {getCategoryIcon(event.category)}
-                </div>
-              )}
-            </div>
-
-            {/* Category and Title */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm text-muted-foreground">{event.category}</span>
+                  style={{
+                    backgroundImage: `url(${event.imageUrl})`,
+                    backgroundPosition: event.imagePosition 
+                      ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
+                      : 'center',
+                    transform: isHovered 
+                      ? `scale(${(event.imageZoom || 1) * 1.1})` 
+                      : `scale(${event.imageZoom || 1})`,
+                  }}
+                />
               </div>
-              <h2 
-                className="text-xl lg:text-2xl font-bold cursor-pointer hover:text-primary transition-colors line-clamp-2"
-                onClick={() => onViewDetails?.(event.id)}
+            ) : (
+              <div 
+                className={cn(
+                  "flex-shrink-0 w-14 h-14 rounded-lg bg-secondary flex items-center justify-center text-2xl transition-transform duration-300",
+                  isHovered && "scale-105"
+                )}
               >
-                {event.title}
-              </h2>
-            </div>
-
-            {/* Countdown / Status */}
-            <div className="flex-shrink-0 text-right">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span>Encerra em {getTimeUntil()}</span>
+                {getCategoryIcon(event.category)}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {format(event.tradingHaltAt, "d MMM, HH:mm", { locale: ptBR })}
+            )}
+
+            {/* Title */}
+            <h2 
+              className="flex-1 text-xl font-bold cursor-pointer hover:text-primary transition-colors"
+              onClick={() => onViewDetails?.(event.id)}
+            >
+              {event.title}
+            </h2>
+          </div>
+
+          {/* Outcome Rows */}
+          <div className="space-y-3 mb-6">
+            {/* YES Option */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Sim</span>
+              <div className="flex items-center gap-3">
+                <span className="text-base font-bold">{event.outcomes.YES.price}%</span>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-3 text-xs font-medium border-yes/40 hover:bg-yes/10 hover:text-yes hover:border-yes"
+                    onClick={() => onBuy(event.id, 'YES')}
+                    disabled={!statusInfo.canTrade}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-3 text-xs font-medium border-no/40 hover:bg-no/10 hover:text-no hover:border-no"
+                    onClick={() => onBuy(event.id, 'NO')}
+                    disabled={!statusInfo.canTrade}
+                  >
+                    No
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* NO Option */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Não</span>
+              <div className="flex items-center gap-3">
+                <span className="text-base font-bold">{event.outcomes.NO.price}%</span>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-3 text-xs font-medium border-yes/40 hover:bg-yes/10 hover:text-yes hover:border-yes"
+                    onClick={() => onBuy(event.id, 'YES')}
+                    disabled={!statusInfo.canTrade}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-3 text-xs font-medium border-no/40 hover:bg-no/10 hover:text-no hover:border-no"
+                    onClick={() => onBuy(event.id, 'NO')}
+                    disabled={!statusInfo.canTrade}
+                  >
+                    No
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Outcome Buttons */}
-          <div className="flex gap-3 mb-4">
-            <Button
-              className="flex-1 h-14 bg-yes/20 hover:bg-yes/30 border-2 border-yes text-yes font-bold text-lg"
-              variant="outline"
-              onClick={() => onBuy(event.id, 'YES')}
-              disabled={!statusInfo.canTrade}
-            >
-              SIM {event.outcomes.YES.price}¢
-            </Button>
-            <Button
-              className="flex-1 h-14 bg-no/20 hover:bg-no/30 border-2 border-no text-no font-bold text-lg"
-              variant="outline"
-              onClick={() => onBuy(event.id, 'NO')}
-              disabled={!statusInfo.canTrade}
-            >
-              NÃO {event.outcomes.NO.price}¢
-            </Button>
-          </div>
-
-          {/* Payout info */}
-          <div className="flex gap-6 mb-4 text-sm">
-            <div className="text-muted-foreground">
-              R$1 → <span className="text-yes font-semibold">R${yesPayoutMultiplier}</span>
-            </div>
-            <div className="text-muted-foreground">
-              R$1 → <span className="text-no font-semibold">R${noPayoutMultiplier}</span>
-            </div>
-          </div>
-
-          {/* Description */}
+          {/* News/Description */}
           {event.description && (
             <div className="mb-4">
-              <span className="text-xs font-medium text-muted-foreground">Descrição</span>
-              <p className="text-sm text-foreground mt-1 line-clamp-2">
+              <span className="text-xs font-medium text-primary">Descrição</span>
+              <span className="mx-2 text-muted-foreground">·</span>
+              <span className="text-sm text-muted-foreground line-clamp-2">
                 {event.description}
-              </p>
+              </span>
             </div>
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">
+          <div className="flex items-center justify-between mt-auto pt-4">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4" />
               <span>{formatVolume(event.volume)}</span>
             </div>
             <Button
@@ -237,50 +229,42 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
         </div>
 
         {/* Right Side - Chart */}
-        <div className="hidden lg:flex flex-col p-6 border-l border-border bg-secondary/5">
-          {/* Chart Header */}
-          <div className="flex justify-between items-center mb-4">
-            <MarketStatusBadge
-              status={statusInfo.status}
-              timeToHalt={statusInfo.timeToHalt}
-              result={event.result}
-              size="sm"
-              showCountdown={statusInfo.isUrgent}
-              isUrgent={statusInfo.isUrgent}
-            />
-            <div className="flex gap-4 text-xs">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-0.5 bg-yes rounded" />
-                <span className="text-muted-foreground">Sim</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-0.5 bg-no rounded" />
-                <span className="text-muted-foreground">Não</span>
-              </div>
+        <div className="hidden lg:flex flex-col p-6 border-l border-border">
+          {/* Legend */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-yes" />
+              <span className="text-sm text-muted-foreground">Sim</span>
+              <span className="text-sm font-bold">{event.outcomes.YES.price}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-no" />
+              <span className="text-sm text-muted-foreground">Não</span>
+              <span className="text-sm font-bold">{event.outcomes.NO.price}%</span>
             </div>
           </div>
 
           {/* Chart */}
-          <div className="flex-1 min-h-[200px] relative">
+          <div className="flex-1 min-h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={priceHistory} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
+              <LineChart data={priceHistory} margin={{ top: 5, right: 45, left: 0, bottom: 5 }}>
                 <XAxis 
-                  dataKey="time" 
+                  dataKey="date" 
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   interval="preserveStartEnd"
                 />
                 <YAxis 
-                  domain={[0, 100]}
+                  domain={[20, 80]}
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   tickFormatter={(value) => `${value}%`}
                   orientation="right"
-                  width={40}
+                  width={35}
+                  ticks={[30, 45, 60, 75]}
                 />
-                <ReferenceLine y={50} stroke="hsl(var(--border))" strokeDasharray="3 3" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'hsl(var(--background))',
@@ -292,58 +276,46 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                     `${value}%`, 
                     name === 'yes' ? 'Sim' : 'Não'
                   ]}
-                  labelFormatter={(label) => `Horário: ${label}`}
+                  labelFormatter={(_, payload) => {
+                    if (payload && payload[0]) {
+                      return payload[0].payload.fullDate;
+                    }
+                    return '';
+                  }}
                 />
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="yes"
                   stroke="hsl(var(--yes))"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   dot={false}
-                  activeDot={{ r: 4, fill: 'hsl(var(--yes))' }}
+                  activeDot={{ r: 3, fill: 'hsl(var(--yes))' }}
                 />
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="no"
-                  stroke="hsl(var(--no))"
-                  strokeWidth={2}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeWidth={1.5}
                   dot={false}
-                  activeDot={{ r: 4, fill: 'hsl(var(--no))' }}
+                  activeDot={{ r: 3, fill: 'hsl(var(--muted-foreground))' }}
                 />
               </LineChart>
             </ResponsiveContainer>
-
-            {/* Current price labels */}
-            <div className="absolute right-0 top-1/4 flex flex-col gap-1">
-              <div className="bg-yes text-yes-foreground px-2 py-0.5 rounded text-xs font-bold">
-                Sim {event.outcomes.YES.price}%
-              </div>
-            </div>
-            <div className="absolute right-0 bottom-1/4 flex flex-col gap-1">
-              <div className="bg-no text-no-foreground px-2 py-0.5 rounded text-xs font-bold">
-                Não {event.outcomes.NO.price}%
-              </div>
-            </div>
-          </div>
-          
-          {/* Date range */}
-          <div className="flex justify-between text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
-            <span>{priceHistory[0]?.date}</span>
-            <span>Agora</span>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       {totalCount > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-border">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+            size="sm"
+            className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
             onClick={onPrev}
           >
             <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Anterior</span>
           </Button>
           
           {/* Dots */}
@@ -353,7 +325,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                 key={i}
                 className={cn(
                   "w-2 h-2 rounded-full transition-colors",
-                  i === currentIndex ? "bg-primary" : "bg-muted-foreground/30"
+                  i === currentIndex ? "bg-foreground" : "bg-muted-foreground/30"
                 )}
               />
             ))}
@@ -361,10 +333,11 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
           
           <Button
             variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+            size="sm"
+            className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
             onClick={onNext}
           >
+            <span className="hidden sm:inline">Próximo</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

@@ -40,8 +40,8 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { amount, method } = await req.json();
-    logStep("Request body", { amount, method });
+    const { amount, method, saveCard } = await req.json();
+    logStep("Request body", { amount, method, saveCard });
 
     if (!amount || amount < 10) {
       throw new Error("Valor mínimo de depósito é R$ 10,00");
@@ -84,8 +84,8 @@ serve(async (req) => {
     // Define payment method types based on selection
     const paymentMethodTypes = method === 'PIX' ? ['pix'] : ['card'];
 
-    // Create PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Create PaymentIntent with setup_future_usage if saving card
+    const paymentIntentOptions: Stripe.PaymentIntentCreateParams = {
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'brl',
       customer: customerId,
@@ -95,7 +95,14 @@ serve(async (req) => {
         method: method,
         type: 'deposit',
       },
-    });
+    };
+
+    // Add setup_future_usage to save the card for future payments
+    if (saveCard && method === 'CARD') {
+      paymentIntentOptions.setup_future_usage = 'off_session';
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentOptions);
 
     logStep("PaymentIntent created", { 
       paymentIntentId: paymentIntent.id,

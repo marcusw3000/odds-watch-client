@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowDownToLine, X, CreditCard, QrCode, ArrowLeft, AlertTriangle, Loader2, Check, Plus } from 'lucide-react';
 import { Elements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useCreatePaymentIntent, useConfirmPayment } from '@/hooks/usePayments';
+import { useSavedCards, useChargeSavedCard } from '@/hooks/useSavedCards';
 import { stripePromise } from '@/lib/stripe';
 import { StripePaymentForm } from './StripePaymentForm';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +23,26 @@ const quickAmounts = [50, 100, 200, 500, 1000];
 
 type Step = 'amount' | 'payment';
 
+const cardBrandIcons: Record<string, string> = {
+  visa: '💳',
+  mastercard: '💳',
+  amex: '💳',
+  discover: '💳',
+  unknown: '💳',
+};
+
+const formatCardBrand = (brand: string) => {
+  const brands: Record<string, string> = {
+    visa: 'Visa',
+    mastercard: 'Mastercard',
+    amex: 'American Express',
+    discover: 'Discover',
+    elo: 'Elo',
+    hipercard: 'Hipercard',
+  };
+  return brands[brand.toLowerCase()] || brand;
+};
+
 export function DepositModal({ onClose }: DepositModalProps) {
   const [amount, setAmount] = useState<string>('100');
   const [method, setMethod] = useState<'PIX' | 'CARD'>('PIX');
@@ -29,13 +51,27 @@ export function DepositModal({ onClose }: DepositModalProps) {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [saveCard, setSaveCard] = useState(true);
+  const [selectedSavedCard, setSelectedSavedCard] = useState<string | null>(null);
+  const [useNewCard, setUseNewCard] = useState(false);
   
   const createPaymentIntent = useCreatePaymentIntent();
   const confirmPayment = useConfirmPayment();
+  const chargeSavedCard = useChargeSavedCard();
+  const { data: savedCards, isLoading: isLoadingSavedCards } = useSavedCards();
   const { toast } = useToast();
 
   const numericAmount = parseFloat(amount) || 0;
   const isValidAmount = numericAmount >= 10 && numericAmount <= 10000;
+
+  const hasSavedCards = savedCards && savedCards.length > 0;
+
+  // Auto-select first saved card when switching to CARD method
+  useEffect(() => {
+    if (method === 'CARD' && hasSavedCards && !selectedSavedCard && !useNewCard) {
+      setSelectedSavedCard(savedCards[0].id);
+    }
+  }, [method, hasSavedCards, savedCards, selectedSavedCard, useNewCard]);
 
   // Trigger entrance animation on mount
   useEffect(() => {
@@ -51,10 +87,44 @@ export function DepositModal({ onClose }: DepositModalProps) {
   const handleContinue = async () => {
     if (!isValidAmount) return;
 
+    // If using a saved card, charge it directly
+    if (method === 'CARD' && selectedSavedCard && !useNewCard) {
+      try {
+        const result = await chargeSavedCard.mutateAsync({
+          amount: numericAmount,
+          paymentMethodId: selectedSavedCard,
+        });
+        
+        if (result.success) {
+          toast({
+            title: 'Depósito confirmado!',
+            description: `R$ ${numericAmount.toFixed(2)} foi adicionado ao seu saldo.`,
+          });
+          handleClose();
+        } else {
+          toast({
+            title: 'Pagamento em processamento',
+            description: 'Seu saldo será atualizado em instantes.',
+          });
+          handleClose();
+        }
+        return;
+      } catch (error) {
+        toast({
+          title: 'Erro ao processar pagamento',
+          description: error instanceof Error ? error.message : 'Tente novamente',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    // Otherwise, create a new payment intent
     try {
       const result = await createPaymentIntent.mutateAsync({ 
         amount: numericAmount, 
-        method 
+        method,
+        saveCard: method === 'CARD' && saveCard,
       });
       
       if (result.clientSecret) {
@@ -111,6 +181,16 @@ export function DepositModal({ onClose }: DepositModalProps) {
     }
   };
 
+  const handleSelectNewCard = () => {
+    setSelectedSavedCard(null);
+    setUseNewCard(true);
+  };
+
+  const handleSelectSavedCard = (cardId: string) => {
+    setSelectedSavedCard(cardId);
+    setUseNewCard(false);
+  };
+
   const stripeAppearance = {
     theme: 'night' as const,
     variables: {
@@ -145,6 +225,8 @@ export function DepositModal({ onClose }: DepositModalProps) {
     },
   };
 
+  const isProcessing = createPaymentIntent.isPending || chargeSavedCard.isPending;
+
   const modalContent = (
     <div 
       className={cn(
@@ -155,7 +237,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
     >
       <div 
         className={cn(
-          "relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl transition-all duration-200",
+          "relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl transition-all duration-200 max-h-[90vh] overflow-y-auto",
           isVisible 
             ? "opacity-100 scale-100 translate-y-0" 
             : "opacity-0 scale-95 translate-y-4"
@@ -163,7 +245,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2">
             {step === 'payment' && (
               <Button 
@@ -234,7 +316,13 @@ export function DepositModal({ onClose }: DepositModalProps) {
               {/* Payment Method */}
               <div className="space-y-3">
                 <Label>Método de pagamento</Label>
-                <RadioGroup value={method} onValueChange={(v) => setMethod(v as 'PIX' | 'CARD')}>
+                <RadioGroup value={method} onValueChange={(v) => {
+                  setMethod(v as 'PIX' | 'CARD');
+                  if (v === 'PIX') {
+                    setSelectedSavedCard(null);
+                    setUseNewCard(false);
+                  }
+                }}>
                   <div
                     className={cn(
                       'flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
@@ -267,6 +355,97 @@ export function DepositModal({ onClose }: DepositModalProps) {
                 </RadioGroup>
               </div>
 
+              {/* Saved Cards Section */}
+              {method === 'CARD' && (
+                <div className="space-y-3">
+                  <Label>Selecionar cartão</Label>
+                  
+                  {isLoadingSavedCards ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-14 w-full" />
+                      <Skeleton className="h-14 w-full" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Saved cards */}
+                      {savedCards?.map((card) => (
+                        <div
+                          key={card.id}
+                          className={cn(
+                            'flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+                            selectedSavedCard === card.id && !useNewCard
+                              ? 'border-primary bg-primary/5' 
+                              : 'border-border hover:bg-muted/40'
+                          )}
+                          onClick={() => handleSelectSavedCard(card.id)}
+                        >
+                          <div className={cn(
+                            'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                            selectedSavedCard === card.id && !useNewCard
+                              ? 'border-primary bg-primary'
+                              : 'border-muted-foreground'
+                          )}>
+                            {selectedSavedCard === card.id && !useNewCard && (
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            )}
+                          </div>
+                          <CreditCard className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {formatCardBrand(card.brand)} •••• {card.last4}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Expira {card.expMonth.toString().padStart(2, '0')}/{card.expYear.toString().slice(-2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* New card option */}
+                      <div
+                        className={cn(
+                          'flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+                          useNewCard || (!hasSavedCards && method === 'CARD')
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:bg-muted/40'
+                        )}
+                        onClick={handleSelectNewCard}
+                      >
+                        <div className={cn(
+                          'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                          useNewCard || (!hasSavedCards && method === 'CARD')
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
+                        )}>
+                          {(useNewCard || (!hasSavedCards && method === 'CARD')) && (
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          )}
+                        </div>
+                        <Plus className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="font-medium">Usar novo cartão</p>
+                          <p className="text-xs text-muted-foreground">Adicionar um cartão diferente</p>
+                        </div>
+                      </div>
+
+                      {/* Save card checkbox - only show for new card */}
+                      {(useNewCard || !hasSavedCards) && (
+                        <div className="flex items-center gap-2 pt-2">
+                          <Checkbox 
+                            id="save-card" 
+                            checked={saveCard}
+                            onCheckedChange={(checked) => setSaveCard(checked === true)}
+                          />
+                          <Label htmlFor="save-card" className="text-sm cursor-pointer">
+                            Salvar cartão para pagamentos futuros
+                          </Label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Summary */}
               {isValidAmount && (
                 <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 animate-fade-in">
@@ -284,10 +463,15 @@ export function DepositModal({ onClose }: DepositModalProps) {
                 type="button"
                 className="w-full h-12 text-base transition-transform active:scale-[0.98]"
                 onClick={handleContinue}
-                disabled={!isValidAmount || createPaymentIntent.isPending}
+                disabled={!isValidAmount || isProcessing}
               >
-                {createPaymentIntent.isPending ? (
-                  'Carregando...'
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {method === 'CARD' && selectedSavedCard && !useNewCard ? 'Processando...' : 'Carregando...'}
+                  </>
+                ) : method === 'CARD' && selectedSavedCard && !useNewCard ? (
+                  `Pagar R$ ${numericAmount.toFixed(2)}`
                 ) : (
                   'Continuar para pagamento'
                 )}

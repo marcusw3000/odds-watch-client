@@ -60,20 +60,8 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         statusColors.bg
       )} />
 
-      {/* Status badge for non-tradeable markets */}
-      {!statusInfo.canTrade && (
-        <div className="absolute top-2 right-2 z-10">
-          <MarketStatusBadge 
-            status={statusInfo.status}
-            timeToEvent={statusInfo.timeToEvent}
-            result={event.result}
-            size="sm"
-          />
-        </div>
-      )}
-
       {/* Header */}
-      <div className="flex items-start gap-3 mb-4">
+      <div className="flex items-start gap-3 mb-2">
         <div className={cn(
           "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
           !statusInfo.canTrade && "grayscale"
@@ -96,7 +84,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
           )}
         </div>
 
-        <div className="flex-1 min-w-0 pr-16">
+        <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground mb-0.5">{event.category}</p>
           <h3 
             className="text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
@@ -106,6 +94,18 @@ export const CardStyleButtons = memo(function CardStyleButtons({
           </h3>
         </div>
       </div>
+
+      {/* Status badge for non-tradeable markets */}
+      {!statusInfo.canTrade && (
+        <div className="mb-3">
+          <MarketStatusBadge 
+            status={statusInfo.status}
+            timeToEvent={statusInfo.timeToEvent}
+            result={event.result}
+            size="sm"
+          />
+        </div>
+      )}
 
       {/* Two colored buttons or locked state */}
       {statusInfo.canTrade ? (

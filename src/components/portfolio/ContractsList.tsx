@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingUp, Clock, CheckCircle, XCircle, ArrowRightLeft } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, XCircle, ArrowRightLeft, Share2 } from 'lucide-react';
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { SellModal } from '@/components/market/SellModal';
+import { SharePositionCard } from '@/components/social/SharePositionCard';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -147,15 +148,31 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
                   </div>
 
                   {contract.status === 'ACTIVE' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenSellModal(contract)}
-                      className="mt-2"
-                    >
-                      <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
-                      Vender
-                    </Button>
+                    <div className="flex gap-2 mt-2">
+                      <SharePositionCard
+                        position={{
+                          eventTitle: contract.eventTitle,
+                          outcome: contract.outcome,
+                          quantity: contract.quantity,
+                          priceAtPurchase: contract.priceAtPurchase,
+                          currentPrice: contract.priceAtPurchase, // Simplified
+                          profitPercent: ((potentialPayout - purchasePrice) / purchasePrice) * 100,
+                        }}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenSellModal(contract)}
+                      >
+                        <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                        Vender
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

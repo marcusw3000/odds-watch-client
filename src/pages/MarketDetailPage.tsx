@@ -23,12 +23,14 @@ import { OddsChart } from '@/components/market/OddsChart';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { TradingHaltBanner } from '@/components/market/TradingHaltBanner';
 import { ContestationPanel } from '@/components/market/ContestationPanel';
+import { ShareButton } from '@/components/social/ShareButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
+import { updateMetaTags, resetMetaTags } from '@/lib/seo';
 import { cn } from '@/lib/utils';
 
 export function MarketDetailPage() {
@@ -82,6 +84,22 @@ export function MarketDetailPage() {
   useEffect(() => {
     fetchData();
   }, [id]);
+
+  // Update meta tags for social sharing
+  useEffect(() => {
+    if (event) {
+      updateMetaTags({
+        title: event.title,
+        description: event.description || `Negocie contratos de previsão: ${event.title}`,
+        image: event.imageUrl,
+        url: `${window.location.origin}/market/${event.id}`,
+      });
+    }
+    
+    return () => {
+      resetMetaTags();
+    };
+  }, [event]);
 
   const handleRefresh = async () => {
     if (!id) return;
@@ -201,15 +219,22 @@ export function MarketDetailPage() {
             {event.description}
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex-shrink-0"
-        >
-          <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <ShareButton
+            title={event.title}
+            description={event.description}
+            marketId={event.id}
+            showLabel
+          />
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Trading Halt Banner */}

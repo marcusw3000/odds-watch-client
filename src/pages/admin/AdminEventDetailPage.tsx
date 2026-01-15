@@ -27,7 +27,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AdminRepository } from '@/services/AdminRepository';
-import { MarketEvent, AuditLog, EventStatus } from '@/types/admin';
+import { MarketEvent, AuditLog } from '@/types/admin';
+import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/types/market';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -64,10 +65,10 @@ export function AdminEventDetailPage() {
   const confirmStatusChange = () => {
     if (!event || !statusDialog.action) return;
 
-    const statusMap: Record<string, EventStatus> = {
-      pause: 'PAUSED',
+    const statusMap: Record<string, MarketStatus> = {
+      pause: 'HALTED',
       resume: 'OPEN',
-      close: 'CLOSED',
+      close: 'PENDING',
       open: 'OPEN',
     };
 
@@ -82,16 +83,8 @@ export function AdminEventDetailPage() {
     setStatusDialog({ open: false, action: null });
   };
 
-  const getStatusBadge = (status: EventStatus) => {
-    const variants: Record<EventStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
-      DRAFT: { variant: 'outline', label: 'Rascunho' },
-      OPEN: { variant: 'default', label: 'Aberto' },
-      PAUSED: { variant: 'secondary', label: 'Pausado' },
-      CLOSED: { variant: 'destructive', label: 'Fechado' },
-      SETTLED: { variant: 'outline', label: 'Liquidado' },
-    };
-    const { variant, label } = variants[status];
-    return <Badge variant={variant} className="text-sm">{label}</Badge>;
+  const getStatusBadge = (status: MarketStatus) => {
+    return <Badge variant={MARKET_STATUS_VARIANTS[status]} className="text-sm">{MARKET_STATUS_LABELS[status]}</Badge>;
   };
 
   const getActionLabel = (action: AuditLog['action']) => {
@@ -118,7 +111,7 @@ export function AdminEventDetailPage() {
 
   const isEditable = event.status !== 'SETTLED';
   const canChangeOdds = event.status === 'OPEN';
-  const canSettle = event.status === 'CLOSED';
+  const canSettle = event.status === 'PENDING' || event.status === 'CONTESTED';
 
   return (
     <div className="space-y-6">
@@ -135,7 +128,7 @@ export function AdminEventDetailPage() {
           <p className="text-muted-foreground">{event.category}</p>
         </div>
         <div className="flex gap-2">
-          {event.status === 'DRAFT' && (
+          {event.status === 'HALTED' && (
             <Button onClick={() => handleStatusChange('open')}>
               <Play className="h-4 w-4 mr-2" />
               Abrir Mercado
@@ -153,17 +146,11 @@ export function AdminEventDetailPage() {
               </Button>
             </>
           )}
-          {event.status === 'PAUSED' && (
-            <>
-              <Button onClick={() => handleStatusChange('resume')}>
-                <Play className="h-4 w-4 mr-2" />
-                Reabrir
-              </Button>
-              <Button variant="outline" onClick={() => handleStatusChange('close')}>
-                <Lock className="h-4 w-4 mr-2" />
-                Fechar
-              </Button>
-            </>
+          {event.status === 'HALTED' && (
+            <Button variant="outline" onClick={() => handleStatusChange('close')}>
+              <Lock className="h-4 w-4 mr-2" />
+              Submeter para Liquidação
+            </Button>
           )}
           {canSettle && (
             <Link to={`/admin/settlements?event=${event.id}`}>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MarketEvent, MarketStatus } from '@/types/market';
+import { MarketEvent, MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_DESCRIPTIONS } from '@/types/market';
 
 export interface MarketStatusInfo {
   status: MarketStatus;
@@ -43,27 +43,14 @@ function calculateStatus(event: MarketEvent): MarketStatus {
 }
 
 function getStatusLabel(status: MarketStatus): string {
-  switch (status) {
-    case 'OPEN': return 'Aberto';
-    case 'HALTED': return 'Pausado';
-    case 'PENDING': return 'Aguardando';
-    case 'CONTESTED': return 'Em contestação';
-    case 'SETTLED': return 'Liquidado';
-    default: return status;
-  }
+  return MARKET_STATUS_LABELS[status] || status;
 }
 
 function getStatusDescription(status: MarketStatus, event: MarketEvent): string {
-  switch (status) {
-    case 'OPEN': return 'Negociações abertas';
-    case 'HALTED': return 'Trading pausado até o evento';
-    case 'PENDING': return 'Aguardando resultado oficial';
-    case 'CONTESTED': return 'Período de contestação ativo';
-    case 'SETTLED': return event.result 
-      ? `Resultado: ${event.result === 'YES' ? 'SIM' : 'NÃO'}` 
-      : 'Mercado finalizado';
-    default: return '';
+  if (status === 'SETTLED' && event.result) {
+    return `Resultado: ${event.result === 'YES' ? 'SIM' : event.result === 'NO' ? 'NÃO' : event.result}`;
   }
+  return MARKET_STATUS_DESCRIPTIONS[status] || '';
 }
 
 export function useMarketStatus(event: MarketEvent | null): MarketStatusInfo {

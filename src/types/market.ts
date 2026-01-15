@@ -224,3 +224,30 @@ export const SETTLEMENT_TYPE_UNITS: Record<SettlementType, { unit: string; place
   PTAX_EUR: { unit: 'R$', placeholder: 'Ex: 6.30' },
   PIB: { unit: '%', placeholder: 'Ex: 2.5' },
 };
+
+// Market status labels in Portuguese
+export const MARKET_STATUS_LABELS: Record<MarketStatus, string> = {
+  OPEN: 'Aberto',
+  HALTED: 'Pausado',
+  PENDING: 'Aguardando Resultado',
+  CONTESTED: 'Em Contestação',
+  SETTLED: 'Encerrado',
+};
+
+// Market status descriptions in Portuguese
+export const MARKET_STATUS_DESCRIPTIONS: Record<MarketStatus, string> = {
+  OPEN: 'Negociações abertas',
+  HALTED: 'Negociações pausadas até o evento',
+  PENDING: 'Aguardando resultado oficial',
+  CONTESTED: 'Período de contestação ativo',
+  SETTLED: 'Mercado finalizado',
+};
+
+// Badge variants for each status
+export const MARKET_STATUS_VARIANTS: Record<MarketStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  OPEN: 'default',
+  HALTED: 'secondary',
+  PENDING: 'outline',
+  CONTESTED: 'destructive',
+  SETTLED: 'outline',
+};

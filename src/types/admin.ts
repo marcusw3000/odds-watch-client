@@ -1,7 +1,9 @@
 // ============= Admin Types for Prediction Market =============
 
-// Event Status
-export type EventStatus = 'DRAFT' | 'OPEN' | 'PAUSED' | 'CLOSED' | 'SETTLED';
+import { MarketStatus } from './market';
+
+// Re-export MarketStatus for backwards compatibility
+export type EventStatus = MarketStatus;
 
 // Odds Configuration
 export type OddsMode = 'MANUAL_PRICE' | 'MANUAL_PROBABILITY';

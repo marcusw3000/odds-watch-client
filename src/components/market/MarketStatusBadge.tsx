@@ -1,5 +1,5 @@
 import { Clock, Pause, HelpCircle, AlertTriangle, CheckCircle } from 'lucide-react';
-import { MarketStatus } from '@/types/market';
+import { MarketStatus, MARKET_STATUS_LABELS } from '@/types/market';
 import { formatCountdown, getStatusColor } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
@@ -44,20 +44,10 @@ export function MarketStatusBadge({
   };
 
   const getLabel = () => {
-    switch (status) {
-      case 'OPEN':
-        return 'Aberto';
-      case 'HALTED':
-        return 'Pausado';
-      case 'PENDING':
-        return 'Aguardando';
-      case 'CONTESTED':
-        return 'Contestação';
-      case 'SETTLED':
-        return result === 'YES' ? 'Resultado: SIM' : result === 'NO' ? 'Resultado: NÃO' : 'Liquidado';
-      default:
-        return status;
+    if (status === 'SETTLED' && result) {
+      return result === 'YES' ? 'Resultado: SIM' : result === 'NO' ? 'Resultado: NÃO' : 'Encerrado';
     }
+    return MARKET_STATUS_LABELS[status] || status;
   };
 
   const getCountdown = () => {

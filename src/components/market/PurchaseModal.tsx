@@ -160,19 +160,16 @@ export function PurchaseModal({
     setError(null);
 
     try {
-      // Calculate fee and profit for success modal
-      const P = quote.avgPrice / 100;
-      const C = sharesNum;
-      const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
-      const totalWithFee = quote.cost + feeAmount;
-      const potentialProfit = sharesNum - totalWithFee;
+      // Calculate profit for success modal (no fee)
+      const totalCost = quote.cost;
+      const potentialProfit = sharesNum - totalCost;
 
       await onConfirm(sharesNum, quote.cost);
       
       // Show success modal
       setSuccessData({
         shares: sharesNum,
-        totalCost: totalWithFee,
+        totalCost: totalCost,
         potentialProfit,
       });
     } catch {
@@ -331,12 +328,7 @@ export function PurchaseModal({
 
           {/* Summary with LMSR data */}
           {quote && sharesNum > 0 && (() => {
-            // Trading fee formula: fee = roundUp(0.07 × C × P × (1-P))
-            const P = quote.avgPrice / 100; // Convert cents to decimal (0-1)
-            const C = sharesNum;
-            const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
-            const totalWithFee = quote.cost + feeAmount;
-            const potentialProfit = sharesNum - totalWithFee;
+            const potentialProfit = sharesNum - quote.cost;
             
             return (
               <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
@@ -354,25 +346,12 @@ export function PurchaseModal({
                     <span className="text-muted-foreground">Preço médio</span>
                     <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Custo contratos</span>
-                    <span className="font-mono font-medium">R${quote.cost.toFixed(2)}</span>
-                  </div>
                   
-                  {/* Fee display */}
-                  <div className="flex justify-between text-warning">
-                    <span className="flex items-center gap-1">
-                      Taxa de trading (7% × P × (1-P))
-                    </span>
-                    <span className="font-mono font-medium">R${feeAmount.toFixed(2)}</span>
-                  </div>
-                  
-                  {/* Total with fee */}
+                  {/* Total */}
                   <div className="flex justify-between pt-2 border-t border-border font-medium">
-                    <span>Total a pagar</span>
-                    <span className="font-mono text-foreground">R${totalWithFee.toFixed(2)}</span>
+                    <span>Custo contratos</span>
+                    <span className="font-mono text-foreground">R${quote.cost.toFixed(2)}</span>
                   </div>
-
 
                   <div className="flex justify-between pt-2 border-t border-border">
                     <span className="text-muted-foreground flex items-center gap-1">

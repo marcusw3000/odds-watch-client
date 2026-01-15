@@ -36,28 +36,10 @@ export class FeeEngine {
   }
 
   /**
-   * Calculate trading fee using formula: fee = roundUp(0.07 × C × P × (1-P))
-   * Where:
-   * - P = price per contract (0 to 1, e.g., 0.50 for 50 cents)
-   * - C = number of contracts
-   * - roundUp = rounds to the next cent
-   * 
-   * This formula charges based on expected earnings: P × (1-P) represents
-   * the implied probability multiplied by max potential earnings.
-   * Fee is only charged for taker orders (immediately matched).
+   * Calculate trading fee - currently disabled (returns 0)
    */
   static calculateTradingFee(contracts: number, pricePerContract: number): number {
-    // Ensure price is between 0 and 1
-    const P = Math.max(0.01, Math.min(0.99, pricePerContract));
-    const C = contracts;
-    
-    // Formula: 0.07 × C × P × (1-P)
-    const rawFee = 0.07 * C * P * (1 - P);
-    
-    // Round up to next cent
-    const feeAmount = Math.ceil(rawFee * 100) / 100;
-    
-    return feeAmount;
+    return 0;
   }
 
   /**
@@ -109,28 +91,24 @@ export class FeeEngine {
   }
 
   /**
-   * Calculate trading fee with full result object
-   * Only charged for taker orders (immediately matched)
+   * Calculate trading fee with full result object - currently disabled
    */
   static calculateTradeFee(
     contracts: number, 
     pricePerContract: number,
     totalCost: number
   ): FeeCalculationResult {
-    const feeAmount = this.calculateTradingFee(contracts, pricePerContract);
-    const netAmount = Math.round((totalCost - feeAmount) * 100) / 100;
-
     return {
-      feeAmount,
-      netAmount,
+      feeAmount: 0,
+      netAmount: totalCost,
       appliedRule: {
-        id: 'trading-model',
-        name: 'Taxa de Trading',
+        id: 'no-fee',
+        name: 'Sem Taxa',
         type: 'TRADE',
-        mode: 'TRADING',
-        percent_value: 0.07,
-        flat_value: null,
-        tiers: null,
+        mode: 'FIXED',
+        percent_value: null,
+        flat_value: 0,
+        tiers: [],
         min_fee: null,
         max_fee: null,
         is_active: true,

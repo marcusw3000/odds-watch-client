@@ -640,14 +640,9 @@ export const MarketDataProvider = {
       return { success: false, message: 'Saldo insuficiente.', quote };
     }
 
-    // Calculate fee
-    const pricePerContract = quote.avgPrice / 100;
-    const feeResult = FeeEngine.calculateTradeFee(shares, pricePerContract, quote.cost);
-    const feeAmount = feeResult.feeAmount;
-    const totalDeduction = quote.cost + feeAmount;
-
-    if (balanceData.balance_available < totalDeduction) {
-      return { success: false, message: 'Saldo insuficiente (incluindo taxas).', quote };
+    // No fee - just check balance against cost
+    if (balanceData.balance_available < quote.cost) {
+      return { success: false, message: 'Saldo insuficiente.', quote };
     }
 
     // Note: For mock markets, we can't update balance due to RLS restrictions
@@ -666,9 +661,7 @@ export const MarketDataProvider = {
     
     return {
       success: true,
-      message: feeAmount > 0 
-        ? `Compra simulada! Taxa: R$ ${feeAmount.toFixed(2)} (mercado demo)`
-        : 'Compra simulada! (mercado demo)',
+      message: 'Compra simulada! (mercado demo)',
       contract: newContract,
       quote,
     };

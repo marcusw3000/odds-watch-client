@@ -60,12 +60,8 @@ export function SellModal({
     fetchQuote();
   }, [fetchQuote]);
 
-  // Trading fee formula: fee = roundUp(0.07 × C × P × (1-P))
-  const grossSaleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
-  const P = currentMarketPrice / 100; // Convert cents to decimal (0-1)
-  const C = contract.quantity;
-  const feeAmount = Math.ceil(0.07 * C * P * (1 - P) * 100) / 100;
-  const saleValue = grossSaleValue - feeAmount;
+  // Sale value (no fee)
+  const saleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
   const profitLoss = saleValue - purchaseCost;
   const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(1) : '0.0';
 
@@ -221,20 +217,7 @@ export function SellModal({
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Valor bruto de venda</span>
-                <span className="font-mono font-medium">R${grossSaleValue.toFixed(2)}</span>
-              </div>
-              
-              {/* Fee display */}
-              <div className="flex justify-between text-warning">
-                <span className="flex items-center gap-1">
-                  Taxa de trading (7% × P × (1-P))
-                </span>
-                <span className="font-mono font-medium">-R${feeAmount.toFixed(2)}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Valor líquido</span>
+                <span className="text-muted-foreground">Valor de venda</span>
                 <span className="font-mono font-medium">R${saleValue.toFixed(2)}</span>
               </div>
 

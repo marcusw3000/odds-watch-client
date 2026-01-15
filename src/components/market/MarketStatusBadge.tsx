@@ -58,7 +58,7 @@ export function MarketStatusBadge({
         if (timeToHalt && timeToHalt > 0) {
           return (
             <span className="text-xs opacity-80">
-              · {formatCountdown(timeToHalt)}
+              · {formatCountdown(timeToHalt)} restantes
             </span>
           );
         }

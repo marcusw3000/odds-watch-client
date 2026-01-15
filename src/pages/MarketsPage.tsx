@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
@@ -21,6 +22,7 @@ interface LayoutContext {
 export function MarketsPage() {
   const { userBalance } = useOutletContext<LayoutContext>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [events, setEvents] = useState<MarketEvent[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -66,6 +68,10 @@ export function MarketsPage() {
   };
 
   const handleBuy = (eventId: string, outcome: 'YES' | 'NO') => {
+    if (!user) {
+      navigate('/auth', { state: { returnTo: `/market/${eventId}?action=buy&outcome=${outcome}` } });
+      return;
+    }
     const event = events.find((e) => e.id === eventId);
     if (event) {
       setSelectedEvent(event);

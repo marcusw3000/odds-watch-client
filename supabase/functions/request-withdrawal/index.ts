@@ -59,6 +59,26 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Rate limiting: max 3 withdrawal requests per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentAttempts, error: countError } = await supabaseAdmin
+      .from("payments")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("type", "WITHDRAWAL")
+      .gte("created_at", oneHourAgo);
+
+    if (countError) {
+      logStep("Rate limit check error", { error: countError.message });
+      throw new Error("Erro ao verificar limite de requisições");
+    }
+
+    if ((recentAttempts ?? 0) >= 3) {
+      logStep("Rate limit exceeded", { recentAttempts, userId: user.id });
+      throw new Error("Limite de saques excedido. Aguarde 1 hora para tentar novamente.");
+    }
+    logStep("Rate limit check passed", { recentAttempts });
+
     // Use atomic withdrawal to prevent race conditions
     // This locks the row and checks/deducts balance atomically
     const { data: withdrawSuccess, error: withdrawError } = await supabaseAdmin

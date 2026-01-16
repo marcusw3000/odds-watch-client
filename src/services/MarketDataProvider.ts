@@ -506,12 +506,11 @@ export const MarketDataProvider = {
       createdAt: new Date(t.created_at),
     }));
 
-    // If no real contracts/transactions, show mock data for demo
-    if (contracts.length === 0) {
-      contracts = mockContracts;
-    }
-    if (transactions.length === 0) {
-      transactions = mockTransactions;
+    // Note: We no longer show mock contracts for logged-in users
+    // This prevents confusion and errors when trying to sell mock data
+    if (transactions.length === 0 && contracts.length === 0) {
+      // Keep transactions empty to show the user hasn't made any trades yet
+      transactions = [];
     }
 
     // Calculate balance and profit from wallet data

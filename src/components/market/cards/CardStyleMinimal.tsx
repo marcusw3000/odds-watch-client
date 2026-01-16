@@ -3,6 +3,7 @@ import { TrendingUp, Lock } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
+import { MarketTags } from '@/components/market/MarketTags';
 import { cn } from '@/lib/utils';
 
 interface CardStyleMinimalProps {
@@ -132,10 +133,15 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
         </div>
       </div>
 
-      {/* Volume - subtle */}
-      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-2 pl-11">
-        <TrendingUp className="h-2.5 w-2.5" />
-        <span>{formatVolume(event.volume)}</span>
+      {/* Tags and Volume - subtle */}
+      <div className="flex items-center gap-2 mt-2 pl-11">
+        {event.tags && event.tags.length > 0 && (
+          <MarketTags tags={event.tags} maxTags={2} size="sm" />
+        )}
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto">
+          <TrendingUp className="h-2.5 w-2.5" />
+          <span>{formatVolume(event.volume)}</span>
+        </div>
       </div>
     </div>
   );

@@ -31,6 +31,7 @@ import {
   SpreadPolicy 
 } from '@/types/admin';
 import { ImageEditor } from '@/components/admin/ImageEditor';
+import { TagsInput } from '@/components/admin/TagsInput';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -62,6 +63,9 @@ export function AdminEventFormPage() {
   const [oddsYes, setOddsYes] = useState(50);
   const [oddsNo, setOddsNo] = useState(50);
   const [oddsChangeReason, setOddsChangeReason] = useState('');
+
+  // Tags state
+  const [tags, setTags] = useState<string[]>([]);
 
   // Image state
   const [imageData, setImageData] = useState<{ url: string; zoom: number; position: { x: number; y: number } }>({
@@ -297,6 +301,12 @@ export function AdminEventFormPage() {
               value={imageData.url}
               onChange={setImageData}
               error={errors.image}
+            />
+
+            {/* Tags */}
+            <TagsInput
+              value={tags}
+              onChange={setTags}
             />
           </CardContent>
         </Card>

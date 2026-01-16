@@ -574,6 +574,7 @@ export type Database = {
           settlement_date: string | null
           settlement_type: Database["public"]["Enums"]["settlement_type"]
           status: Database["public"]["Enums"]["market_status"]
+          tags: string[] | null
           title: string
           total_volume: number
           updated_at: string
@@ -606,6 +607,7 @@ export type Database = {
           settlement_date?: string | null
           settlement_type?: Database["public"]["Enums"]["settlement_type"]
           status?: Database["public"]["Enums"]["market_status"]
+          tags?: string[] | null
           title: string
           total_volume?: number
           updated_at?: string
@@ -638,6 +640,7 @@ export type Database = {
           settlement_date?: string | null
           settlement_type?: Database["public"]["Enums"]["settlement_type"]
           status?: Database["public"]["Enums"]["market_status"]
+          tags?: string[] | null
           title?: string
           total_volume?: number
           updated_at?: string

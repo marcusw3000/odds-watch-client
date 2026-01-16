@@ -4,6 +4,7 @@ import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
+import { MarketTags } from '@/components/market/MarketTags';
 import { cn } from '@/lib/utils';
 
 interface CardStyleDefaultProps {
@@ -104,6 +105,13 @@ export const CardStyleDefault = memo(function CardStyleDefault({
           {event.title}
         </h3>
       </div>
+
+      {/* Tags */}
+      {event.tags && event.tags.length > 0 && (
+        <div className="mt-2">
+          <MarketTags tags={event.tags} maxTags={2} size="sm" />
+        </div>
+      )}
 
       {/* Status badge */}
       <div className="mt-2 h-[24px]">

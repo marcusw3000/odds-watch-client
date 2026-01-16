@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
@@ -18,9 +18,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface HeaderProps {
   balance?: number;
+  isBalanceLoading?: boolean;
 }
 
-export function Header({ balance = 2500 }: HeaderProps) {
+export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const location = useLocation();
@@ -98,8 +99,15 @@ export function Header({ balance = 2500 }: HeaderProps) {
           {user && (
             <>
               <div className="flex items-center gap-1 rounded-lg bg-secondary pl-4 pr-1 py-1">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-                <span className="font-mono font-semibold text-foreground mr-1">
+                {isBalanceLoading ? (
+                  <RefreshCw className="h-4 w-4 text-primary animate-spin" />
+                ) : (
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className={cn(
+                  "font-mono font-semibold text-foreground mr-1 transition-opacity duration-200",
+                  isBalanceLoading && "opacity-60"
+                )}>
                   {formatCurrency(balance)}
                 </span>
                 <Button 
@@ -196,11 +204,20 @@ export function Header({ balance = 2500 }: HeaderProps) {
             {user && (
               <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                  {isBalanceLoading ? (
+                    <RefreshCw className="h-4 w-4 text-primary animate-spin" />
+                  ) : (
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                  )}
                   <span className="text-sm text-muted-foreground">Saldo</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold">{formatCurrency(balance)}</span>
+                  <span className={cn(
+                    "font-mono font-semibold transition-opacity duration-200",
+                    isBalanceLoading && "opacity-60"
+                  )}>
+                    {formatCurrency(balance)}
+                  </span>
                   <Button 
                     size="sm" 
                     className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground"

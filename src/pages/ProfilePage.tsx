@@ -15,9 +15,9 @@ import {
   ProfileHeader, 
   ProfileStats, 
   PublicTradeHistory,
-  ProfilePrivacySettings 
+  ProfilePrivacySettings,
+  AchievementsWithProgress
 } from '@/components/profile';
-import { AchievementsBadges } from '@/components/leaderboard/AchievementsBadges';
 import type { UserProfile } from '@/types/leaderboard';
 import { toast } from 'sonner';
 
@@ -202,7 +202,7 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="achievements" className="mt-6">
-          <AchievementsBadges />
+          <AchievementsWithProgress />
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">

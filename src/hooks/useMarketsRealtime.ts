@@ -47,6 +47,7 @@ function transformPayloadToEvent(payload: Record<string, unknown>): MarketEvent 
     contractUnitCost: (payload.contract_unit_cost as number) ?? 100,
     marketType: ((payload.market_type as string) as 'BINARY' | 'MULTIPLE') || 'BINARY',
     optionsExclusive: (payload.options_exclusive as boolean) ?? true,
+    tags: (payload.tags as string[]) || undefined,
   };
 }
 

@@ -56,6 +56,7 @@ function transformDbMarket(dbMarket: DbMarket & { image_zoom?: number; image_pos
     contractUnitCost: dbMarket.contract_unit_cost ?? 100,
     marketType: (dbMarket.market_type as 'BINARY' | 'MULTIPLE') || 'BINARY',
     optionsExclusive: dbMarket.options_exclusive ?? true,
+    tags: dbMarket.tags || undefined,
   };
 }
 

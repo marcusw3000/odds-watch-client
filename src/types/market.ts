@@ -108,6 +108,9 @@ export interface MarketEvent {
   
   // Contract cost
   contractUnitCost: number;  // Value paid per winning contract (default R$100)
+  
+  // Tags for categorization
+  tags?: string[];
 }
 
 // Database market type (from Supabase)
@@ -137,6 +140,7 @@ export interface DbMarket {
   contract_unit_cost: number;
   market_type: string;
   options_exclusive: boolean;
+  tags: string[] | null;
 }
 
 // Database market option type

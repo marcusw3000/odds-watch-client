@@ -12,6 +12,7 @@ import { PurchaseModal } from '@/components/market/PurchaseModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface LayoutContext {
@@ -116,6 +117,8 @@ export function MarketsPage() {
       });
       handleCloseModal();
       fetchData(false);
+      // Trigger portfolio refresh for other open tabs/components
+      triggerPortfolioRefresh();
     } else {
       throw new Error(result.message);
     }

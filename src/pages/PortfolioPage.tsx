@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Briefcase, RefreshCw, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { UserPortfolio } from '@/types/market';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerifyDeposit } from '@/hooks/usePayments';
+import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
 
 export function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<UserPortfolio | null>(null);
@@ -107,6 +108,13 @@ export function PortfolioPage() {
   useEffect(() => {
     fetchPortfolio();
   }, []);
+
+  // Listen for portfolio refresh events (triggered after purchases, sales, etc.)
+  const handlePortfolioRefresh = useCallback(() => {
+    fetchPortfolio(false);
+  }, []);
+  
+  usePortfolioRefreshListener(handlePortfolioRefresh);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

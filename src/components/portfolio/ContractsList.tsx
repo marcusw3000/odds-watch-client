@@ -8,6 +8,7 @@ import { SellModal } from '@/components/market/SellModal';
 import { SharePositionCard } from '@/components/social/SharePositionCard';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { useToast } from '@/hooks/use-toast';
+import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 import { cn } from '@/lib/utils';
 
 interface ContractsListProps {
@@ -50,6 +51,8 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
       });
       setSellingContract(null);
       onContractSold?.();
+      // Trigger portfolio refresh for other components
+      triggerPortfolioRefresh();
     } else {
       throw new Error(result.message);
     }

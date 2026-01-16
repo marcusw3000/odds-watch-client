@@ -746,6 +746,7 @@ export type Database = {
           error_message: string | null
           fee: number
           id: string
+          idempotency_key: string | null
           metadata: Json | null
           method: Database["public"]["Enums"]["payment_method"]
           net_amount: number
@@ -769,6 +770,7 @@ export type Database = {
           error_message?: string | null
           fee?: number
           id?: string
+          idempotency_key?: string | null
           metadata?: Json | null
           method?: Database["public"]["Enums"]["payment_method"]
           net_amount: number
@@ -792,6 +794,7 @@ export type Database = {
           error_message?: string | null
           fee?: number
           id?: string
+          idempotency_key?: string | null
           metadata?: Json | null
           method?: Database["public"]["Enums"]["payment_method"]
           net_amount?: number
@@ -1261,6 +1264,10 @@ export type Database = {
       check_and_grant_achievements: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      check_pending_withdrawal: {
+        Args: { p_amount: number; p_pix_key: string; p_user_id: string }
+        Returns: boolean
       }
       decrement_comment_likes: {
         Args: { p_comment_id: string }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,16 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FinancialRepository } from '@/services/FinancialRepository';
-import type { LedgerEntry, FeePolicySnapshot } from '@/types/financial';
-import { Search, Download, Eye, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useAdminLedger, useFeePolicySnapshot, type LedgerEntrySecure } from '@/hooks/useSecureData';
+import { Search, Download, Eye, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function AdminLedgerPage() {
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
-  const [snapshot, setSnapshot] = useState<FeePolicySnapshot | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<LedgerEntrySecure | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Filters
@@ -48,39 +44,29 @@ export function AdminLedgerPage() {
     maxAmount: ''
   });
 
-  useEffect(() => {
-    loadEntries();
-  }, []);
+  const [activeFilters, setActiveFilters] = useState(filters);
 
-  const loadEntries = async () => {
-    setLoading(true);
-    const data = await FinancialRepository.getLedgerEntries({
-      userId: filters.userId || undefined,
-      refType: filters.refType !== 'all' ? filters.refType : undefined,
-      status: filters.status !== 'all' ? filters.status : undefined,
-      startDate: filters.startDate || undefined,
-      endDate: filters.endDate || undefined,
-      minAmount: filters.minAmount ? parseFloat(filters.minAmount) : undefined,
-      maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : undefined,
-      limit: 100
-    });
-    setEntries(data);
-    setLoading(false);
-  };
+  // Use secure hooks
+  const { data: entries = [], isLoading, refetch } = useAdminLedger({
+    userId: activeFilters.userId || undefined,
+    refType: activeFilters.refType !== 'all' ? activeFilters.refType : undefined,
+    status: activeFilters.status !== 'all' ? activeFilters.status : undefined,
+    startDate: activeFilters.startDate || undefined,
+    endDate: activeFilters.endDate || undefined,
+    minAmount: activeFilters.minAmount ? parseFloat(activeFilters.minAmount) : undefined,
+    maxAmount: activeFilters.maxAmount ? parseFloat(activeFilters.maxAmount) : undefined,
+    limit: 100,
+  });
 
-  const openDetails = async (entry: LedgerEntry) => {
+  const { data: snapshot } = useFeePolicySnapshot(selectedEntry?.fee_snapshot_id || null);
+
+  const openDetails = (entry: LedgerEntrySecure) => {
     setSelectedEntry(entry);
-    if (entry.fee_snapshot_id) {
-      const snap = await FinancialRepository.getFeePolicySnapshot(entry.fee_snapshot_id);
-      setSnapshot(snap);
-    } else {
-      setSnapshot(null);
-    }
     setDetailsOpen(true);
   };
 
   const handleSearch = () => {
-    loadEntries();
+    setActiveFilters({ ...filters });
   };
 
   const handleExportCSV = () => {
@@ -94,7 +80,7 @@ export function AdminLedgerPage() {
       e.fee_amount.toFixed(2),
       e.net_amount.toFixed(2),
       e.status,
-      e.user_id || 'PLATFORM'
+      e.user_id_masked
     ]);
 
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -134,10 +120,10 @@ export function AdminLedgerPage() {
     }
   };
 
-  if (loading && entries.length === 0) {
+  if (isLoading && entries.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -352,7 +338,7 @@ export function AdminLedgerPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">User ID</Label>
-                  <p className="font-mono text-sm">{selectedEntry.user_id || 'PLATFORM'}</p>
+                  <p className="font-mono text-sm">{selectedEntry.user_id_masked}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Data</Label>

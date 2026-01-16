@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { UserPortfolio, UserContract, Transaction } from '@/types/market';
+import { useAuth } from './useAuth';
 
 // Types for secure data responses
 export interface SecureBalance {
@@ -12,8 +12,25 @@ export interface SecurePortfolio {
   balance: number;
   totalInvested: number;
   totalProfit: number;
-  contracts: UserContract[];
-  transactions: Transaction[];
+  contracts: Array<{
+    id: string;
+    eventId: string;
+    eventTitle: string;
+    outcome: 'YES' | 'NO';
+    quantity: number;
+    priceAtPurchase: number;
+    purchasedAt: Date;
+    status: 'ACTIVE' | 'WON' | 'LOST';
+    payout?: number;
+  }>;
+  transactions: Array<{
+    id: string;
+    type: 'BUY' | 'SELL' | 'DEPOSIT' | 'PAYOUT';
+    amount: number;
+    eventTitle?: string;
+    outcome?: 'YES' | 'NO';
+    createdAt: Date;
+  }>;
 }
 
 export interface AdminUser {
@@ -36,6 +53,39 @@ export interface UserDisplayInfo {
   bio?: string | null;
 }
 
+export interface LedgerEntrySecure {
+  id: string;
+  user_id: string;
+  user_id_masked: string;
+  wallet_id: string;
+  ref_type: string;
+  ref_id?: string;
+  direction: string;
+  amount: number;
+  fee_amount: number;
+  net_amount: number;
+  platform_revenue: number;
+  status: string;
+  fee_snapshot_id?: string;
+  meta?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  total_profit: number | null;
+  roi_percent: number | null;
+  total_volume: number | null;
+  total_trades: number | null;
+  winning_trades: number | null;
+  show_profit: boolean;
+  show_roi: boolean;
+  show_volume: boolean;
+  show_trades: boolean;
+}
+
 // Fetch user balance securely via Edge Function
 export function useSecureBalance() {
   return useQuery({
@@ -50,7 +100,7 @@ export function useSecureBalance() {
       
       return data as SecureBalance;
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
     refetchOnWindowFocus: true,
   });
 }
@@ -67,7 +117,6 @@ export function useSecurePortfolio() {
         throw error;
       }
       
-      // Transform dates from strings
       const portfolio = data as any;
       return {
         balance: portfolio.balance,
@@ -90,12 +139,11 @@ export function useSecurePortfolio() {
 
 // Fetch admin users securely via Edge Function
 export function useAdminUsers(search?: string) {
+  const { isAdmin } = useAuth();
+  
   return useQuery({
     queryKey: ['admin-users', search],
     queryFn: async (): Promise<AdminUser[]> => {
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      
       const { data, error } = await supabase.functions.invoke('get-admin-users', {
         body: { search },
       });
@@ -107,7 +155,8 @@ export function useAdminUsers(search?: string) {
       
       return (data as any).users as AdminUser[];
     },
-    staleTime: 60000, // 1 minute
+    enabled: isAdmin,
+    staleTime: 60000,
   });
 }
 
@@ -130,7 +179,140 @@ export function useUserDisplayInfo(userId: string | null) {
       return data as UserDisplayInfo;
     },
     enabled: !!userId,
-    staleTime: 300000, // 5 minutes
+    staleTime: 300000,
+  });
+}
+
+// Fetch admin ledger entries via Edge Function
+export function useAdminLedger(filters?: {
+  userId?: string;
+  refType?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  limit?: number;
+}) {
+  const { isAdmin } = useAuth();
+
+  return useQuery({
+    queryKey: ['admin-ledger', filters],
+    queryFn: async (): Promise<LedgerEntrySecure[]> => {
+      const searchParams = new URLSearchParams();
+      if (filters?.userId) searchParams.set('userId', filters.userId);
+      if (filters?.refType && filters.refType !== 'all') searchParams.set('refType', filters.refType);
+      if (filters?.status && filters.status !== 'all') searchParams.set('status', filters.status);
+      if (filters?.startDate) searchParams.set('startDate', filters.startDate);
+      if (filters?.endDate) searchParams.set('endDate', filters.endDate);
+      if (filters?.minAmount !== undefined) searchParams.set('minAmount', filters.minAmount.toString());
+      if (filters?.maxAmount !== undefined) searchParams.set('maxAmount', filters.maxAmount.toString());
+      if (filters?.limit) searchParams.set('limit', filters.limit.toString());
+      
+      const queryString = searchParams.toString();
+      const { data, error } = await supabase.functions.invoke(
+        queryString ? `get-admin-ledger?${queryString}` : 'get-admin-ledger'
+      );
+      
+      if (error) {
+        console.error('Error fetching admin ledger:', error);
+        throw error;
+      }
+      
+      return (data as any).entries as LedgerEntrySecure[];
+    },
+    enabled: isAdmin,
+    staleTime: 30000,
+  });
+}
+
+// Adjust wallet balance (admin only)
+export function useAdjustWalletBalance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { walletId: string; amount: number; reason: string }) => {
+      const { data, error } = await supabase.functions.invoke('adjust-wallet-balance', {
+        body: params,
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to adjust balance');
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-ledger'] });
+    },
+  });
+}
+
+// Fetch fee policy snapshot (admin only)
+export function useFeePolicySnapshot(snapshotId: string | null) {
+  const { isAdmin } = useAuth();
+
+  return useQuery({
+    queryKey: ['fee-policy-snapshot', snapshotId],
+    queryFn: async () => {
+      if (!snapshotId) return null;
+      
+      const { data, error } = await supabase.functions.invoke(`get-fee-policy-snapshot?id=${snapshotId}`);
+      
+      if (error) {
+        console.error('Error fetching fee policy snapshot:', error);
+        throw error;
+      }
+      
+      return (data as any).snapshot;
+    },
+    enabled: isAdmin && !!snapshotId,
+    staleTime: 300000,
+  });
+}
+
+// Get leaderboard data via Edge Function
+export function useSecureLeaderboard(sortBy: string = 'profit', limit: number = 50) {
+  return useQuery({
+    queryKey: ['secure-leaderboard', sortBy, limit],
+    queryFn: async (): Promise<LeaderboardEntry[]> => {
+      const { data, error } = await supabase.functions.invoke(
+        `get-leaderboard-data?sortBy=${sortBy}&limit=${limit}`
+      );
+      
+      if (error) {
+        console.error('Error fetching leaderboard:', error);
+        throw error;
+      }
+      
+      return (data as any).entries as LeaderboardEntry[];
+    },
+    staleTime: 60000,
+  });
+}
+
+// Search users for mentions via Edge Function
+export function useSearchUsersForMention(query: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['search-users-mention', query],
+    queryFn: async (): Promise<Array<{ user_id: string; display_name: string }>> => {
+      if (!query || query.length < 2) return [];
+      
+      const { data, error } = await supabase.functions.invoke(
+        `search-users-mention?q=${encodeURIComponent(query)}`
+      );
+      
+      if (error) {
+        console.error('Error searching users for mention:', error);
+        return [];
+      }
+      
+      return (data as any).users || [];
+    },
+    enabled: !!user && query.length >= 2,
+    staleTime: 30000,
   });
 }
 
@@ -141,9 +323,13 @@ export function useSecureDataRefresh() {
   return {
     refreshBalance: () => queryClient.invalidateQueries({ queryKey: ['secure-balance'] }),
     refreshPortfolio: () => queryClient.invalidateQueries({ queryKey: ['secure-portfolio'] }),
+    refreshLeaderboard: () => queryClient.invalidateQueries({ queryKey: ['secure-leaderboard'] }),
+    refreshAdminUsers: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    refreshAdminLedger: () => queryClient.invalidateQueries({ queryKey: ['admin-ledger'] }),
     refreshAll: () => {
       queryClient.invalidateQueries({ queryKey: ['secure-balance'] });
       queryClient.invalidateQueries({ queryKey: ['secure-portfolio'] });
+      queryClient.invalidateQueries({ queryKey: ['secure-leaderboard'] });
     },
   };
 }

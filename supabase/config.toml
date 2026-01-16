@@ -29,3 +29,18 @@ verify_jwt = false
 
 [functions.get-user-display-info]
 verify_jwt = false
+
+[functions.get-admin-ledger]
+verify_jwt = false
+
+[functions.adjust-wallet-balance]
+verify_jwt = false
+
+[functions.get-leaderboard-data]
+verify_jwt = false
+
+[functions.search-users-mention]
+verify_jwt = false
+
+[functions.get-fee-policy-snapshot]
+verify_jwt = false

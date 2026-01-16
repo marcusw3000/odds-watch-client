@@ -1234,15 +1234,80 @@ export type Database = {
       }
     }
     Views: {
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          best_streak: number | null
+          best_trade_profit: number | null
+          bio: string | null
+          created_at: string | null
+          current_streak: number | null
+          display_name: string | null
+          id: string | null
+          is_public: boolean | null
+          roi_percent: number | null
+          show_profit: boolean | null
+          show_roi: boolean | null
+          show_trades: boolean | null
+          show_volume: boolean | null
+          total_profit: number | null
+          total_trades: number | null
+          total_volume: number | null
+          updated_at: string | null
+          winning_trades: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          best_streak?: number | null
+          best_trade_profit?: number | null
+          bio?: string | null
+          created_at?: string | null
+          current_streak?: number | null
+          display_name?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          roi_percent?: number | null
+          show_profit?: boolean | null
+          show_roi?: boolean | null
+          show_trades?: boolean | null
+          show_volume?: boolean | null
+          total_profit?: number | null
+          total_trades?: number | null
+          total_volume?: number | null
+          updated_at?: string | null
+          winning_trades?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          best_streak?: number | null
+          best_trade_profit?: number | null
+          bio?: string | null
+          created_at?: string | null
+          current_streak?: number | null
+          display_name?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          roi_percent?: number | null
+          show_profit?: boolean | null
+          show_roi?: boolean | null
+          show_trades?: boolean | null
+          show_volume?: boolean | null
+          total_profit?: number | null
+          total_trades?: number | null
+          total_volume?: number | null
+          updated_at?: string | null
+          winning_trades?: number | null
+        }
+        Relationships: []
+      }
       wallets_with_profile: {
         Row: {
+          avatar_url: string | null
           balance_available: number | null
           balance_locked: number | null
           created_at: string | null
           currency: string | null
           display_name: string | null
-          email: string | null
-          full_name: string | null
           id: string | null
           total_deposited: number | null
           total_withdrawn: number | null
@@ -1256,6 +1321,25 @@ export type Database = {
       atomic_deposit_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
+      }
+      atomic_execute_sell: {
+        Args: {
+          p_contract_id: string
+          p_min_value: number
+          p_shares: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      atomic_execute_trade: {
+        Args: {
+          p_market_id: string
+          p_max_cost: number
+          p_outcome: string
+          p_shares: number
+          p_user_id: string
+        }
+        Returns: Json
       }
       atomic_withdraw_balance: {
         Args: { p_amount: number; p_user_id: string }

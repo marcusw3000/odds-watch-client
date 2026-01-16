@@ -4,6 +4,7 @@ import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, C
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/formatters';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DepositModal } from '@/components/payments/DepositModal';
@@ -27,12 +28,7 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
   const location = useLocation();
   const { user, isAdmin, signOut, loading } = useAuth();
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  // formatCurrency is now imported from @/lib/formatters
 
   const navItems = [
     { path: '/markets', label: 'Mercados', icon: TrendingUp },

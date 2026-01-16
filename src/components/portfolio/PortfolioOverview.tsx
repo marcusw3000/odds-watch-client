@@ -1,5 +1,6 @@
 import { Wallet, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 import { UserPortfolio } from '@/types/market';
+import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface PortfolioOverviewProps {
@@ -7,12 +8,7 @@ interface PortfolioOverviewProps {
 }
 
 export function PortfolioOverview({ portfolio }: PortfolioOverviewProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  // formatCurrency is now imported from @/lib/formatters
 
   const activeContracts = portfolio.contracts.filter(c => c.status === 'ACTIVE');
   const settledContracts = portfolio.contracts.filter(c => c.status !== 'ACTIVE');

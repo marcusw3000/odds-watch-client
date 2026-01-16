@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { ReferralService } from '@/services/ReferralService';
+import { formatCurrency } from '@/lib/formatters';
 import type { ReferralStats, Referral } from '@/types/referral';
 
 export function ReferralPage() {
@@ -129,12 +130,7 @@ export function ReferralPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  // formatCurrency is now imported from @/lib/formatters
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('pt-BR');

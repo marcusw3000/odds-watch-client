@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
 import { MarketStatusBadge } from './MarketStatusBadge';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
+import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface MarketCardProps {
@@ -19,12 +20,7 @@ export const MarketCard = memo(function MarketCard({ event, onBuy, onViewDetails
   const [hoveredOutcome, setHoveredOutcome] = useState<'YES' | 'NO' | null>(null);
   const statusInfo = useMarketStatus(event);
 
-  const formatVolume = (vol?: number) => {
-    if (!vol) return 'R$0';
-    if (vol >= 1000000) return `R$${(vol / 1000000).toFixed(1)}M`;
-    if (vol >= 1000) return `R$${(vol / 1000).toFixed(0)}k`;
-    return `R$${vol}`;
-  };
+  // formatVolume is now imported from @/lib/formatters
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {

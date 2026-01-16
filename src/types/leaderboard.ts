@@ -25,7 +25,7 @@ export interface UserProfile {
 
 // Legacy type aliases for backward compatibility
 export type LeaderboardProfile = Pick<UserProfile, 
-  'id' | 'display_name' | 'is_public' | 'show_profit' | 'show_roi' | 
+  'id' | 'display_name' | 'avatar_url' | 'is_public' | 'show_profit' | 'show_roi' | 
   'show_volume' | 'show_trades' | 'bio' | 'created_at' | 'updated_at'
 > & { user_id: string };
 

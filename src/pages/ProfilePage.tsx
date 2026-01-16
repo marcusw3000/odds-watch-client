@@ -51,7 +51,7 @@ export default function ProfilePage() {
         id: myProfile.user_id,
         email: null,
         full_name: null,
-        avatar_url: null,
+        avatar_url: myProfile.avatar_url || null,
         display_name: myProfile.display_name,
         bio: myProfile.bio,
         is_public: myProfile.is_public,

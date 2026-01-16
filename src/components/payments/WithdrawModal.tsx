@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { ArrowUpFromLine, X, AlertCircle, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { ArrowUpFromLine, X, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,18 +18,73 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useRequestWithdrawal } from '@/hooks/usePayments';
 import type { PixKeyType } from '@/types/payment';
+import { cn } from '@/lib/utils';
 
 interface WithdrawModalProps {
   balance: number;
   onClose: () => void;
 }
 
-const pixKeyTypes: { value: PixKeyType; label: string; placeholder: string }[] = [
-  { value: 'CPF', label: 'CPF', placeholder: '000.000.000-00' },
-  { value: 'CNPJ', label: 'CNPJ', placeholder: '00.000.000/0000-00' },
-  { value: 'EMAIL', label: 'E-mail', placeholder: 'seu@email.com' },
-  { value: 'PHONE', label: 'Telefone', placeholder: '+55 11 99999-9999' },
-  { value: 'RANDOM', label: 'Chave Aleatória', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+// PIX validation patterns
+const pixValidators: Record<PixKeyType, { pattern: RegExp; format?: (value: string) => string; maxLength: number }> = {
+  CPF: {
+    pattern: /^\d{11}$/,
+    format: (value: string) => {
+      const digits = value.replace(/\D/g, '').slice(0, 11);
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    },
+    maxLength: 14,
+  },
+  CNPJ: {
+    pattern: /^\d{14}$/,
+    format: (value: string) => {
+      const digits = value.replace(/\D/g, '').slice(0, 14);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+      if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+      if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+      return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+    },
+    maxLength: 18,
+  },
+  EMAIL: {
+    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    maxLength: 254,
+  },
+  PHONE: {
+    pattern: /^\+?55?\d{10,11}$/,
+    format: (value: string) => {
+      const digits = value.replace(/\D/g, '').slice(0, 13);
+      if (digits.length <= 2) return `+${digits}`;
+      if (digits.length <= 4) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+      if (digits.length <= 9) return `+${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4)}`;
+      return `+${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4, 9)}-${digits.slice(9)}`;
+    },
+    maxLength: 19,
+  },
+  RANDOM: {
+    pattern: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
+    format: (value: string) => {
+      const hex = value.replace(/[^a-f0-9]/gi, '').toLowerCase().slice(0, 32);
+      if (hex.length <= 8) return hex;
+      if (hex.length <= 12) return `${hex.slice(0, 8)}-${hex.slice(8)}`;
+      if (hex.length <= 16) return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12)}`;
+      if (hex.length <= 20) return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16)}`;
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    },
+    maxLength: 36,
+  },
+};
+
+const pixKeyTypes: { value: PixKeyType; label: string; placeholder: string; hint: string }[] = [
+  { value: 'CPF', label: 'CPF', placeholder: '000.000.000-00', hint: '11 dígitos' },
+  { value: 'CNPJ', label: 'CNPJ', placeholder: '00.000.000/0000-00', hint: '14 dígitos' },
+  { value: 'EMAIL', label: 'E-mail', placeholder: 'seu@email.com', hint: 'E-mail válido' },
+  { value: 'PHONE', label: 'Telefone', placeholder: '+55 11 99999-9999', hint: 'Com DDD' },
+  { value: 'RANDOM', label: 'Chave Aleatória', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', hint: 'UUID válido' },
 ];
 
 const DEBOUNCE_MS = 2000; // 2 seconds between attempts
@@ -40,21 +95,95 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
   const [pixKeyType, setPixKeyType] = useState<PixKeyType>('CPF');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isDebouncing, setIsDebouncing] = useState(false);
+  const [touched, setTouched] = useState(false);
   
   const requestWithdrawal = useRequestWithdrawal();
   const { toast } = useToast();
   const lastSubmitTime = useRef<number>(0);
 
   const numericAmount = parseFloat(amount) || 0;
-  // No withdrawal fee
   const fee = 0;
   const netAmount = numericAmount;
   const isValidAmount = numericAmount >= 20 && numericAmount <= Math.min(5000, balance);
-  const isValidPixKey = pixKey.trim().length > 0;
   const isSubmitting = requestWithdrawal.isPending || isDebouncing;
 
+  const selectedPixType = pixKeyTypes.find(t => t.value === pixKeyType);
+  const validator = pixValidators[pixKeyType];
+
+  // Validate PIX key
+  const pixValidation = useMemo(() => {
+    if (!pixKey.trim()) {
+      return { isValid: false, error: null };
+    }
+
+    // For validation, extract raw value
+    let rawValue = pixKey;
+    if (pixKeyType === 'CPF' || pixKeyType === 'CNPJ') {
+      rawValue = pixKey.replace(/\D/g, '');
+    } else if (pixKeyType === 'PHONE') {
+      rawValue = pixKey.replace(/\D/g, '');
+    } else if (pixKeyType === 'RANDOM') {
+      rawValue = pixKey.toLowerCase();
+    }
+
+    const isValid = validator.pattern.test(rawValue);
+    
+    if (!isValid) {
+      let error = '';
+      switch (pixKeyType) {
+        case 'CPF':
+          error = 'CPF deve ter 11 dígitos';
+          break;
+        case 'CNPJ':
+          error = 'CNPJ deve ter 14 dígitos';
+          break;
+        case 'EMAIL':
+          error = 'E-mail inválido';
+          break;
+        case 'PHONE':
+          error = 'Telefone deve ter 10-11 dígitos com DDD';
+          break;
+        case 'RANDOM':
+          error = 'Chave aleatória deve ser um UUID válido';
+          break;
+      }
+      return { isValid: false, error };
+    }
+
+    return { isValid: true, error: null };
+  }, [pixKey, pixKeyType, validator]);
+
+  const isValidPixKey = pixValidation.isValid;
+  const showPixError = touched && !pixValidation.isValid && pixKey.trim().length > 0;
+
+  // Handle PIX key change with auto-formatting
+  const handlePixKeyChange = useCallback((value: string) => {
+    setTouched(true);
+    
+    if (validator.format) {
+      const formatted = validator.format(value);
+      setPixKey(formatted);
+    } else {
+      setPixKey(value.slice(0, validator.maxLength));
+    }
+  }, [validator]);
+
+  // Reset PIX key when type changes
+  const handlePixKeyTypeChange = useCallback((type: PixKeyType) => {
+    setPixKeyType(type);
+    setPixKey('');
+    setTouched(false);
+  }, []);
+
+  // Get raw PIX key for submission
+  const getRawPixKey = useCallback(() => {
+    if (pixKeyType === 'CPF' || pixKeyType === 'CNPJ' || pixKeyType === 'PHONE') {
+      return pixKey.replace(/\D/g, '');
+    }
+    return pixKey;
+  }, [pixKey, pixKeyType]);
+
   const executeWithdrawal = useCallback(async () => {
-    // Check debounce
     const now = Date.now();
     if (now - lastSubmitTime.current < DEBOUNCE_MS) {
       toast({
@@ -73,7 +202,7 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
     try {
       const result = await requestWithdrawal.mutateAsync({
         amount: numericAmount,
-        pix_key: pixKey,
+        pix_key: getRawPixKey(),
         pix_key_type: pixKeyType,
       });
 
@@ -89,10 +218,9 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
         variant: 'destructive',
       });
     } finally {
-      // Keep debouncing state for 2 seconds after request completes
       setTimeout(() => setIsDebouncing(false), DEBOUNCE_MS);
     }
-  }, [isSubmitting, isValidAmount, isValidPixKey, numericAmount, pixKey, pixKeyType, requestWithdrawal, toast, onClose]);
+  }, [isSubmitting, isValidAmount, isValidPixKey, numericAmount, getRawPixKey, pixKeyType, requestWithdrawal, toast, onClose]);
 
   const handleRequestWithdraw = () => {
     if (!isValidAmount || !isValidPixKey) return;
@@ -103,8 +231,6 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
     setShowConfirmation(false);
     await executeWithdrawal();
   };
-
-  const selectedPixType = pixKeyTypes.find(t => t.value === pixKeyType);
 
   return (
     <>
@@ -165,7 +291,7 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
             {/* PIX Key Type */}
             <div className="space-y-2">
               <Label>Tipo de chave PIX</Label>
-              <Select value={pixKeyType} onValueChange={(v) => setPixKeyType(v as PixKeyType)}>
+              <Select value={pixKeyType} onValueChange={(v) => handlePixKeyTypeChange(v as PixKeyType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -181,12 +307,36 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
 
             {/* PIX Key Input */}
             <div className="space-y-2">
-              <Label>Chave PIX</Label>
+              <div className="flex justify-between items-center">
+                <Label>Chave PIX</Label>
+                {pixValidation.isValid && pixKey.trim() && (
+                  <span className="flex items-center gap-1 text-xs text-green-500">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Válida
+                  </span>
+                )}
+              </div>
               <Input
                 value={pixKey}
-                onChange={(e) => setPixKey(e.target.value)}
+                onChange={(e) => handlePixKeyChange(e.target.value)}
                 placeholder={selectedPixType?.placeholder}
+                maxLength={validator.maxLength}
+                className={cn(
+                  showPixError && "border-destructive focus-visible:ring-destructive"
+                )}
+                aria-invalid={showPixError}
+                aria-describedby={showPixError ? "pix-error" : undefined}
               />
+              {showPixError ? (
+                <p id="pix-error" className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {pixValidation.error}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {selectedPixType?.hint}
+                </p>
+              )}
             </div>
 
             {/* Processing Info */}

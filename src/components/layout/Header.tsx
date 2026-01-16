@@ -6,6 +6,7 @@ import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/formatters';
 import { useAuth } from '@/hooks/useAuth';
+import { useMyLeaderboardProfile } from '@/hooks/useLeaderboard';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DepositModal } from '@/components/payments/DepositModal';
 import {
@@ -15,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface HeaderProps {
   balance?: number;
@@ -27,6 +28,7 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
   const [showDepositModal, setShowDepositModal] = useState(false);
   const location = useLocation();
   const { user, isAdmin, signOut, loading } = useAuth();
+  const { data: myProfile } = useMyLeaderboardProfile();
 
   // formatCurrency is now imported from @/lib/formatters
 
@@ -48,6 +50,9 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
   };
 
   const getUserInitials = () => {
+    if (myProfile?.display_name) {
+      return myProfile.display_name.charAt(0).toUpperCase();
+    }
     if (!user?.email) return 'U';
     return user.email.charAt(0).toUpperCase();
   };
@@ -125,6 +130,7 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
+                    <AvatarImage src={myProfile?.avatar_url || undefined} alt="Avatar" />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {getUserInitials()}
                     </AvatarFallback>
@@ -268,6 +274,7 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
               <div className="space-y-2">
                 <div className="flex items-center gap-2 px-2 py-1">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={myProfile?.avatar_url || undefined} alt="Avatar" />
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                       {getUserInitials()}
                     </AvatarFallback>

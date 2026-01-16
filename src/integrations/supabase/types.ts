@@ -450,6 +450,13 @@ export type Database = {
             foreignKeyName: "ledger_entries_wallet_id_fkey"
             columns: ["wallet_id"]
             isOneToOne: false
+            referencedRelation: "wallets_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
             referencedRelation: "wallets_with_profile"
             referencedColumns: ["id"]
           },
@@ -1237,6 +1244,51 @@ export type Database = {
       }
     }
     Views: {
+      payments_safe: {
+        Row: {
+          amount: number | null
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          fee: number | null
+          id: string | null
+          method: Database["public"]["Enums"]["payment_method"] | null
+          net_amount: number | null
+          status: Database["public"]["Enums"]["payment_status"] | null
+          type: Database["public"]["Enums"]["payment_type"] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          fee?: number | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          net_amount?: number | null
+          status?: Database["public"]["Enums"]["payment_status"] | null
+          type?: Database["public"]["Enums"]["payment_type"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          fee?: number | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          net_amount?: number | null
+          status?: Database["public"]["Enums"]["payment_status"] | null
+          type?: Database["public"]["Enums"]["payment_type"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null
@@ -1303,6 +1355,33 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets_safe: {
+        Row: {
+          balance_available: number | null
+          created_at: string | null
+          currency: string | null
+          id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          balance_available?: number | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          balance_available?: number | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       wallets_with_profile: {
         Row: {
           avatar_url: string | null
@@ -1321,6 +1400,7 @@ export type Database = {
       }
     }
     Functions: {
+      anonymize_old_reporters: { Args: never; Returns: undefined }
       atomic_deposit_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
@@ -1380,6 +1460,7 @@ export type Database = {
         Args: { p_comment_id: string }
         Returns: undefined
       }
+      mask_ip_address: { Args: { ip_address: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

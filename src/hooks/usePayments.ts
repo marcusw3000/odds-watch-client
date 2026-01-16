@@ -1,25 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import type { Payment, WithdrawalRequest } from '@/types/payment';
+import type { PaymentSafe, WithdrawalRequest } from '@/types/payment';
 
+// Use secure view that excludes sensitive data (pix keys, stripe ids, etc.)
 export function usePayments() {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['payments', user?.id],
-    queryFn: async (): Promise<Payment[]> => {
+    queryFn: async (): Promise<PaymentSafe[]> => {
       if (!user) return [];
 
+      // Query from payments_safe view which excludes sensitive fields
       const { data, error } = await supabase
-        .from('payments')
+        .from('payments_safe')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return (data || []) as Payment[];
+      return (data || []) as PaymentSafe[];
     },
     enabled: !!user,
   });
@@ -30,18 +32,19 @@ export function usePendingPayments() {
 
   return useQuery({
     queryKey: ['pending-payments', user?.id],
-    queryFn: async (): Promise<Payment[]> => {
+    queryFn: async (): Promise<PaymentSafe[]> => {
       if (!user) return [];
 
+      // Query from payments_safe view which excludes sensitive fields
       const { data, error } = await supabase
-        .from('payments')
+        .from('payments_safe')
         .select('*')
         .eq('user_id', user.id)
         .in('status', ['PENDING', 'PROCESSING'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as Payment[];
+      return (data || []) as PaymentSafe[];
     },
     enabled: !!user,
     refetchInterval: 10000,

@@ -2,6 +2,7 @@ export type PaymentType = 'DEPOSIT' | 'WITHDRAWAL';
 export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
 export type PaymentMethod = 'PIX' | 'CARD' | 'BOLETO';
 
+// Full payment type (for internal/admin use only)
 export interface Payment {
   id: string;
   user_id: string;
@@ -20,6 +21,22 @@ export interface Payment {
   pix_key: string | null;
   pix_key_type: string | null;
   metadata: Record<string, any>;
+  error_message: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Safe payment type (excludes sensitive data - for user-facing queries)
+export interface PaymentSafe {
+  id: string;
+  user_id: string;
+  type: PaymentType;
+  method: PaymentMethod;
+  amount: number;
+  fee: number;
+  net_amount: number;
+  status: PaymentStatus;
   error_message: string | null;
   completed_at: string | null;
   created_at: string;

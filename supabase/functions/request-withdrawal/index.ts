@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { encryptSensitiveData, maskPixKey } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -156,6 +157,10 @@ serve(async (req) => {
     const fee = 0;
     const netAmount = amount;
 
+    // Encrypt PIX key before storing
+    const encryptedPixKey = await encryptSensitiveData(pix_key);
+    logStep("PIX key encrypted for storage");
+
     // Create withdrawal request with idempotency key
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("payments")
@@ -167,7 +172,7 @@ serve(async (req) => {
         fee: fee,
         net_amount: netAmount,
         status: "PENDING",
-        pix_key: pix_key,
+        pix_key: encryptedPixKey,
         pix_key_type: pix_key_type,
         idempotency_key: idempotencyKey,
       })
@@ -214,7 +219,7 @@ serve(async (req) => {
             amount,
             fee,
             net_amount: netAmount,
-            pix_key: pix_key,
+            pix_key_masked: maskPixKey(pix_key), // Send masked version in emails
             pix_key_type: pix_key_type,
             payment_id: payment.id,
           },

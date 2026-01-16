@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { encryptSensitiveData } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,6 +110,10 @@ serve(async (req) => {
       clientSecret: paymentIntent.client_secret ? 'present' : 'missing'
     });
 
+    // Encrypt Stripe payment intent ID before storing
+    const encryptedPaymentIntentId = await encryptSensitiveData(paymentIntent.id);
+    logStep("Stripe payment intent ID encrypted for storage");
+
     // Create pending payment record in database
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -125,7 +130,7 @@ serve(async (req) => {
         fee: 0,
         net_amount: amount,
         status: "PENDING",
-        stripe_payment_intent_id: paymentIntent.id,
+        stripe_payment_intent_id: encryptedPaymentIntentId,
       });
 
     if (insertError) {

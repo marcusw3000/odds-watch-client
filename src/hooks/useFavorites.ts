@@ -18,7 +18,8 @@ export function useFavorites() {
     queryFn: async (): Promise<Favorite[]> => {
       if (!user) return [];
 
-      const { data, error } = await supabase
+      // Use any to bypass type checking since the table was just created
+      const { data, error } = await (supabase as any)
         .from('user_favorites')
         .select('id, market_id, created_at')
         .eq('user_id', user.id)
@@ -29,7 +30,7 @@ export function useFavorites() {
         return [];
       }
 
-      return data as Favorite[];
+      return (data || []) as Favorite[];
     },
     enabled: !!user,
     staleTime: 60000,
@@ -39,7 +40,7 @@ export function useFavorites() {
     mutationFn: async (marketId: string) => {
       if (!user) throw new Error('Must be logged in');
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('user_favorites')
         .insert({ user_id: user.id, market_id: marketId })
         .select()
@@ -73,7 +74,7 @@ export function useFavorites() {
     mutationFn: async (marketId: string) => {
       if (!user) throw new Error('Must be logged in');
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_favorites')
         .delete()
         .eq('user_id', user.id)

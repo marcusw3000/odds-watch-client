@@ -42,7 +42,7 @@ export function AdvancedFilters({
 }: AdvancedFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const statusOptions: MarketStatus[] = ['OPEN', 'HALTED', 'PENDING_SETTLEMENT', 'SETTLED'];
+  const statusOptions: MarketStatus[] = ['OPEN', 'HALTED', 'PENDING', 'SETTLED'];
 
   const toggleCategory = (category: string) => {
     const newCategories = filters.categories.includes(category)

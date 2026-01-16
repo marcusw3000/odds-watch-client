@@ -35,6 +35,7 @@ import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { updateMetaTags, resetMetaTags } from '@/lib/seo';
 import { cn } from '@/lib/utils';
 import { useDeepLink } from '@/hooks/useDeepLink';
+import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 
 export function MarketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -156,6 +157,8 @@ export function MarketDetailPage() {
       ]);
       setUserBalance(portfolio.balance);
       if (updatedEvent) setEvent(updatedEvent);
+      // Trigger portfolio refresh for other open tabs/components
+      triggerPortfolioRefresh();
     } else {
       throw new Error(result.message);
     }

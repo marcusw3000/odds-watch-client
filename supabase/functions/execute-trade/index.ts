@@ -92,17 +92,16 @@ Deno.serve(async (req) => {
     );
 
     // Verify token and get user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !user) {
       return new Response(
         JSON.stringify({ success: false, message: "Token inválido" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     // Parse request body
     const body: TradeRequest = await req.json();
@@ -331,7 +330,7 @@ Deno.serve(async (req) => {
         })
         .eq("id", existingContract.id);
     } else {
-      await supabaseAdmin.from("user_contracts").insert({
+      const { error: insertContractError } = await supabaseAdmin.from("user_contracts").insert({
         user_id: userId,
         market_id: marketId,
         position: outcome,
@@ -339,6 +338,10 @@ Deno.serve(async (req) => {
         average_price: avgPrice / 100,
         total_invested: cost,
       });
+      
+      if (insertContractError) {
+        console.error("Error inserting contract:", insertContractError);
+      }
     }
 
     return new Response(

@@ -7,6 +7,7 @@ import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
+import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface TrendingMarketCardProps {
@@ -32,12 +33,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
 
-  const formatVolume = (vol?: number) => {
-    if (!vol) return 'R$0';
-    if (vol >= 1000000) return `R$${(vol / 1000000).toFixed(3).replace('.', ',')}`;
-    if (vol >= 1000) return `R$${(vol / 1000).toFixed(0)}k`;
-    return `R$${vol.toLocaleString('pt-BR')}`;
-  };
+  // formatVolume is now imported from @/lib/formatters (note: this variant has slight differences but we'll use the standard one)
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {

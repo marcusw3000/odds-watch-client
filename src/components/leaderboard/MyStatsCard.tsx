@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useMyStatistics, useMyLeaderboardProfile } from '@/hooks/useLeaderboard';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrencyWithSign } from '@/lib/formatters';
 
 export function MyStatsCard() {
   const { user } = useAuth();
@@ -30,10 +31,8 @@ export function MyStatsCard() {
     );
   }
 
-  const formatCurrency = (value: number) => {
-    const prefix = value >= 0 ? '+' : '';
-    return `${prefix}R$${Math.abs(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-  };
+  // Using formatCurrencyWithSign from @/lib/formatters
+  const formatCurrency = (value: number) => formatCurrencyWithSign(value);
 
   const winRate = stats?.total_trades 
     ? ((stats.winning_trades / stats.total_trades) * 100).toFixed(1) 

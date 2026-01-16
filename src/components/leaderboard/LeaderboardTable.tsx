@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrencyWithSign, formatPercent } from '@/lib/formatters';
 import type { LeaderboardEntry, LeaderboardSortBy } from '@/types/leaderboard';
 
 interface LeaderboardTableProps {
@@ -20,15 +21,9 @@ export function LeaderboardTable({
   onSortChange,
   currentUserId 
 }: LeaderboardTableProps) {
-  const formatCurrency = (value: number) => {
-    const prefix = value >= 0 ? '+' : '';
-    return `${prefix}R$${Math.abs(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-  };
-
-  const formatPercent = (value: number) => {
-    const prefix = value >= 0 ? '+' : '';
-    return `${prefix}${value.toFixed(1)}%`;
-  };
+  // Using formatCurrencyWithSign and formatPercent from @/lib/formatters
+  const formatCurrency = (value: number) => formatCurrencyWithSign(value);
+  const formatPercentage = (value: number) => formatPercent(value);
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) return <span className="text-2xl">🥇</span>;
@@ -141,7 +136,7 @@ export function LeaderboardTable({
                 <TableCell>
                   {entry.show_roi ? (
                     <span className={entry.roi_percent >= 0 ? 'text-green-500 font-mono' : 'text-red-500 font-mono'}>
-                      {formatPercent(entry.roi_percent)}
+                      {formatPercentage(entry.roi_percent)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground flex items-center gap-1">

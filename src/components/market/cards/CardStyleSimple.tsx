@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
+import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface CardStyleSimpleProps {
@@ -22,12 +23,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
 
-  const formatVolume = (vol?: number) => {
-    if (!vol) return 'R$0';
-    if (vol >= 1000000) return `R$${(vol / 1000000).toFixed(1)}M`;
-    if (vol >= 1000) return `R$${(vol / 1000).toFixed(0)}k`;
-    return `R$${vol}`;
-  };
+  // formatVolume is now imported from @/lib/formatters
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {

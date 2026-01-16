@@ -9,12 +9,15 @@ import { TrendingMarketCard } from '@/components/market/TrendingMarketCard';
 import { CompactMarketCard } from '@/components/market/CompactMarketCard';
 import { MarketCardSkeleton } from '@/components/market/MarketCardSkeleton';
 import { CategoryFilter } from '@/components/market/CategoryFilter';
+import { AdvancedFilters } from '@/components/market/AdvancedFilters';
 import { PurchaseModal } from '@/components/market/PurchaseModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useMarketFilters } from '@/hooks/useMarketFilters';
 
 interface LayoutContext {
   userBalance: number;
@@ -28,6 +31,19 @@ export function MarketsPage() {
   
   // Use realtime hook for markets data
   const { events, isLoading: isLoadingMarkets, refetch } = useMarketsRealtime();
+  
+  // Favorites system
+  const { favoriteIds } = useFavorites();
+  
+  // Advanced filters
+  const {
+    filters,
+    updateFilter,
+    clearFilters,
+    hasActiveFilters,
+    activeFilterCount,
+    applyFilters,
+  } = useMarketFilters(favoriteIds);
   
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -138,13 +154,17 @@ export function MarketsPage() {
     setTrendingIndex((prev) => (prev < Math.min(2, events.length - 1) ? prev + 1 : 0));
   }, [events.length]);
 
-  const filteredEvents = events.filter((event) => {
+  // Apply search and category filter first, then advanced filters
+  const baseFilteredEvents = events.filter((event) => {
     const matchesCategory = !activeCategory || event.category === activeCategory;
     const matchesSearch =
       !searchQuery ||
       event.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  // Apply advanced filters
+  const filteredEvents = applyFilters(baseFilteredEvents);
 
   // Get trending markets (top 3 by volume or first 3)
   const trendingEvents = [...filteredEvents]
@@ -197,6 +217,15 @@ export function MarketsPage() {
           activeCategory={activeCategory}
           onSelect={setActiveCategory}
         />
+        <AdvancedFilters
+          filters={filters}
+          onUpdateFilter={updateFilter}
+          onClearFilters={clearFilters}
+          categories={categories}
+          hasActiveFilters={hasActiveFilters}
+          activeFilterCount={activeFilterCount}
+          isLoggedIn={!!user}
+        />
       </div>
 
       {/* Trending Section */}
@@ -241,8 +270,16 @@ export function MarketsPage() {
             <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhum mercado encontrado</h3>
             <p className="text-muted-foreground">
-              Tente ajustar os filtros ou volte mais tarde.
+              {hasActiveFilters 
+                ? 'Tente ajustar os filtros para ver mais resultados.'
+                : 'Tente ajustar os filtros ou volte mais tarde.'
+              }
             </p>
+            {hasActiveFilters && (
+              <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

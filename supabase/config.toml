@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.get-fee-policy-snapshot]
 verify_jwt = false
+
+[functions.export-user-data]
+verify_jwt = false

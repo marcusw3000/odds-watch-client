@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { NotificationType, Notification } from '@/types/notification';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { NotificationSkeleton } from './NotificationSkeleton';
 
 const notificationIcons: Record<NotificationType, React.ElementType> = {
   MARKET_CLOSING_SOON: AlertCircle,
@@ -290,9 +291,7 @@ export function NotificationBell() {
         
         <ScrollArea className="h-[400px]">
           {isLoading ? (
-            <div className="p-4 text-center text-muted-foreground">
-              Carregando...
-            </div>
+            <NotificationSkeleton count={3} />
           ) : displayNotifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />

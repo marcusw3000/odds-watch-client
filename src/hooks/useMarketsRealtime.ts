@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MarketEvent, DbMarket, MarketStatus, SettlementType, SettlementConfig } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { getPriceYes, getPriceNo, LMSRState } from '@/services/LMSRCalculator';
+import { useToast } from '@/hooks/use-toast';
 
 // Transform DB payload to frontend MarketEvent
 function transformPayloadToEvent(payload: Record<string, unknown>): MarketEvent {
@@ -54,18 +55,27 @@ function transformPayloadToEvent(payload: Record<string, unknown>): MarketEvent 
 export function useMarketsRealtime() {
   const [events, setEvents] = useState<MarketEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const { toast } = useToast();
 
   const fetchEvents = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
+    setError(null);
     try {
       const data = await MarketDataProvider.getEvents();
       setEvents(data);
-    } catch (error) {
-      console.error('Error fetching markets:', error);
+    } catch (err) {
+      console.error('Error fetching markets:', err);
+      setError(err as Error);
+      toast({
+        title: 'Erro ao carregar mercados',
+        description: 'Verifique sua conexão e tente novamente.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     // Initial load
@@ -124,5 +134,5 @@ export function useMarketsRealtime() {
     };
   }, [fetchEvents]);
 
-  return { events, isLoading, refetch: () => fetchEvents(false) };
+  return { events, isLoading, error, refetch: () => fetchEvents(false) };
 }

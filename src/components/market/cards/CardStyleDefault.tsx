@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
+import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { cn } from '@/lib/utils';
 
 interface CardStyleDefaultProps {
@@ -220,14 +221,17 @@ export const CardStyleDefault = memo(function CardStyleDefault({
           <TrendingUp className="h-3 w-3" />
           <span>{formatVolume(event.volume)}</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onViewDetails?.(event.id)}
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <FavoriteButton marketId={event.id} size="sm" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => onViewDetails?.(event.id)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

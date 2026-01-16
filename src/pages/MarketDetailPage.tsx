@@ -26,10 +26,11 @@ import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { TradingHaltBanner } from '@/components/market/TradingHaltBanner';
 import { ContestationPanel } from '@/components/market/ContestationPanel';
 import { ShareButton } from '@/components/social/ShareButton';
+import { FavoriteButton } from '@/components/market/FavoriteButton';
+import { MarketDetailSkeleton } from '@/components/market/MarketDetailSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { updateMetaTags, resetMetaTags } from '@/lib/seo';
@@ -48,6 +49,7 @@ export function MarketDetailPage() {
   const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
   const [userBalance, setUserBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<Error | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
   
@@ -165,15 +167,23 @@ export function MarketDetailPage() {
   };
 
   if (isLoading) {
+    return <MarketDetailSkeleton />;
+  }
+
+  if (loadError) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-24 w-full" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Skeleton className="h-80 w-full" />
-          </div>
-          <Skeleton className="h-80 w-full" />
+      <div className="text-center py-16">
+        <AlertTriangle className="h-16 w-16 mx-auto text-destructive/50 mb-4" />
+        <h3 className="text-lg font-medium mb-2">Erro ao carregar mercado</h3>
+        <p className="text-muted-foreground mb-4">{loadError.message}</p>
+        <div className="flex gap-2 justify-center">
+          <Button variant="outline" onClick={() => navigate('/markets')}>
+            Voltar aos mercados
+          </Button>
+          <Button onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
         </div>
       </div>
     );
@@ -233,6 +243,7 @@ export function MarketDetailPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <FavoriteButton marketId={event.id} showLabel />
           <ShareButton
             title={event.title}
             description={event.description}

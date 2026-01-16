@@ -1,10 +1,12 @@
-import { Settings, Bell, User, Shield } from 'lucide-react';
+import { Settings, Bell, User, Shield, Download } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { LeaderboardProfileSettings } from '@/components/leaderboard/LeaderboardProfileSettings';
+import { ExportDataButton } from '@/components/settings/ExportDataButton';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function SettingsPage() {
   const { user } = useAuth();
@@ -40,7 +42,7 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="notifications" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
             Notificações
@@ -48,6 +50,10 @@ export function SettingsPage() {
           <TabsTrigger value="leaderboard" className="gap-2">
             <User className="h-4 w-4" />
             Leaderboard
+          </TabsTrigger>
+          <TabsTrigger value="privacy" className="gap-2">
+            <Shield className="h-4 w-4" />
+            Privacidade
           </TabsTrigger>
         </TabsList>
 
@@ -57,6 +63,28 @@ export function SettingsPage() {
 
         <TabsContent value="leaderboard">
           <LeaderboardProfileSettings />
+        </TabsContent>
+
+        <TabsContent value="privacy">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Exportar Dados (LGPD)
+              </CardTitle>
+              <CardDescription>
+                Exporte todos os seus dados pessoais armazenados na plataforma em formato JSON ou CSV.
+                De acordo com a Lei Geral de Proteção de Dados, você tem direito à portabilidade dos seus dados.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ExportDataButton />
+              <p className="text-xs text-muted-foreground">
+                O arquivo incluirá: perfil, transações, contratos, pagamentos, notificações, conquistas e comentários.
+                Você pode exportar seus dados uma vez por hora.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

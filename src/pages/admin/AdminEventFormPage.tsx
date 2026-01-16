@@ -180,8 +180,21 @@ export function AdminEventFormPage() {
         toast.success('Evento criado com sucesso');
         navigate(`/admin/events/${result.id}`);
       }
-    } catch (error) {
-      toast.error('Erro ao salvar evento');
+    } catch (error: unknown) {
+      const err = error as { code?: string; status?: number; message?: string };
+      const errorCode = err?.code;
+      
+      if (errorCode === 'PGRST116') {
+        toast.error('Evento não encontrado ou foi removido');
+      } else if (errorCode === '23505') {
+        toast.error('Já existe um evento com este título');
+      } else if (errorCode === '23503') {
+        toast.error('Referência inválida. Verifique os dados informados.');
+      } else if (err?.status === 429) {
+        toast.error('Muitas tentativas. Aguarde alguns segundos.');
+      } else {
+        toast.error(`Erro ao salvar evento: ${err?.message || 'Erro desconhecido'}`);
+      }
     } finally {
       setLoading(false);
     }

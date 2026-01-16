@@ -469,22 +469,43 @@ export const MarketDataProvider = {
       .select('balance_available, total_deposited, total_withdrawn')
       .eq('user_id', user.id)
       .maybeSingle();
-    
-    const balanceData = walletResult.data as { balance_available: number; total_deposited: number; total_withdrawn: number } | null;
+
+    if (walletResult.error) {
+      console.error('Error fetching wallet:', walletResult.error);
+      throw walletResult.error;
+    }
+
+    const balanceData = walletResult.data as
+      | { balance_available: number; total_deposited: number; total_withdrawn: number }
+      | null;
 
     // Get contracts
-    const { data: contractsData } = await supabase
+    const contractsResult = await supabase
       .from('user_contracts')
       .select('*, markets(title)')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (contractsResult.error) {
+      console.error('Error fetching contracts:', contractsResult.error);
+      throw contractsResult.error;
+    }
 
     // Get transactions
-    const { data: transactionsData } = await supabase
+    const transactionsResult = await supabase
       .from('transactions')
       .select('*, markets(title)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
+
+    if (transactionsResult.error) {
+      console.error('Error fetching transactions:', transactionsResult.error);
+      throw transactionsResult.error;
+    }
+
+    const contractsData = contractsResult.data;
+    const transactionsData = transactionsResult.data;
 
     let contracts: UserContract[] = (contractsData || []).map((c: any) => ({
       id: c.id,
@@ -506,16 +527,10 @@ export const MarketDataProvider = {
       createdAt: new Date(t.created_at),
     }));
 
-    // Note: We no longer show mock contracts for logged-in users
-    // This prevents confusion and errors when trying to sell mock data
-    if (transactions.length === 0 && contracts.length === 0) {
-      // Keep transactions empty to show the user hasn't made any trades yet
-      transactions = [];
-    }
-
-    // Calculate balance and profit from wallet data
-    const balance = (balanceData as any)?.balance_available ?? 485.60;
-    const totalDeposited = (balanceData as any)?.total_deposited ?? 462.15;
+    // Never use demo fallbacks for authenticated users.
+    // If the user has no wallet row yet, show 0 and empty lists.
+    const balance = balanceData?.balance_available ?? 0;
+    const totalDeposited = balanceData?.total_deposited ?? 0;
 
     return {
       balance,

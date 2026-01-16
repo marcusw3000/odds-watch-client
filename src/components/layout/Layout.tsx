@@ -9,8 +9,12 @@ export function Layout() {
 
   useEffect(() => {
     const fetchBalance = async () => {
-      const portfolio = await MarketDataProvider.getUserPortfolio();
-      setUserBalance(portfolio.balance);
+      try {
+        const portfolio = await MarketDataProvider.getUserPortfolio();
+        setUserBalance(portfolio.balance);
+      } catch (err) {
+        console.error('Error fetching balance:', err);
+      }
     };
     fetchBalance();
 

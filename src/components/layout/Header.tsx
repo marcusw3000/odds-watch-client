@@ -148,6 +148,12 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
                   </>
                 )}
                 <DropdownMenuItem asChild>
+                  <Link to="/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    Meu Perfil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/portfolio">Meu Portfólio</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

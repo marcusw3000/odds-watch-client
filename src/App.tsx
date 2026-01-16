@@ -15,6 +15,7 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { FeesPage } from "./pages/FeesPage";
 import { ReferralPage } from "./pages/ReferralPage";
+import ProfilePage from "./pages/ProfilePage";
 import { Loader2 } from "lucide-react";
 
 // Lazy load admin pages for bundle optimization
@@ -67,6 +68,8 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/referral" element={<ReferralPage />} />
               <Route path="/fees" element={<FeesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile/:userId" element={<ProfilePage />} />
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}

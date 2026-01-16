@@ -9,6 +9,7 @@ import type {
   LeaderboardEntry,
   LeaderboardSortBy 
 } from '@/types/leaderboard';
+import type { Tables } from '@/integrations/supabase/types';
 
 // Type for profile data from database (with type cast for migration period)
 interface ProfileData {
@@ -236,6 +237,70 @@ export function useInitializeUserStats() {
       if (!user) throw new Error('Not authenticated');
       // No longer needed - stats are part of profiles table which is auto-created
       // This is a no-op for backward compatibility
+    },
+  });
+}
+
+// Hook for viewing another user's public profile
+export function usePublicProfile(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['public-profile', userId],
+    queryFn: async (): Promise<Tables<'profiles_public'> | null> => {
+      if (!userId) return null;
+
+      const { data, error } = await supabase
+        .from('profiles_public')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+
+// Hook for updating avatar
+export function useUpdateAvatar() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (file: File): Promise<string> => {
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      return publicUrl;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-leaderboard-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['public-profile'] });
     },
   });
 }

@@ -185,12 +185,12 @@ serve(async (req) => {
     logStep("Withdrawal request created", { paymentId: payment.id, idempotencyKey });
     // Note: Balance was already atomically deducted by atomic_withdraw_balance
 
-    // Create notification
+    // Create notification with new type
     await supabaseAdmin
       .from("notifications")
       .insert({
         user_id: user.id,
-        type: "TRADE_EXECUTED",
+        type: "WITHDRAWAL_REQUESTED",
         title: "Solicitação de Saque Recebida",
         message: `Seu saque de R$${netAmount.toFixed(2)} está sendo processado.`,
         data: { amount, fee, net_amount: netAmount, payment_id: payment.id },

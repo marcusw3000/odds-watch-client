@@ -139,7 +139,7 @@ export async function notifyCommentMention(
 ) {
   return createNotification({
     userId,
-    type: 'COMMENT_MENTION' as any,
+    type: 'COMMENT_MENTION',
     title: `${mentionedByName} mencionou você`,
     message: `Em "${marketTitle}": "${commentPreview}..."`,
     data: { market_id: marketId, mentioned_by: mentionedByName },
@@ -156,7 +156,7 @@ export async function notifyCommentLike(
 ) {
   return createNotification({
     userId,
-    type: 'COMMENT_LIKE' as any,
+    type: 'COMMENT_LIKE',
     title: `${likedByName} curtiu seu comentário`,
     message: `Seu comentário em "${marketTitle}" tem ${likesCount} ${likesCount === 1 ? 'curtida' : 'curtidas'}`,
     data: { market_id: marketId, liked_by: likedByName, likes_count: likesCount },
@@ -173,10 +173,91 @@ export async function notifyCommentReply(
 ) {
   return createNotification({
     userId,
-    type: 'COMMENT_REPLY' as any,
+    type: 'COMMENT_REPLY',
     title: `${repliedByName} respondeu ao seu comentário`,
     message: `Em "${marketTitle}": "${replyPreview}..."`,
     data: { market_id: marketId, replied_by: repliedByName },
+    sendEmail: false,
+  });
+}
+
+// New notification types for deposits/withdrawals
+export async function notifyDepositConfirmed(
+  userId: string,
+  amount: number,
+  paymentId?: string
+) {
+  return createNotification({
+    userId,
+    type: 'DEPOSIT_CONFIRMED',
+    title: 'Depósito Confirmado! 💰',
+    message: `Seu depósito de R$${amount.toFixed(2)} foi creditado com sucesso.`,
+    data: { amount, payment_id: paymentId },
+    sendEmail: false,
+  });
+}
+
+export async function notifyWithdrawalRequested(
+  userId: string,
+  amount: number,
+  paymentId?: string
+) {
+  return createNotification({
+    userId,
+    type: 'WITHDRAWAL_REQUESTED',
+    title: 'Solicitação de Saque Recebida',
+    message: `Seu saque de R$${amount.toFixed(2)} está sendo processado.`,
+    data: { amount, payment_id: paymentId },
+    sendEmail: false,
+  });
+}
+
+export async function notifyWithdrawalCompleted(
+  userId: string,
+  amount: number,
+  paymentId?: string
+) {
+  return createNotification({
+    userId,
+    type: 'WITHDRAWAL_COMPLETED',
+    title: 'Saque Concluído! ✅',
+    message: `Seu saque de R$${amount.toFixed(2)} foi processado com sucesso.`,
+    data: { amount, payment_id: paymentId },
+    sendEmail: true,
+  });
+}
+
+export async function notifyWithdrawalFailed(
+  userId: string,
+  amount: number,
+  reason: string,
+  paymentId?: string
+) {
+  return createNotification({
+    userId,
+    type: 'WITHDRAWAL_FAILED',
+    title: 'Saque Não Processado',
+    message: `Seu saque de R$${amount.toFixed(2)} não pôde ser processado. ${reason}`,
+    data: { amount, reason, payment_id: paymentId },
+    sendEmail: true,
+  });
+}
+
+export async function notifyPriceAlert(
+  userId: string,
+  marketId: string,
+  marketTitle: string,
+  oldPrice: number,
+  newPrice: number,
+  percentChange: number
+) {
+  const direction = percentChange > 0 ? 'subiu' : 'caiu';
+  return createNotification({
+    userId,
+    type: 'PRICE_ALERT',
+    title: 'Alerta de Preço 📊',
+    message: `"${marketTitle}" ${direction} ${Math.abs(percentChange).toFixed(1)}%`,
+    data: { market_id: marketId, old_price: oldPrice, new_price: newPrice, change: percentChange },
     sendEmail: false,
   });
 }

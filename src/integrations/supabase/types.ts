@@ -1250,6 +1250,10 @@ export type Database = {
       }
     }
     Functions: {
+      atomic_deposit_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: boolean
+      }
       atomic_withdraw_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean

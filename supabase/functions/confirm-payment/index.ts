@@ -71,7 +71,7 @@ serve(async (req) => {
     const { data: existingPayment } = await supabaseAdmin
       .from("payments")
       .select("*")
-      .eq("stripe_session_id", paymentIntentId)
+      .eq("stripe_payment_intent_id", paymentIntentId)
       .single();
 
     if (existingPayment?.status === "COMPLETED") {
@@ -93,14 +93,16 @@ serve(async (req) => {
     if (paymentIntent.status === "succeeded") {
       const amount = paymentIntent.amount / 100; // Convert from cents
 
-      // Update payment record
-      const { error: updateError } = await supabaseAdmin
-        .from("payments")
-        .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
-        .eq("stripe_session_id", paymentIntentId);
+      // Update payment record if exists
+      if (existingPayment) {
+        const { error: updateError } = await supabaseAdmin
+          .from("payments")
+          .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+          .eq("stripe_payment_intent_id", paymentIntentId);
 
-      if (updateError) {
-        logStep("Error updating payment", { error: updateError });
+        if (updateError) {
+          logStep("Error updating payment", { error: updateError });
+        }
       }
 
       // Use atomic deposit function to update wallet balance

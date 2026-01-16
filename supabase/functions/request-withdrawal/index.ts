@@ -196,6 +196,36 @@ serve(async (req) => {
         data: { amount, fee, net_amount: netAmount, payment_id: payment.id },
       });
 
+    // Send confirmation email
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          type: "WITHDRAWAL_REQUESTED",
+          title: "Solicitação de Saque Recebida",
+          message: `Seu saque de R$${netAmount.toFixed(2)} está sendo processado.`,
+          data: {
+            amount,
+            fee,
+            net_amount: netAmount,
+            pix_key: pix_key,
+            pix_key_type: pix_key_type,
+            payment_id: payment.id,
+          },
+        }),
+      });
+      logStep("Confirmation email sent", { status: emailResponse.status });
+    } catch (emailError) {
+      // Don't fail the withdrawal if email fails
+      logStep("Email send error (non-blocking)", { error: String(emailError) });
+    }
+
     return new Response(JSON.stringify({ 
       success: true,
       payment_id: payment.id,

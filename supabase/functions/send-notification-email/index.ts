@@ -63,6 +63,114 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     `,
   }),
 
+  WITHDRAWAL_REQUESTED: (data) => ({
+    subject: `💸 Saque solicitado: R$${data.amount?.toFixed(2) || '0,00'}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>💸 Solicitação de Saque Recebida</h2>
+        <p style="color: #666;">Recebemos sua solicitação de saque e ela está sendo processada.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">Valor solicitado:</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: bold;">R$${data.amount?.toFixed(2) || '0,00'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">Taxa:</td>
+              <td style="padding: 8px 0; text-align: right;">R$${data.fee?.toFixed(2) || '0,00'}</td>
+            </tr>
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="padding: 12px 0; color: #64748b; font-weight: bold;">Valor a receber:</td>
+              <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #22c55e; font-size: 18px;">R$${data.net_amount?.toFixed(2) || '0,00'}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
+          <strong>Chave PIX:</strong> ${data.pix_key || 'Não informada'}<br>
+          <strong>Tipo:</strong> ${data.pix_key_type || 'Não informado'}
+        </div>
+
+        <p style="color: #666;">
+          <strong>Prazo de processamento:</strong> até 24 horas úteis.<br>
+          Você receberá outro email quando o saque for concluído.
+        </p>
+
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver meu portfólio
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Se você não solicitou este saque, entre em contato conosco imediatamente.
+        </p>
+      </div>
+    `,
+  }),
+
+  WITHDRAWAL_COMPLETED: (data) => ({
+    subject: `✅ Saque concluído: R$${data.net_amount?.toFixed(2) || '0,00'}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>✅ Saque Concluído com Sucesso!</h2>
+        <p style="color: #666;">Seu saque foi processado e o valor foi transferido para sua conta.</p>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="color: #64748b; margin: 0;">Valor transferido</p>
+          <p style="font-size: 32px; font-weight: bold; color: #22c55e; margin: 8px 0;">R$${data.net_amount?.toFixed(2) || '0,00'}</p>
+        </div>
+
+        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+          <strong>Chave PIX:</strong> ${data.pix_key || 'Não informada'}<br>
+          <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </div>
+
+        <p style="color: #666;">
+          O valor deve aparecer em sua conta em alguns minutos. Caso não receba, entre em contato conosco.
+        </p>
+
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver histórico
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Obrigado por usar o PredictMarket!
+        </p>
+      </div>
+    `,
+  }),
+
+  WITHDRAWAL_FAILED: (data) => ({
+    subject: `❌ Problema com seu saque`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>❌ Problema com seu Saque</h2>
+        <p style="color: #666;">Infelizmente não foi possível processar seu saque.</p>
+        
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #64748b; margin: 0 0 8px 0;">Valor solicitado</p>
+          <p style="font-size: 24px; font-weight: bold; color: #ef4444; margin: 0;">R$${data.amount?.toFixed(2) || '0,00'}</p>
+          ${data.error_message ? `<p style="color: #dc2626; margin-top: 12px;"><strong>Motivo:</strong> ${data.error_message}</p>` : ''}
+        </div>
+
+        <p style="color: #666;">
+          O valor foi estornado para o seu saldo na plataforma. Por favor, verifique os dados da chave PIX e tente novamente.
+        </p>
+
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Tentar novamente
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Se precisar de ajuda, entre em contato com nosso suporte.
+        </p>
+      </div>
+    `,
+  }),
+
   DEFAULT: (data) => ({
     subject: data.title || 'Notificação do PredictMarket',
     html: `

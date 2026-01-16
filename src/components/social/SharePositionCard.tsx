@@ -118,18 +118,18 @@ export function SharePositionCard({ position, trigger }: SharePositionCardProps)
 
               {/* Stats Grid */}
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-white/5 rounded-xl p-3 backdrop-blur-sm">
+                <div className="bg-white/5 rounded-xl p-3">
                   <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Contratos</p>
                   <p className="font-bold text-2xl">{position.quantity}</p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-3 backdrop-blur-sm">
+                <div className="bg-white/5 rounded-xl p-3">
                   <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Preço</p>
                   <p className="font-mono font-semibold text-lg">
                     {position.priceAtPurchase}¢
                   </p>
                 </div>
                 <div className={cn(
-                  "rounded-xl p-3 backdrop-blur-sm flex flex-col items-center justify-center",
+                  "rounded-xl p-3 flex flex-col items-center justify-center",
                   isProfit ? "bg-green-500/20" : "bg-red-500/20"
                 )}>
                   <div className="flex items-center gap-1">

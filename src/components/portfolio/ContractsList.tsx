@@ -185,15 +185,23 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
       </div>
 
       {/* Sell Modal */}
-      {sellingContract && (
-        <SellModal
-          contract={sellingContract}
-          currentMarketPrice={currentMarketPrice}
-          onClose={() => setSellingContract(null)}
-          onConfirm={handleConfirmSell}
-          onRefreshPrice={handleRefreshPrice}
-        />
-      )}
+      <SellModal
+        contract={sellingContract ?? {
+          id: '',
+          eventId: '',
+          eventTitle: '',
+          outcome: 'YES',
+          quantity: 0,
+          priceAtPurchase: 0,
+          status: 'ACTIVE',
+          purchasedAt: new Date(),
+        }}
+        currentMarketPrice={currentMarketPrice}
+        open={!!sellingContract}
+        onOpenChange={(open) => !open && setSellingContract(null)}
+        onConfirm={handleConfirmSell}
+        onRefreshPrice={handleRefreshPrice}
+      />
     </>
   );
 }

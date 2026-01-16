@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingDown, Calculator, Zap, Lock, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { AlertCircle, RefreshCw, Clock, TrendingDown, Calculator, Zap, Lock, CheckCircle } from 'lucide-react';
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
@@ -7,11 +7,18 @@ import { cn } from '@/lib/utils';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
 import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface SellModalProps {
   contract: UserContract;
   currentMarketPrice: number;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onConfirm: (minValue: number) => Promise<void>;
   onRefreshPrice: () => Promise<number>;
 }
@@ -24,7 +31,8 @@ type ConfirmState = 'idle' | 'countdown' | 'executing' | 'success';
 export function SellModal({
   contract,
   currentMarketPrice,
-  onClose,
+  open,
+  onOpenChange,
   onConfirm,
   onRefreshPrice,
 }: SellModalProps) {
@@ -53,9 +61,17 @@ export function SellModal({
     setQuote(newQuote);
   }, [contract.eventId, contract.outcome, contract.quantity]);
 
+  // Reset state when modal opens
   useEffect(() => {
-    fetchQuote();
-  }, [fetchQuote]);
+    if (open) {
+      setTimeRemaining(PRICE_VALIDITY_SECONDS);
+      setPriceExpired(false);
+      setConfirmState('idle');
+      setLockedPrice(null);
+      setError(null);
+      fetchQuote();
+    }
+  }, [open, fetchQuote]);
 
   // Sale value (no fee)
   const saleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
@@ -65,7 +81,7 @@ export function SellModal({
 
   // Timer countdown for price validity
   useEffect(() => {
-    if (priceExpired || confirmState !== 'idle') return;
+    if (!open || priceExpired || confirmState !== 'idle') return;
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -78,7 +94,7 @@ export function SellModal({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [priceExpired, confirmState]);
+  }, [open, priceExpired, confirmState]);
 
   // Cleanup confirm timer on unmount
   useEffect(() => {
@@ -107,7 +123,20 @@ export function SellModal({
     }
   }, [onRefreshPrice, fetchQuote]);
 
-  const startConfirmCountdown = () => {
+  const executeConfirm = useCallback(async () => {
+    setConfirmState('executing');
+
+    try {
+      await onConfirm(lockedPrice ?? saleValue);
+      setConfirmState('success');
+    } catch {
+      setError('Erro ao processar venda. Tente novamente.');
+      setConfirmState('idle');
+      setLockedPrice(null);
+    }
+  }, [onConfirm, lockedPrice, saleValue]);
+
+  const startConfirmCountdown = useCallback(() => {
     if (priceExpired || !quote) return;
     
     // Lock the current price
@@ -128,60 +157,25 @@ export function SellModal({
         return prev - 1;
       });
     }, 1000);
-  };
+  }, [priceExpired, quote, executeConfirm]);
 
-  const cancelConfirmCountdown = () => {
+  const cancelConfirmCountdown = useCallback(() => {
     if (confirmTimerRef.current) {
       clearInterval(confirmTimerRef.current);
     }
     setConfirmState('idle');
     setLockedPrice(null);
     setConfirmCountdown(CONFIRM_COUNTDOWN_SECONDS);
-  };
+  }, []);
 
-  const executeConfirm = async () => {
-    setConfirmState('executing');
-
-    try {
-      await onConfirm(lockedPrice ?? saleValue);
-      setConfirmState('success');
-    } catch {
-      setError('Erro ao processar venda. Tente novamente.');
-      setConfirmState('idle');
-      setLockedPrice(null);
-    }
-  };
-
-  const getButtonContent = () => {
+  // Memoized button content
+  const buttonContent = useMemo(() => {
     switch (confirmState) {
       case 'countdown':
         return (
           <div className="flex items-center gap-2">
-            <div className="relative w-6 h-6">
-              <svg className="w-6 h-6 transform -rotate-90">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  opacity="0.2"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeDasharray={`${(confirmCountdown / CONFIRM_COUNTDOWN_SECONDS) * 62.8} 62.8`}
-                  className="transition-all duration-1000 ease-linear"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-                {confirmCountdown}
-              </span>
+            <div className="relative w-6 h-6 flex items-center justify-center">
+              <span className="text-sm font-bold">{confirmCountdown}</span>
             </div>
             <span>Confirmando em {confirmCountdown}s...</span>
           </div>
@@ -203,23 +197,20 @@ export function SellModal({
       default:
         return <>Confirmar Venda - R${displayValue.toFixed(2)}</>;
     }
-  };
+  }, [confirmState, confirmCountdown, displayValue]);
+
+  const handleClose = useCallback(() => {
+    if (confirmState !== 'executing') {
+      onOpenChange(false);
+    }
+  }, [confirmState, onOpenChange]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-lg font-semibold">Vender Contrato</h2>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onClose}
-            disabled={confirmState === 'executing'}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md p-0 gap-0">
+        <DialogHeader className="p-5 pb-0">
+          <DialogTitle>Vender Contrato</DialogTitle>
+        </DialogHeader>
 
         {/* Content */}
         <div className="p-5 space-y-5">
@@ -414,10 +405,10 @@ export function SellModal({
             onClick={confirmState === 'idle' ? startConfirmCountdown : undefined}
             disabled={priceExpired || confirmState === 'executing' || !quote || confirmState === 'success'}
           >
-            {getButtonContent()}
+            {buttonContent}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

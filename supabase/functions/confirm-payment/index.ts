@@ -119,12 +119,13 @@ serve(async (req) => {
 
       logStep("Balance updated atomically", { amount });
 
-      // Create notification
+      // Create notification with new type
       await supabaseAdmin.from("notifications").insert({
         user_id: user.id,
-        type: "TRADE_EXECUTED",
-        title: "Depósito confirmado",
-        message: `Seu depósito de R$ ${amount.toFixed(2)} foi confirmado com sucesso!`,
+        type: "DEPOSIT_CONFIRMED",
+        title: "Depósito Confirmado! 💰",
+        message: `Seu depósito de R$ ${amount.toFixed(2)} foi creditado com sucesso.`,
+        data: { amount, payment_intent_id: paymentIntentId },
       });
 
       logStep("Payment confirmed successfully");

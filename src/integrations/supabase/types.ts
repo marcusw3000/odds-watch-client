@@ -1309,6 +1309,11 @@ export type Database = {
         | "COMMENT_MENTION"
         | "COMMENT_LIKE"
         | "COMMENT_REPLY"
+        | "DEPOSIT_CONFIRMED"
+        | "WITHDRAWAL_COMPLETED"
+        | "WITHDRAWAL_FAILED"
+        | "WITHDRAWAL_REQUESTED"
+        | "PRICE_ALERT"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -1470,6 +1475,11 @@ export const Constants = {
         "COMMENT_MENTION",
         "COMMENT_LIKE",
         "COMMENT_REPLY",
+        "DEPOSIT_CONFIRMED",
+        "WITHDRAWAL_COMPLETED",
+        "WITHDRAWAL_FAILED",
+        "WITHDRAWAL_REQUESTED",
+        "PRICE_ALERT",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

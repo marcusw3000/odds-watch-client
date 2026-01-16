@@ -95,13 +95,13 @@ serve(async (req) => {
         })
         .eq("user_id", payment.user_id);
 
-      // Create notification
+      // Create notification with new type
       await supabaseAdmin
         .from("notifications")
         .insert({
           user_id: payment.user_id,
-          type: "TRADE_EXECUTED",
-          title: "Saque Concluído!",
+          type: "WITHDRAWAL_COMPLETED",
+          title: "Saque Concluído! ✅",
           message: `Seu saque de R$${payment.net_amount.toFixed(2)} foi processado com sucesso.`,
           data: { payment_id, amount: payment.amount, net_amount: payment.net_amount },
         });
@@ -160,12 +160,12 @@ serve(async (req) => {
       }
       logStep("Balance refunded", { amount: payment.amount });
 
-      // Create notification
+      // Create notification with new type
       await supabaseAdmin
         .from("notifications")
         .insert({
           user_id: payment.user_id,
-          type: "TRADE_EXECUTED",
+          type: "WITHDRAWAL_FAILED",
           title: "Problema com seu Saque",
           message: error_message || "Não foi possível processar seu saque. O valor foi estornado.",
           data: { payment_id, amount: payment.amount, error_message },

@@ -12,27 +12,46 @@ interface MentionUser {
 }
 
 export const CommentService = {
-  // Search users for mention autocomplete
+  // Search users for mention autocomplete - NOW USING EDGE FUNCTION
   async searchUsersForMention(query: string): Promise<MentionUser[]> {
     if (!query || query.length < 2) return [];
 
-    // Search in profiles table (now consolidated with leaderboard data)
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, display_name')
-      .eq('is_public', true)
-      .ilike('display_name', `%${query}%`)
-      .limit(5) as { data: Array<{ id: string; display_name: string | null }> | null; error: unknown };
+    try {
+      const { data, error } = await supabase.functions.invoke('search-users-mention', {
+        body: { q: query }
+      });
 
-    if (error) {
-      console.error('Error searching users:', error);
+      if (error) {
+        console.error('Error searching users via Edge Function:', error);
+        return [];
+      }
+
+      return data?.users || [];
+    } catch (err) {
+      console.error('Error invoking search-users-mention:', err);
       return [];
     }
+  },
 
-    return (data || []).map(p => ({
-      user_id: p.id,
-      display_name: p.display_name || 'Usuário'
-    }));
+  // Get display info for a user via Edge Function
+  async getUserDisplayInfo(userId: string): Promise<{ displayName: string; avatarUrl?: string } | null> {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-user-display-info', {
+        body: { targetUserId: userId }
+      });
+
+      if (error || !data) {
+        return null;
+      }
+
+      return {
+        displayName: data.display_name || data.displayName || 'Usuário',
+        avatarUrl: data.avatar_url || data.avatarUrl
+      };
+    } catch (err) {
+      console.error('Error fetching user display info:', err);
+      return null;
+    }
   },
 
   // Get root comments (no parent)
@@ -41,7 +60,7 @@ export const CommentService = {
       .from('comments')
       .select(`
         *,
-        profiles:user_id (full_name, avatar_url)
+        profiles:user_id (avatar_url)
       `)
       .eq('market_id', marketId)
       .is('parent_id', null)
@@ -66,15 +85,18 @@ export const CommentService = {
       }
     }
 
-    // Get display names for authors from profiles
+    // Get display names for authors via Edge Function (batch call)
     const userIds = [...new Set((data || []).map(c => c.user_id))];
-    const { data: profilesWithDisplayName } = await supabase
-      .from('profiles')
-      .select('id, display_name')
-      .in('id', userIds) as { data: Array<{ id: string; display_name: string | null }> | null; error: unknown };
-
-    const displayNameMap = new Map(
-      (profilesWithDisplayName || []).map(p => [p.id, p.display_name])
+    const displayInfoMap = new Map<string, { displayName: string; avatarUrl?: string }>();
+    
+    // Fetch display info for all unique users
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const info = await this.getUserDisplayInfo(userId);
+        if (info) {
+          displayInfoMap.set(userId, info);
+        }
+      })
     );
 
     return (data || []).map(comment => ({
@@ -82,10 +104,9 @@ export const CommentService = {
       marketId: comment.market_id,
       userId: comment.user_id,
       parentId: comment.parent_id || undefined,
-      authorName: displayNameMap.get(comment.user_id) || 
-        (comment.profiles as any)?.full_name || 
-        'Usuário',
-      authorAvatar: (comment.profiles as any)?.avatar_url || undefined,
+      authorName: displayInfoMap.get(comment.user_id)?.displayName || 'Usuário',
+      authorAvatar: displayInfoMap.get(comment.user_id)?.avatarUrl || 
+        (comment.profiles as any)?.avatar_url || undefined,
       content: comment.content,
       createdAt: new Date(comment.created_at),
       likesCount: comment.likes_count,
@@ -102,10 +123,9 @@ export const CommentService = {
       .from('comments')
       .select(`
         *,
-        profiles:user_id (full_name, avatar_url),
+        profiles:user_id (avatar_url),
         parent:parent_id (
-          user_id,
-          profiles:user_id (full_name)
+          user_id
         )
       `)
       .eq('parent_id', parentId)
@@ -132,33 +152,33 @@ export const CommentService = {
       }
     }
 
-    // Get display names
+    // Get display names via Edge Function
     const userIds = [...new Set((data || []).map(c => c.user_id))];
     const parentUserIds = [...new Set((data || []).map(c => (c.parent as any)?.user_id).filter(Boolean))];
     const allUserIds = [...new Set([...userIds, ...parentUserIds])];
     
-    const { data: profilesWithDisplayName } = await supabase
-      .from('profiles')
-      .select('id, display_name')
-      .in('id', allUserIds) as { data: Array<{ id: string; display_name: string | null }> | null; error: unknown };
-
-    const displayNameMap = new Map(
-      (profilesWithDisplayName || []).map(p => [p.id, p.display_name])
+    const displayInfoMap = new Map<string, { displayName: string; avatarUrl?: string }>();
+    
+    await Promise.all(
+      allUserIds.map(async (userId) => {
+        const info = await this.getUserDisplayInfo(userId);
+        if (info) {
+          displayInfoMap.set(userId, info);
+        }
+      })
     );
 
     return (data || []).map(comment => {
       const parentUserId = (comment.parent as any)?.user_id;
-      const parentProfile = (comment.parent as any)?.profiles;
       
       return {
         id: comment.id,
         marketId: comment.market_id,
         userId: comment.user_id,
         parentId: comment.parent_id || undefined,
-        authorName: displayNameMap.get(comment.user_id) || 
-          (comment.profiles as any)?.full_name || 
-          'Usuário',
-        authorAvatar: (comment.profiles as any)?.avatar_url || undefined,
+        authorName: displayInfoMap.get(comment.user_id)?.displayName || 'Usuário',
+        authorAvatar: displayInfoMap.get(comment.user_id)?.avatarUrl || 
+          (comment.profiles as any)?.avatar_url || undefined,
         content: comment.content,
         createdAt: new Date(comment.created_at),
         likesCount: comment.likes_count,
@@ -167,7 +187,7 @@ export const CommentService = {
         isHidden: comment.is_hidden,
         mentions: comment.mentions || [],
         replyingToName: parentUserId ? 
-          (displayNameMap.get(parentUserId) || parentProfile?.full_name || 'Usuário') : 
+          (displayInfoMap.get(parentUserId)?.displayName || 'Usuário') : 
           undefined,
       };
     });
@@ -205,21 +225,10 @@ export const CommentService = {
       throw new Error('Erro ao criar comentário');
     }
 
-    // Get author info
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, avatar_url')
-      .eq('id', userId)
-      .single();
-
-    // Get display name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', userId)
-      .single() as { data: { display_name: string | null } | null; error: unknown };
-
-    const authorName = profileData?.display_name || profile?.full_name || 'Usuário';
+    // Get author info via Edge Function
+    const authorInfo = await this.getUserDisplayInfo(userId);
+    const authorName = authorInfo?.displayName || 'Usuário';
+    const authorAvatar = authorInfo?.avatarUrl;
 
     // Get market title for notifications
     const { data: market } = await supabase
@@ -271,7 +280,7 @@ export const CommentService = {
       userId: comment.user_id,
       parentId: comment.parent_id || undefined,
       authorName,
-      authorAvatar: profile?.avatar_url || undefined,
+      authorAvatar: authorAvatar || undefined,
       content: comment.content,
       createdAt: new Date(comment.created_at),
       likesCount: 0,
@@ -332,14 +341,9 @@ export const CommentService = {
         .single();
 
       if (comment && comment.user_id !== userId) {
-        // Get liker name
-        const { data: likerProfile } = await supabase
-          .from('profiles')
-          .select('display_name, full_name')
-          .eq('id', userId)
-          .single() as { data: { display_name: string | null; full_name: string | null } | null; error: unknown };
-
-        const likerName = likerProfile?.display_name || likerProfile?.full_name || 'Usuário';
+        // Get liker name via Edge Function
+        const likerInfo = await this.getUserDisplayInfo(userId);
+        const likerName = likerInfo?.displayName || 'Usuário';
 
         // Get market title
         const { data: market } = await supabase
@@ -452,19 +456,24 @@ export const CommentService = {
       return [];
     }
 
-    // Get reporter and author names
+    // Get reporter and author names via Edge Function
     const reporterIds = [...new Set((data || []).map(r => r.reporter_id))];
     const authorIds = [...new Set((data || []).map(r => (r.comments as any)?.user_id).filter(Boolean))];
     const allUserIds = [...new Set([...reporterIds, ...authorIds])];
 
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name, display_name')
-      .in('id', allUserIds) as { data: Array<{ id: string; full_name: string | null; display_name: string | null }> | null; error: unknown };
+    const displayInfoMap = new Map<string, string>();
+    
+    await Promise.all(
+      allUserIds.map(async (userId) => {
+        const info = await this.getUserDisplayInfo(userId);
+        if (info) {
+          displayInfoMap.set(userId, info.displayName);
+        }
+      })
+    );
 
     const getName = (userId: string) => {
-      const profile = (profiles || []).find(p => p.id === userId);
-      return profile?.display_name || profile?.full_name || 'Usuário';
+      return displayInfoMap.get(userId) || 'Usuário';
     };
 
     return (data || []).map(report => ({
@@ -501,14 +510,19 @@ export const CommentService = {
       throw new Error('Usuário não autenticado');
     }
 
+    const updateData: any = {
+      status,
+      reviewed_by: userData.user.id,
+      reviewed_at: new Date().toISOString(),
+    };
+
+    if (actionTaken) {
+      updateData.action_taken = actionTaken;
+    }
+
     const { error } = await supabase
       .from('comment_reports')
-      .update({
-        status,
-        action_taken: actionTaken || null,
-        reviewed_by: userData.user.id,
-        reviewed_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', reportId);
 
     if (error) {
@@ -516,7 +530,7 @@ export const CommentService = {
       throw new Error('Erro ao atualizar denúncia');
     }
 
-    // If action is to hide or delete, update the comment
+    // If action is to hide the comment, update the comment
     if (actionTaken === 'hidden' || actionTaken === 'deleted') {
       const { data: report } = await supabase
         .from('comment_reports')
@@ -540,12 +554,12 @@ export const CommentService = {
     }
   },
 
-  // Get pending reports count
+  // Admin: Get pending reports count
   async getPendingReportsCount(): Promise<number> {
     const { count, error } = await supabase
       .from('comment_reports')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'PENDING');
+      .eq('status', 'pending');
 
     if (error) {
       console.error('Error fetching pending reports count:', error);

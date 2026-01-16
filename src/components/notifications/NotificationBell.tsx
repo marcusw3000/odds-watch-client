@@ -89,8 +89,9 @@ function getNotificationLink(notification: Notification): string | null {
       return '/portfolio';
     
     case 'ACHIEVEMENT_UNLOCKED':
+      return '/profile';
+    
     case 'LEADERBOARD_RANK':
-      return '/leaderboard';
     
     case 'REFERRAL_ACTIVATED':
       return '/referral';

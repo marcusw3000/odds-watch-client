@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
+import { useMarketsRealtime } from '@/hooks/useMarketsRealtime';
 import { TrendingMarketCard } from '@/components/market/TrendingMarketCard';
 import { CompactMarketCard } from '@/components/market/CompactMarketCard';
 import { MarketCardSkeleton } from '@/components/market/MarketCardSkeleton';
@@ -24,11 +25,13 @@ export function MarketsPage() {
   const { userBalance } = useOutletContext<LayoutContext>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [events, setEvents] = useState<MarketEvent[]>([]);
+  
+  // Use realtime hook for markets data
+  const { events, isLoading: isLoadingMarkets, refetch } = useMarketsRealtime();
+  
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
@@ -37,49 +40,22 @@ export function MarketsPage() {
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  const fetchData = async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
-    try {
-      const [eventsData, categoriesData] = await Promise.all([
-        MarketDataProvider.getEvents(),
-        MarketDataProvider.getCategories(),
-      ]);
-      setEvents(eventsData);
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: 'Erro ao carregar mercados',
-        description: 'Tente novamente mais tarde.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
+  // Fetch categories separately (they don't change frequently)
   useEffect(() => {
-    fetchData();
-
-    // Atualiza mercados automaticamente a cada 3 segundos (sem mostrar loading)
-    const interval = setInterval(() => {
-      fetchData(false);
-    }, 3000);
-
-    return () => clearInterval(interval);
+    MarketDataProvider.getCategories().then(setCategories);
   }, []);
 
-  // Listener para atualização imediata quando houver trades
+  // Listener for immediate update after user's own trades
   useEffect(() => {
-    const handleMarketUpdate = () => fetchData(false);
+    const handleMarketUpdate = () => refetch();
     window.addEventListener('market-update', handleMarketUpdate);
     return () => window.removeEventListener('market-update', handleMarketUpdate);
-  }, []);
+  }, [refetch]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    fetchData(false);
+    await refetch();
+    setIsRefreshing(false);
   };
 
   const handleBuy = (eventId: string, outcome: 'YES' | 'NO') => {
@@ -107,9 +83,6 @@ export function MarketsPage() {
     const updatedEvent = await MarketDataProvider.refreshOdds(selectedEvent.id);
     if (updatedEvent) {
       setSelectedEvent(updatedEvent);
-      setEvents((prev) =>
-        prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
-      );
     }
     return updatedEvent;
   };
@@ -130,7 +103,6 @@ export function MarketsPage() {
         description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
       });
       handleCloseModal();
-      fetchData(false);
       // Trigger market and portfolio refresh for other open tabs/components
       window.dispatchEvent(new Event('market-update'));
       triggerPortfolioRefresh();
@@ -143,7 +115,7 @@ export function MarketsPage() {
   useEffect(() => {
     const trendingCount = Math.min(3, events.length);
     
-    if (isAutoPlaying && trendingCount > 1 && !isLoading) {
+    if (isAutoPlaying && trendingCount > 1 && !isLoadingMarkets) {
       autoPlayRef.current = setInterval(() => {
         setTrendingIndex((prev) => (prev < trendingCount - 1 ? prev + 1 : 0));
       }, 5000);
@@ -154,7 +126,7 @@ export function MarketsPage() {
         clearInterval(autoPlayRef.current);
       }
     };
-  }, [isAutoPlaying, events.length, isLoading]);
+  }, [isAutoPlaying, events.length, isLoadingMarkets]);
 
   const handlePrevTrending = useCallback(() => {
     setIsAutoPlaying(false); // Pause auto-play on manual interaction
@@ -228,7 +200,7 @@ export function MarketsPage() {
       </div>
 
       {/* Trending Section */}
-      {isLoading ? (
+      {isLoadingMarkets ? (
         <Skeleton className="h-80 w-full rounded-2xl" />
       ) : currentTrendingEvent ? (
         <section>
@@ -258,7 +230,7 @@ export function MarketsPage() {
           </span>
         </div>
 
-        {isLoading ? (
+        {isLoadingMarkets ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
               <MarketCardSkeleton key={i} />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, Edit2, Trophy, Save, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ export function ProfileHeader({
   isOwnProfile,
   onUpdate,
 }: ProfileHeaderProps) {
+  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(profile.display_name || '');
   const [editedBio, setEditedBio] = useState(profile.bio || '');
@@ -48,9 +50,10 @@ export function ProfileHeader({
     setIsEditing(false);
   };
 
-  const handleAvatarChange = async (newUrl: string) => {
-    // Avatar is updated directly in AvatarUpload component
-    // Just refresh profile data if needed
+  const handleAvatarChange = (newUrl: string) => {
+    // Invalidate queries to refresh profile data with new avatar
+    queryClient.invalidateQueries({ queryKey: ['my-leaderboard-profile'] });
+    queryClient.invalidateQueries({ queryKey: ['public-profile'] });
   };
 
   const getRankBadge = (rank: number) => {

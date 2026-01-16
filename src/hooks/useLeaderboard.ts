@@ -18,6 +18,7 @@ interface ProfileData {
   full_name: string | null;
   display_name: string | null;
   bio: string | null;
+  avatar_url: string | null;
   is_public: boolean;
   show_profit: boolean;
   show_roi: boolean;
@@ -92,7 +93,7 @@ export function useMyLeaderboardProfile() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, bio, is_public, show_profit, show_roi, show_volume, show_trades, created_at, updated_at')
+        .select('id, display_name, bio, avatar_url, is_public, show_profit, show_roi, show_volume, show_trades, created_at, updated_at')
         .eq('id', user.id)
         .maybeSingle() as { data: ProfileData | null; error: unknown };
 
@@ -104,6 +105,7 @@ export function useMyLeaderboardProfile() {
         user_id: data.id,
         display_name: data.display_name || 'Trader Anônimo',
         bio: data.bio,
+        avatar_url: data.avatar_url,
         is_public: data.is_public,
         show_profit: data.show_profit,
         show_roi: data.show_roi,

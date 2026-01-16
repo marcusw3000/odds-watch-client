@@ -1,4 +1,5 @@
-import { Trophy, TrendingUp, BarChart3, Activity, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Trophy, TrendingUp, BarChart3, Activity, EyeOff } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -108,19 +109,22 @@ export function LeaderboardTable({
                   {getRankBadge(entry.rank)}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <Link 
+                    to={`/profile/${entry.user_id}`}
+                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                  >
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
                         {getInitials(entry.display_name)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <span className="font-medium">{entry.display_name}</span>
+                      <span className="font-medium hover:underline">{entry.display_name}</span>
                       {isCurrentUser && (
                         <Badge variant="outline" className="ml-2 text-xs">Você</Badge>
                       )}
                     </div>
-                  </div>
+                  </Link>
                 </TableCell>
                 <TableCell>
                   {entry.show_profit ? (

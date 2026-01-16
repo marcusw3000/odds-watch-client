@@ -122,8 +122,10 @@ serve(async (req) => {
         type: "DEPOSIT",
         method: method,
         amount: amount,
+        fee: 0,
+        net_amount: amount,
         status: "PENDING",
-        stripe_session_id: paymentIntent.id,
+        stripe_payment_intent_id: paymentIntent.id,
       });
 
     if (insertError) {

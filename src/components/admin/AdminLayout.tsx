@@ -157,7 +157,9 @@ export function AdminLayout() {
           {sidebarOpen && (
             <div className="px-3 py-2 mb-2">
               <p className="text-xs text-muted-foreground">Logado como</p>
-              <p className="text-sm font-medium truncate">{user.email}</p>
+              <p className="text-sm font-medium truncate font-mono">
+                {user.email ? `${user.email.charAt(0)}***@${user.email.split('@')[1]?.substring(0, 3)}***` : 'Admin'}
+              </p>
             </div>
           )}
           <Button

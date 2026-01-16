@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,38 +31,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FinancialRepository } from '@/services/FinancialRepository';
-import { FeeEngine } from '@/services/FeeEngine';
-import { useAuth } from '@/hooks/useAuth';
-import type { WalletWithProfile } from '@/types/financial';
+import { useAdminUsers, useAdjustWalletBalance, type AdminUser } from '@/hooks/useSecureData';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Users, Wallet as WalletIcon, Plus, Minus, Search, Mail, User } from 'lucide-react';
+import { Users, Wallet as WalletIcon, Plus, Minus, Search, Mail, User, Loader2 } from 'lucide-react';
 
 export function AdminUsersPage() {
-  const { user } = useAuth();
-  const [wallets, setWallets] = useState<WalletWithProfile[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Adjustment dialog
+  // Adjustment dialog state
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<WalletWithProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('');
 
-  useEffect(() => {
-    loadWallets();
-  }, []);
-
-  const loadWallets = async () => {
-    setLoading(true);
-    const data = await FinancialRepository.getAllWalletsWithProfiles();
-    setWallets(data);
-    setLoading(false);
-  };
+  // Use secure hooks
+  const { data: users = [], isLoading, refetch } = useAdminUsers(debouncedSearch);
+  const adjustBalance = useAdjustWalletBalance();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -71,8 +59,12 @@ export function AdminUsersPage() {
     }).format(value);
   };
 
-  const openAdjustDialog = (wallet: WalletWithProfile, type: 'add' | 'subtract') => {
-    setSelectedWallet(wallet);
+  const handleSearch = () => {
+    setDebouncedSearch(searchTerm);
+  };
+
+  const openAdjustDialog = (user: AdminUser, type: 'add' | 'subtract') => {
+    setSelectedUser(user);
     setAdjustmentType(type);
     setAdjustmentAmount('');
     setAdjustmentReason('');
@@ -93,56 +85,42 @@ export function AdminUsersPage() {
   };
 
   const handleConfirmAdjustment = async () => {
-    if (!selectedWallet || !user?.id) return;
+    if (!selectedUser) return;
 
     const amount = parseFloat(adjustmentAmount);
     const finalAmount = adjustmentType === 'add' ? amount : -amount;
 
-    const success = await FinancialRepository.adjustWalletBalance(
-      selectedWallet.id,
-      finalAmount,
-      adjustmentReason,
-      user.id
-    );
-
-    if (success) {
-      // Record audit log
-      await FeeEngine.recordAuditLog({
-        actorUserId: user.id,
-        action: 'WALLET_ADJUSTED',
-        entity: 'wallets',
-        entityId: selectedWallet.id,
-        beforeData: { balance_available: selectedWallet.balance_available },
-        afterData: { 
-          balance_available: Number(selectedWallet.balance_available) + finalAmount,
-          adjustment: finalAmount,
-          reason: adjustmentReason
-        }
+    try {
+      await adjustBalance.mutateAsync({
+        walletId: selectedUser.id,
+        amount: finalAmount,
+        reason: adjustmentReason.trim(),
       });
 
       toast.success('Saldo ajustado com sucesso');
-      loadWallets();
-    } else {
-      toast.error('Erro ao ajustar saldo');
+      refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao ajustar saldo');
     }
 
     setConfirmDialogOpen(false);
-    setSelectedWallet(null);
+    setSelectedUser(null);
   };
 
-  const filteredWallets = wallets.filter(w => {
+  const filteredUsers = users.filter(u => {
+    if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
-      w.user_id.toLowerCase().includes(term) ||
-      (w.email?.toLowerCase().includes(term) ?? false) ||
-      (w.full_name?.toLowerCase().includes(term) ?? false)
+      u.user_id.toLowerCase().includes(term) ||
+      u.email_masked.toLowerCase().includes(term) ||
+      u.display_name.toLowerCase().includes(term)
     );
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -171,9 +149,10 @@ export function AdminUsersPage() {
                 placeholder="Buscar por email, nome ou ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleSearch}>
               <Search className="h-4 w-4 mr-2" />
               Buscar
             </Button>
@@ -181,12 +160,12 @@ export function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      {/* Wallets Table */}
+      {/* Users Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <WalletIcon className="h-5 w-5" />
-            Carteiras ({wallets.length})
+            Carteiras ({users.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -204,17 +183,17 @@ export function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredWallets.map((wallet) => (
-                <TableRow key={wallet.id}>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium">
-                          {wallet.full_name || 'Sem nome'}
+                          {user.display_name || 'Sem nome'}
                         </p>
                         <p className="text-xs text-muted-foreground font-mono">
-                          {wallet.user_id.substring(0, 8)}...
+                          {user.user_id.substring(0, 8)}...
                         </p>
                       </div>
                     </div>
@@ -222,31 +201,31 @@ export function AdminUsersPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {wallet.email || 'N/A'}
+                      <span className="text-sm font-mono">
+                        {user.email_masked}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium text-green-600">
-                    {formatCurrency(wallet.balance_available)}
+                    {formatCurrency(user.balance_available)}
                   </TableCell>
                   <TableCell className="text-right font-mono text-orange-600">
-                    {formatCurrency(wallet.balance_locked)}
+                    {formatCurrency(user.balance_locked)}
                   </TableCell>
                   <TableCell className="text-right font-mono font-bold">
-                    {formatCurrency(wallet.balance_available + wallet.balance_locked)}
+                    {formatCurrency(user.balance_available + user.balance_locked)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{wallet.currency}</Badge>
+                    <Badge variant="outline">{user.currency}</Badge>
                   </TableCell>
                   <TableCell>
-                    {format(new Date(wallet.updated_at), 'dd/MM/yyyy HH:mm')}
+                    {format(new Date(user.updated_at), 'dd/MM/yyyy HH:mm')}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openAdjustDialog(wallet, 'add')}
+                      onClick={() => openAdjustDialog(user, 'add')}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Creditar
@@ -254,7 +233,7 @@ export function AdminUsersPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openAdjustDialog(wallet, 'subtract')}
+                      onClick={() => openAdjustDialog(user, 'subtract')}
                     >
                       <Minus className="h-4 w-4 mr-1" />
                       Debitar
@@ -262,7 +241,7 @@ export function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredWallets.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     Nenhuma carteira encontrada
@@ -294,13 +273,13 @@ export function AdminUsersPage() {
               <Label>Usuário</Label>
               <div className="bg-muted p-3 rounded space-y-1">
                 <p className="font-medium">
-                  {selectedWallet?.full_name || 'Sem nome'}
+                  {selectedUser?.display_name || 'Sem nome'}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedWallet?.email || 'Sem email'}
+                <p className="text-sm text-muted-foreground font-mono">
+                  {selectedUser?.email_masked}
                 </p>
                 <p className="font-mono text-xs text-muted-foreground">
-                  ID: {selectedWallet?.user_id}
+                  ID: {selectedUser?.user_id.substring(0, 8)}...
                 </p>
               </div>
             </div>
@@ -308,7 +287,7 @@ export function AdminUsersPage() {
             <div>
               <Label>Saldo Atual</Label>
               <p className="text-lg font-bold">
-                {selectedWallet && formatCurrency(selectedWallet.balance_available)}
+                {selectedUser && formatCurrency(selectedUser.balance_available)}
               </p>
             </div>
 
@@ -318,6 +297,7 @@ export function AdminUsersPage() {
                 type="number"
                 step="0.01"
                 min="0.01"
+                max="100000"
                 value={adjustmentAmount}
                 onChange={(e) => setAdjustmentAmount(e.target.value)}
                 placeholder="0.00"
@@ -370,8 +350,8 @@ export function AdminUsersPage() {
                 <div className="flex justify-between">
                   <span>Novo Saldo:</span>
                   <span className="font-bold">
-                    {selectedWallet && adjustmentAmount && formatCurrency(
-                      selectedWallet.balance_available + 
+                    {selectedUser && adjustmentAmount && formatCurrency(
+                      selectedUser.balance_available + 
                       (adjustmentType === 'add' ? 1 : -1) * parseFloat(adjustmentAmount)
                     )}
                   </span>
@@ -389,8 +369,18 @@ export function AdminUsersPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAdjustment}>
-              Confirmar Ajuste
+            <AlertDialogAction 
+              onClick={handleConfirmAdjustment}
+              disabled={adjustBalance.isPending}
+            >
+              {adjustBalance.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                'Confirmar Ajuste'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

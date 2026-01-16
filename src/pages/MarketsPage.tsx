@@ -61,6 +61,20 @@ export function MarketsPage() {
 
   useEffect(() => {
     fetchData();
+
+    // Atualiza mercados automaticamente a cada 3 segundos (sem mostrar loading)
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Listener para atualização imediata quando houver trades
+  useEffect(() => {
+    const handleMarketUpdate = () => fetchData(false);
+    window.addEventListener('market-update', handleMarketUpdate);
+    return () => window.removeEventListener('market-update', handleMarketUpdate);
   }, []);
 
   const handleRefresh = () => {
@@ -117,7 +131,8 @@ export function MarketsPage() {
       });
       handleCloseModal();
       fetchData(false);
-      // Trigger portfolio refresh for other open tabs/components
+      // Trigger market and portfolio refresh for other open tabs/components
+      window.dispatchEvent(new Event('market-update'));
       triggerPortfolioRefresh();
     } else {
       throw new Error(result.message);

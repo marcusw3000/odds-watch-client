@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingDown, Calculator, Zap } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { X, AlertCircle, RefreshCw, Clock, TrendingDown, Calculator, Zap, Lock, CheckCircle } from 'lucide-react';
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
 import { cn } from '@/lib/utils';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
-import { FeeEngine } from '@/services/FeeEngine';
-import { FeeRule } from '@/types/financial';
+import { Progress } from '@/components/ui/progress';
 
 interface SellModalProps {
   contract: UserContract;
@@ -18,6 +17,9 @@ interface SellModalProps {
 }
 
 const PRICE_VALIDITY_SECONDS = 15;
+const CONFIRM_COUNTDOWN_SECONDS = 3;
+
+type ConfirmState = 'idle' | 'countdown' | 'executing' | 'success';
 
 export function SellModal({
   contract,
@@ -30,21 +32,16 @@ export function SellModal({
   const [timeRemaining, setTimeRemaining] = useState(PRICE_VALIDITY_SECONDS);
   const [priceExpired, setPriceExpired] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [feeRule, setFeeRule] = useState<FeeRule | null>(null);
+  
+  // Confirmation state
+  const [confirmState, setConfirmState] = useState<ConfirmState>('idle');
+  const [confirmCountdown, setConfirmCountdown] = useState(CONFIRM_COUNTDOWN_SECONDS);
+  const [lockedPrice, setLockedPrice] = useState<number | null>(null);
+  const confirmTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isYes = contract.outcome === 'YES';
   const purchaseCost = (contract.priceAtPurchase / 100) * contract.quantity;
-
-  // Fetch fee rule on mount
-  useEffect(() => {
-    const fetchFeeRule = async () => {
-      const rule = await FeeEngine.getActiveRule('TRADE');
-      setFeeRule(rule);
-    };
-    fetchFeeRule();
-  }, []);
 
   // Fetch sell quote on mount and when refreshing
   const fetchQuote = useCallback(async () => {
@@ -62,12 +59,13 @@ export function SellModal({
 
   // Sale value (no fee)
   const saleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
-  const profitLoss = saleValue - purchaseCost;
+  const displayValue = lockedPrice ?? saleValue;
+  const profitLoss = displayValue - purchaseCost;
   const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(1) : '0.0';
 
-  // Timer countdown
+  // Timer countdown for price validity
   useEffect(() => {
-    if (priceExpired) return;
+    if (priceExpired || confirmState !== 'idle') return;
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -80,11 +78,22 @@ export function SellModal({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [priceExpired]);
+  }, [priceExpired, confirmState]);
+
+  // Cleanup confirm timer on unmount
+  useEffect(() => {
+    return () => {
+      if (confirmTimerRef.current) {
+        clearInterval(confirmTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleRefreshPrice = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
+    setConfirmState('idle');
+    setLockedPrice(null);
     
     try {
       await onRefreshPrice();
@@ -98,26 +107,101 @@ export function SellModal({
     }
   }, [onRefreshPrice, fetchQuote]);
 
-  const handleConfirm = async () => {
-    if (priceExpired) {
-      setError('Preço expirado. Atualize antes de confirmar.');
-      return;
-    }
-
-    if (!quote) {
-      setError('Erro ao calcular valor. Tente atualizar.');
-      return;
-    }
-
-    setIsConfirming(true);
+  const startConfirmCountdown = () => {
+    if (priceExpired || !quote) return;
+    
+    // Lock the current price
+    setLockedPrice(quote.cost);
+    setConfirmState('countdown');
+    setConfirmCountdown(CONFIRM_COUNTDOWN_SECONDS);
     setError(null);
 
+    confirmTimerRef.current = setInterval(() => {
+      setConfirmCountdown((prev) => {
+        if (prev <= 1) {
+          if (confirmTimerRef.current) {
+            clearInterval(confirmTimerRef.current);
+          }
+          executeConfirm();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const cancelConfirmCountdown = () => {
+    if (confirmTimerRef.current) {
+      clearInterval(confirmTimerRef.current);
+    }
+    setConfirmState('idle');
+    setLockedPrice(null);
+    setConfirmCountdown(CONFIRM_COUNTDOWN_SECONDS);
+  };
+
+  const executeConfirm = async () => {
+    setConfirmState('executing');
+
     try {
-      await onConfirm(quote.cost);
+      await onConfirm(lockedPrice ?? saleValue);
+      setConfirmState('success');
     } catch {
       setError('Erro ao processar venda. Tente novamente.');
-    } finally {
-      setIsConfirming(false);
+      setConfirmState('idle');
+      setLockedPrice(null);
+    }
+  };
+
+  const getButtonContent = () => {
+    switch (confirmState) {
+      case 'countdown':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="relative w-6 h-6">
+              <svg className="w-6 h-6 transform -rotate-90">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  opacity="0.2"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray={`${(confirmCountdown / CONFIRM_COUNTDOWN_SECONDS) * 62.8} 62.8`}
+                  className="transition-all duration-1000 ease-linear"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
+                {confirmCountdown}
+              </span>
+            </div>
+            <span>Confirmando em {confirmCountdown}s...</span>
+          </div>
+        );
+      case 'executing':
+        return (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+            Processando venda...
+          </>
+        );
+      case 'success':
+        return (
+          <>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Venda realizada!
+          </>
+        );
+      default:
+        return <>Confirmar Venda - R${displayValue.toFixed(2)}</>;
     }
   };
 
@@ -127,7 +211,12 @@ export function SellModal({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold">Vender Contrato</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            disabled={confirmState === 'executing'}
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -166,37 +255,71 @@ export function SellModal({
             </div>
           </div>
 
-          {/* Price Timer */}
-          <div className={cn(
-            "flex items-center justify-between p-3 rounded-lg border",
-            priceExpired 
-              ? "border-destructive/50 bg-destructive/10" 
-              : timeRemaining <= 5 
-                ? "border-warning/50 bg-warning/10" 
-                : "border-border bg-secondary"
-          )}>
-            <div className="flex items-center gap-2">
-              <Clock className={cn(
-                "h-4 w-4",
-                priceExpired ? "text-destructive" : "text-muted-foreground"
-              )} />
-              <span className="text-sm">
-                {priceExpired 
-                  ? "Preço expirado" 
-                  : `Preço válido por ${timeRemaining}s`
-                }
-              </span>
+          {/* Price Timer / Locked Price Indicator */}
+          {lockedPrice ? (
+            <div className="flex items-center justify-between p-3 rounded-lg border border-success/50 bg-success/10">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-success" />
+                <span className="text-sm text-success font-medium">
+                  Preço travado: R${lockedPrice.toFixed(2)}
+                </span>
+              </div>
+              {confirmState === 'countdown' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancelConfirmCountdown}
+                  className="text-destructive hover:text-destructive"
+                >
+                  Cancelar
+                </Button>
+              )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshPrice}
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
-              Atualizar
-            </Button>
-          </div>
+          ) : (
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg border",
+              priceExpired 
+                ? "border-destructive/50 bg-destructive/10" 
+                : timeRemaining <= 5 
+                  ? "border-warning/50 bg-warning/10" 
+                  : "border-border bg-secondary"
+            )}>
+              <div className="flex items-center gap-2">
+                <Clock className={cn(
+                  "h-4 w-4",
+                  priceExpired ? "text-destructive" : "text-muted-foreground"
+                )} />
+                <span className="text-sm">
+                  {priceExpired 
+                    ? "Preço expirado" 
+                    : `Preço válido por ${timeRemaining}s`
+                  }
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefreshPrice}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
+                Atualizar
+              </Button>
+            </div>
+          )}
+
+          {/* Confirmation Progress Bar */}
+          {confirmState === 'countdown' && (
+            <div className="space-y-2">
+              <Progress 
+                value={(confirmCountdown / CONFIRM_COUNTDOWN_SECONDS) * 100} 
+                className="h-2"
+              />
+              <p className="text-xs text-center text-muted-foreground">
+                A venda será executada automaticamente. Clique em "Cancelar" para interromper.
+              </p>
+            </div>
+          )}
 
           {/* Summary */}
           <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
@@ -218,7 +341,13 @@ export function SellModal({
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Valor de venda</span>
-                <span className="font-mono font-medium">R${saleValue.toFixed(2)}</span>
+                <span className={cn(
+                  "font-mono font-medium",
+                  lockedPrice && "text-success"
+                )}>
+                  {lockedPrice && <Lock className="h-3 w-3 inline mr-1" />}
+                  R${displayValue.toFixed(2)}
+                </span>
               </div>
 
               {/* Price Impact Warning */}
@@ -275,20 +404,17 @@ export function SellModal({
         {/* Footer */}
         <div className="p-5 pt-0">
           <Button
-            variant="outline"
+            variant={confirmState === 'countdown' ? 'default' : 'outline'}
             size="lg"
-            className="w-full"
-            onClick={handleConfirm}
-            disabled={priceExpired || isConfirming || !quote}
-          >
-            {isConfirming ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                Processando...
-              </>
-            ) : (
-              <>Confirmar Venda - R${saleValue.toFixed(2)}</>
+            className={cn(
+              "w-full transition-all",
+              confirmState === 'countdown' && "bg-success hover:bg-success/90",
+              confirmState === 'success' && "bg-success hover:bg-success/90"
             )}
+            onClick={confirmState === 'idle' ? startConfirmCountdown : undefined}
+            disabled={priceExpired || confirmState === 'executing' || !quote || confirmState === 'success'}
+          >
+            {getButtonContent()}
           </Button>
         </div>
       </div>

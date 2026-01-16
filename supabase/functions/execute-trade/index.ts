@@ -6,11 +6,45 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limiting: store trade counts per user in memory (resets on function restart)
+const tradeRateLimits = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_TRADES_PER_WINDOW = 10;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const userLimit = tradeRateLimits.get(userId);
+  
+  if (!userLimit || now > userLimit.resetAt) {
+    tradeRateLimits.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  
+  if (userLimit.count >= MAX_TRADES_PER_WINDOW) {
+    return false;
+  }
+  
+  userLimit.count++;
+  return true;
+}
+
 interface TradeRequest {
   marketId: string;
   outcome: "YES" | "NO";
   shares: number;
   maxCost?: number;
+}
+
+// Input validation functions
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+function sanitizeNumber(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== "number" || !isFinite(value)) return null;
+  if (value < min || value > max) return null;
+  return value;
 }
 
 Deno.serve(async (req) => {
@@ -54,14 +88,23 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
+    // Check rate limit
+    if (!checkRateLimit(userId)) {
+      console.log(`[EXECUTE-TRADE] Rate limit exceeded for user ${userId}`);
+      return new Response(
+        JSON.stringify({ success: false, message: "Muitas operações em sequência. Aguarde alguns segundos." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parse request body
     const body: TradeRequest = await req.json();
-    const { marketId, outcome, shares, maxCost } = body;
+    const { marketId, outcome, shares: rawShares, maxCost: rawMaxCost } = body;
 
-    // Validate input
-    if (!marketId || !outcome || !shares || shares <= 0) {
+    // Strict input validation
+    if (!marketId || typeof marketId !== "string" || !isValidUUID(marketId)) {
       return new Response(
-        JSON.stringify({ success: false, message: "Parâmetros inválidos" }),
+        JSON.stringify({ success: false, message: "ID do mercado inválido" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -69,6 +112,24 @@ Deno.serve(async (req) => {
     if (outcome !== "YES" && outcome !== "NO") {
       return new Response(
         JSON.stringify({ success: false, message: "Outcome deve ser YES ou NO" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate shares: must be positive number, max 10000
+    const shares = sanitizeNumber(rawShares, 0.01, 10000);
+    if (shares === null) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Quantidade de contratos inválida (min: 0.01, max: 10000)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate maxCost if provided: must be positive, max 1M
+    const maxCost = rawMaxCost !== undefined ? sanitizeNumber(rawMaxCost, 0, 1000000) : 999999999;
+    if (maxCost === null) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Custo máximo inválido" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

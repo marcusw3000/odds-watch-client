@@ -17,3 +17,15 @@ verify_jwt = false
 
 [functions.execute-sell]
 verify_jwt = false
+
+[functions.get-user-balance]
+verify_jwt = false
+
+[functions.get-user-portfolio]
+verify_jwt = false
+
+[functions.get-admin-users]
+verify_jwt = false
+
+[functions.get-user-display-info]
+verify_jwt = false

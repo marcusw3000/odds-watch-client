@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Briefcase, RefreshCw, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
-import { UserPortfolio } from '@/types/market';
-import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { PortfolioOverview } from '@/components/portfolio/PortfolioOverview';
 import { ContractsList } from '@/components/portfolio/ContractsList';
 import { BalanceHistoryFiltered } from '@/components/portfolio/BalanceHistoryFiltered';
@@ -15,11 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerifyDeposit } from '@/hooks/usePayments';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
+import { useSecurePortfolio, useSecureDataRefresh } from '@/hooks/useSecureData';
 
 export function PortfolioPage() {
-  const [portfolio, setPortfolio] = useState<UserPortfolio | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const { toast } = useToast();
@@ -27,23 +23,13 @@ export function PortfolioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const verifyDeposit = useVerifyDeposit();
 
-  const fetchPortfolio = async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
-    try {
-      const data = await MarketDataProvider.getUserPortfolio();
-      setPortfolio(data);
-    } catch (error) {
-      console.error('Error fetching portfolio:', error);
-      toast({
-        title: 'Erro ao carregar portfólio',
-        description: 'Tente novamente mais tarde.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  // Use secure Edge Function to fetch portfolio data
+  const { data: portfolio, isLoading, refetch, isRefetching } = useSecurePortfolio();
+  const { refreshPortfolio } = useSecureDataRefresh();
+
+  const fetchPortfolio = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   // Check for deposit success on page load
   useEffect(() => {
@@ -51,9 +37,8 @@ export function PortfolioPage() {
     const sessionId = searchParams.get('session_id');
 
     if (depositStatus === 'success' && sessionId) {
-      // For PIX payments, we need to poll until payment is confirmed
       let attempts = 0;
-      const maxAttempts = 12; // 2 minutes max (10s intervals)
+      const maxAttempts = 12;
       
       const checkPayment = () => {
         verifyDeposit.mutate(sessionId, {
@@ -63,10 +48,9 @@ export function PortfolioPage() {
                 title: '💰 Depósito Confirmado!',
                 description: `R$${result.amount?.toFixed(2)} foi creditado na sua conta.`,
               });
-              fetchPortfolio(false);
+              fetchPortfolio();
               setSearchParams({});
             } else if (result.status === 'unpaid' && attempts < maxAttempts) {
-              // PIX payment pending - retry after 10 seconds
               attempts++;
               toast({
                 title: '⏳ Aguardando pagamento PIX',
@@ -93,7 +77,6 @@ export function PortfolioPage() {
         });
       };
 
-      // Start verification
       checkPayment();
     } else if (depositStatus === 'cancelled') {
       toast({
@@ -105,24 +88,15 @@ export function PortfolioPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    fetchPortfolio();
-  }, []);
-
-  // Listen for portfolio refresh events (triggered after purchases, sales, etc.)
-  const handlePortfolioRefresh = useCallback(() => {
-    fetchPortfolio(false);
-  }, []);
-  
-  usePortfolioRefreshListener(handlePortfolioRefresh);
+  // Listen for portfolio refresh events
+  usePortfolioRefreshListener(fetchPortfolio);
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    fetchPortfolio(false);
+    fetchPortfolio();
   };
 
   const handleContractSold = () => {
-    fetchPortfolio(false);
+    fetchPortfolio();
   };
 
   if (isLoading) {
@@ -196,9 +170,9 @@ export function PortfolioPage() {
             variant="ghost"
             size="icon"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefetching}
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>

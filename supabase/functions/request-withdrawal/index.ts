@@ -67,7 +67,28 @@ serve(async (req) => {
     if (!validPixTypes.includes(pix_key_type)) {
       throw new Error("Tipo de chave PIX inválido");
     }
-    logStep("Request validated", { amount, pix_key_type });
+
+    // Validate PIX key format based on type
+    const pixValidationRules: Record<string, RegExp> = {
+      CPF: /^\d{11}$/,
+      CNPJ: /^\d{14}$/,
+      EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      PHONE: /^\+55\d{10,11}$/,
+      RANDOM: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
+    };
+
+    const pixPattern = pixValidationRules[pix_key_type];
+    if (pixPattern && !pixPattern.test(pix_key)) {
+      const errorMessages: Record<string, string> = {
+        CPF: "CPF deve conter exatamente 11 dígitos",
+        CNPJ: "CNPJ deve conter exatamente 14 dígitos",
+        EMAIL: "Email inválido",
+        PHONE: "Telefone deve estar no formato +55XXXXXXXXXXX",
+        RANDOM: "Chave aleatória deve ser um UUID válido",
+      };
+      throw new Error(errorMessages[pix_key_type] || "Formato de chave PIX inválido");
+    }
+    logStep("PIX key validated", { pix_key_type, format: "valid" });
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

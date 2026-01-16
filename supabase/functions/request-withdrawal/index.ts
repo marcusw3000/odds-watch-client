@@ -11,6 +11,20 @@ const logStep = (step: string, details?: any) => {
   console.log(`[REQUEST-WITHDRAWAL] ${step}${detailsStr}`);
 };
 
+// Generate idempotency key based on user, amount, pix_key, and rounded timestamp (30s window)
+const generateIdempotencyKey = (userId: string, amount: number, pixKey: string): string => {
+  const roundedTime = Math.floor(Date.now() / 30000); // 30 second windows
+  const data = `${userId}:${amount}:${pixKey}:${roundedTime}`;
+  // Simple hash for idempotency
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `wd_${userId.substring(0, 8)}_${Math.abs(hash).toString(36)}`;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,6 +73,47 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Generate idempotency key
+    const idempotencyKey = generateIdempotencyKey(user.id, amount, pix_key);
+    logStep("Idempotency key generated", { idempotencyKey });
+
+    // Check if withdrawal with same idempotency key already exists (exact duplicate)
+    const { data: existingWithKey, error: keyCheckError } = await supabaseAdmin
+      .from("payments")
+      .select("id, status")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (keyCheckError) {
+      logStep("Idempotency check error", { error: keyCheckError.message });
+    }
+
+    if (existingWithKey) {
+      logStep("Duplicate withdrawal detected via idempotency key", { 
+        existingId: existingWithKey.id, 
+        status: existingWithKey.status 
+      });
+      throw new Error("Solicitação de saque já está sendo processada. Aguarde alguns instantes.");
+    }
+
+    // Check for pending duplicate withdrawal in last 30 seconds
+    const { data: hasPendingDuplicate, error: pendingCheckError } = await supabaseAdmin
+      .rpc('check_pending_withdrawal', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_pix_key: pix_key
+      });
+
+    if (pendingCheckError) {
+      logStep("Pending check error", { error: pendingCheckError.message });
+    }
+
+    if (hasPendingDuplicate) {
+      logStep("Pending duplicate withdrawal detected", { userId: user.id, amount, pix_key });
+      throw new Error("Já existe um saque pendente com estes dados. Aguarde o processamento.");
+    }
+    logStep("No duplicate withdrawals found");
+
     // Rate limiting: max 3 withdrawal requests per hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count: recentAttempts, error: countError } = await supabaseAdmin
@@ -101,7 +156,7 @@ serve(async (req) => {
     const fee = 0;
     const netAmount = amount;
 
-    // Create withdrawal request
+    // Create withdrawal request with idempotency key
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("payments")
       .insert({
@@ -114,14 +169,20 @@ serve(async (req) => {
         status: "PENDING",
         pix_key: pix_key,
         pix_key_type: pix_key_type,
+        idempotency_key: idempotencyKey,
       })
       .select()
       .single();
 
     if (paymentError) {
+      // If insert fails due to unique constraint, it's a duplicate
+      if (paymentError.code === '23505') {
+        logStep("Duplicate insert prevented by unique constraint", { idempotencyKey });
+        throw new Error("Solicitação de saque já está sendo processada.");
+      }
       throw new Error("Erro ao criar solicitação de saque");
     }
-    logStep("Withdrawal request created", { paymentId: payment.id });
+    logStep("Withdrawal request created", { paymentId: payment.id, idempotencyKey });
     // Note: Balance was already atomically deducted by atomic_withdraw_balance
 
     // Create notification

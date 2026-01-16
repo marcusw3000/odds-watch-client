@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { encryptSensitiveData } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,11 +53,14 @@ serve(async (req) => {
     const amount = session.amount_total ? session.amount_total / 100 : 0;
     logStep("Payment confirmed", { userId, amount });
 
+    // Encrypt session_id to match how it was stored
+    const encryptedSessionId = await encryptSensitiveData(session_id);
+
     // Check if already processed
     const { data: existingPayment } = await supabaseAdmin
       .from("payments")
       .select("id, status")
-      .eq("stripe_checkout_session_id", session_id)
+      .eq("stripe_checkout_session_id", encryptedSessionId)
       .single();
 
     if (existingPayment?.status === "COMPLETED") {
@@ -71,15 +75,20 @@ serve(async (req) => {
       });
     }
 
+    // Encrypt payment intent ID for storage
+    const encryptedPaymentIntentId = session.payment_intent 
+      ? await encryptSensitiveData(session.payment_intent as string)
+      : null;
+
     // Update payment status
     await supabaseAdmin
       .from("payments")
       .update({ 
         status: "COMPLETED",
-        stripe_payment_intent_id: session.payment_intent as string,
+        stripe_payment_intent_id: encryptedPaymentIntentId,
         completed_at: new Date().toISOString(),
       })
-      .eq("stripe_checkout_session_id", session_id);
+      .eq("stripe_checkout_session_id", encryptedSessionId);
 
     // Use atomic deposit function to credit wallet balance
     const { error: depositError } = await supabaseAdmin

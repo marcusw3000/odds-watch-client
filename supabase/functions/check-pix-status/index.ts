@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { encryptSensitiveData } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,11 +103,14 @@ serve(async (req) => {
     if (paymentIntent.status === "succeeded") {
       const amount = paymentIntent.amount / 100;
 
+      // Encrypt payment intent ID to match stored format
+      const encryptedPaymentIntentId = await encryptSensitiveData(paymentIntentId);
+
       // Check if already processed
       const { data: existingPayment } = await supabaseAdmin
         .from("payments")
         .select("status")
-        .eq("stripe_payment_intent_id", paymentIntentId)
+        .eq("stripe_payment_intent_id", encryptedPaymentIntentId)
         .single();
 
       if (existingPayment?.status !== "COMPLETED") {
@@ -117,7 +121,7 @@ serve(async (req) => {
             status: "COMPLETED",
             completed_at: new Date().toISOString(),
           })
-          .eq("stripe_payment_intent_id", paymentIntentId);
+          .eq("stripe_payment_intent_id", encryptedPaymentIntentId);
 
         // Use atomic deposit function to update wallet balance
         const { error: depositError } = await supabaseAdmin

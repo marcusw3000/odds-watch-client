@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { decryptSensitiveData, maskPixKey } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,10 @@ serve(async (req) => {
     }
     logStep("Payment found", { paymentId: payment.id, amount: payment.amount });
 
+    // Decrypt PIX key for admin viewing if needed
+    const decryptedPixKey = payment.pix_key ? await decryptSensitiveData(payment.pix_key) : null;
+    const maskedPixKey = decryptedPixKey ? maskPixKey(decryptedPixKey) : "****";
+
     if (action === "COMPLETED") {
       // Mark as completed
       const { error: updateError } = await supabaseAdmin
@@ -124,7 +129,7 @@ serve(async (req) => {
               amount: payment.amount,
               fee: payment.fee,
               net_amount: payment.net_amount,
-              pix_key: payment.pix_key,
+              pix_key_masked: maskedPixKey, // Use masked version in emails
               pix_key_type: payment.pix_key_type,
             },
           }),

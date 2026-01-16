@@ -36,12 +36,10 @@ export function useLeaderboard(sortBy: LeaderboardSortBy = 'profit', limit: numb
   return useQuery({
     queryKey: ['leaderboard', sortBy, limit],
     queryFn: async (): Promise<LeaderboardEntry[]> => {
-      // Fetch public profiles with stats from unified profiles table
-      // @ts-ignore - new columns exist after migration, types will be regenerated
+      // Fetch public profiles using the secure profiles_public view (excludes PII like email/full_name)
       const result = await supabase
-        .from('profiles')
-        .select('id, display_name, is_public, show_profit, show_roi, show_volume, show_trades, total_profit, roi_percent, total_volume, total_trades, winning_trades')
-        .eq('is_public', true);
+        .from('profiles_public')
+        .select('id, display_name, is_public, show_profit, show_roi, show_volume, show_trades, total_profit, roi_percent, total_volume, total_trades, winning_trades');
       
       const profiles = (result.data || []) as ProfileData[];
       const error = result.error;

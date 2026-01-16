@@ -41,9 +41,21 @@ serve(async (req) => {
   }
   
   try {
+    // Verify service role authorization - only internal/cron calls allowed
+    const authHeader = req.headers.get("Authorization");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!authHeader || !serviceRoleKey || !authHeader.includes(serviceRoleKey)) {
+      console.error("Unauthorized access attempt to check-economic-events");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      serviceRoleKey
     );
     
     console.log("Checking economic events for automatic settlement...");

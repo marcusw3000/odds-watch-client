@@ -218,7 +218,7 @@ export function AdminUsersPage() {
     const term = searchTerm.toLowerCase();
     return (
       u.user_id.toLowerCase().includes(term) ||
-      u.email_masked.toLowerCase().includes(term) ||
+      u.email.toLowerCase().includes(term) ||
       u.display_name.toLowerCase().includes(term) ||
       u.roles.some(r => r.toLowerCase().includes(term))
     );
@@ -308,7 +308,7 @@ export function AdminUsersPage() {
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-mono">
-                        {targetUser.email_masked}
+                        {targetUser.email}
                       </span>
                     </div>
                   </TableCell>
@@ -393,7 +393,7 @@ export function AdminUsersPage() {
                   {selectedUser?.display_name || 'Sem nome'}
                 </p>
                 <p className="text-sm text-muted-foreground font-mono">
-                  {selectedUser?.email_masked}
+                  {selectedUser?.email}
                 </p>
               </div>
             </div>
@@ -468,7 +468,7 @@ export function AdminUsersPage() {
               <div className="p-3 bg-muted rounded-lg">
                 <p className="font-medium">{selectedUser?.display_name}</p>
                 <p className="text-sm text-muted-foreground font-mono">
-                  {selectedUser?.email_masked}
+                  {selectedUser?.email}
                 </p>
               </div>
 
@@ -542,7 +542,7 @@ export function AdminUsersPage() {
                   {selectedUser?.display_name || 'Sem nome'}
                 </p>
                 <p className="text-sm text-muted-foreground font-mono">
-                  {selectedUser?.email_masked}
+                  {selectedUser?.email}
                 </p>
                 <p className="font-mono text-xs text-muted-foreground">
                   ID: {selectedUser?.user_id.substring(0, 8)}...

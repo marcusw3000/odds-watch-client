@@ -37,7 +37,7 @@ export interface AdminUser {
   id: string;
   user_id: string;
   display_name: string;
-  email_masked: string;
+  email: string;
   balance_available: number;
   balance_locked: number;
   currency: string;

@@ -72,9 +72,19 @@ export function AuthPage() {
     }
   }, [referralCode]);
 
-  // Redirect if already logged in
+  // Redirect if already logged in (but not during OAuth callback)
   useEffect(() => {
+    const url = new URL(window.location.href);
+    const isOAuthCallback = url.searchParams.has('code') || window.location.hash.includes('access_token');
+    
+    // If we're processing an OAuth callback, let OAuthCallbackHandler handle it
+    if (isOAuthCallback) {
+      console.log('[AuthPage] OAuth callback detected, skipping auto-redirect');
+      return;
+    }
+    
     if (user) {
+      console.log('[AuthPage] User already logged in, redirecting to:', returnTo);
       navigate(returnTo);
     }
   }, [user, navigate, returnTo]);

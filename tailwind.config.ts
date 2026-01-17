@@ -125,6 +125,15 @@ export default {
           "50%": { transform: "scale(1.1)" },
           "75%": { transform: "scale(1.25)" },
         },
+        "confetti-fall": {
+          "0%": { transform: "translateY(-100vh) rotate(0deg)", opacity: "1" },
+          "100%": { transform: "translateY(100vh) rotate(720deg)", opacity: "0" },
+        },
+        "progress-indeterminate": {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -136,6 +145,8 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "number-tick": "number-tick 0.3s ease-out",
         "heartbeat": "heartbeat 0.6s ease-in-out",
+        "confetti-fall": "confetti-fall 3s linear forwards",
+        "progress-indeterminate": "progress-indeterminate 1.5s ease-in-out infinite",
       },
     },
   },

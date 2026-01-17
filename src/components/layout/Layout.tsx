@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
 
 export function Layout() {
+  const location = useLocation();
   const [userBalance, setUserBalance] = useState(0);
   const [isBalanceLoading, setIsBalanceLoading] = useState(false);
 
@@ -48,7 +49,9 @@ export function Layout() {
       
       <Header balance={userBalance} isBalanceLoading={isBalanceLoading} />
       <main id="main-content" className="flex-1 container mx-auto px-4 py-8">
-        <Outlet context={{ userBalance, setUserBalance }} />
+        <div key={location.pathname} className="animate-fade-in">
+          <Outlet context={{ userBalance, setUserBalance }} />
+        </div>
       </main>
       <Footer />
     </div>

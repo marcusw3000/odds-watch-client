@@ -137,12 +137,16 @@ function OAuthCallbackHandler({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Import connection status
+import { ConnectionStatus } from "@/components/ui/connection-status";
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <ConnectionStatus />
         <BrowserRouter>
           <OAuthCallbackHandler>
             <Routes>

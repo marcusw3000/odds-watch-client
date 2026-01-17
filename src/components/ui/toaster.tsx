@@ -6,9 +6,21 @@ export function Toaster() {
 
   return (
     <ToastProvider>
+      {/* Aria-live region for screen reader announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {toasts.map((t) => t.title && (
+          <span key={t.id}>{t.title}: {t.description}</span>
+        ))}
+      </div>
+
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
-          <Toast key={id} {...props}>
+          <Toast key={id} {...props} role="alert" aria-live="assertive">
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && <ToastDescription>{description}</ToastDescription>}

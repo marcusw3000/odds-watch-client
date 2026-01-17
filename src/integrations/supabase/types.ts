@@ -577,6 +577,71 @@ export type Database = {
           },
         ]
       }
+      market_suggestions: {
+        Row: {
+          admin_notes: string | null
+          category: string
+          comment_count: number
+          created_at: string
+          description: string
+          downvotes: number
+          id: string
+          market_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          score: number
+          status: string
+          title: string
+          updated_at: string
+          upvotes: number
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string
+          comment_count?: number
+          created_at?: string
+          description: string
+          downvotes?: number
+          id?: string
+          market_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          score?: number
+          status?: string
+          title: string
+          updated_at?: string
+          upvotes?: number
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string
+          comment_count?: number
+          created_at?: string
+          description?: string
+          downvotes?: number
+          id?: string
+          market_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          score?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          upvotes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_suggestions_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       markets: {
         Row: {
           category: string
@@ -886,6 +951,7 @@ export type Database = {
           avatar_url: string | null
           best_markets_won_streak: number | null
           best_streak: number
+          best_suggestion_score: number | null
           best_trade_profit: number
           bio: string | null
           created_at: string
@@ -905,6 +971,9 @@ export type Database = {
           show_roi: boolean
           show_trades: boolean
           show_volume: boolean
+          suggestions_approved: number | null
+          suggestions_created: number | null
+          suggestions_implemented: number | null
           total_profit: number
           total_referral_commission: number | null
           total_referrals: number | null
@@ -919,6 +988,7 @@ export type Database = {
           avatar_url?: string | null
           best_markets_won_streak?: number | null
           best_streak?: number
+          best_suggestion_score?: number | null
           best_trade_profit?: number
           bio?: string | null
           created_at?: string
@@ -938,6 +1008,9 @@ export type Database = {
           show_roi?: boolean
           show_trades?: boolean
           show_volume?: boolean
+          suggestions_approved?: number | null
+          suggestions_created?: number | null
+          suggestions_implemented?: number | null
           total_profit?: number
           total_referral_commission?: number | null
           total_referrals?: number | null
@@ -952,6 +1025,7 @@ export type Database = {
           avatar_url?: string | null
           best_markets_won_streak?: number | null
           best_streak?: number
+          best_suggestion_score?: number | null
           best_trade_profit?: number
           bio?: string | null
           created_at?: string
@@ -971,6 +1045,9 @@ export type Database = {
           show_roi?: boolean
           show_trades?: boolean
           show_volume?: boolean
+          suggestions_approved?: number | null
+          suggestions_created?: number | null
+          suggestions_implemented?: number | null
           total_profit?: number
           total_referral_commission?: number | null
           total_referrals?: number | null
@@ -1101,6 +1178,121 @@ export type Database = {
           total_commission_earned?: number
         }
         Relationships: []
+      }
+      suggestion_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "suggestion_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suggestion_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_hidden: boolean
+          likes_count: number
+          parent_id: string | null
+          replies_count: number
+          suggestion_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          likes_count?: number
+          parent_id?: string | null
+          replies_count?: number
+          suggestion_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          likes_count?: number
+          parent_id?: string | null
+          replies_count?: number
+          suggestion_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "suggestion_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggestion_comments_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "market_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suggestion_votes: {
+        Row: {
+          created_at: string
+          id: string
+          suggestion_id: string
+          user_id: string
+          vote_value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          suggestion_id: string
+          user_id: string
+          vote_value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          suggestion_id?: string
+          user_id?: string
+          vote_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_votes_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "market_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
@@ -1528,6 +1720,32 @@ export type Database = {
         Returns: undefined
       }
       generate_referral_code: { Args: never; Returns: string }
+      get_trending_suggestions: {
+        Args: {
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+        }
+        Returns: {
+          author_avatar: string
+          author_name: string
+          category: string
+          comment_count: number
+          created_at: string
+          description: string
+          downvotes: number
+          id: string
+          market_id: string
+          score: number
+          status: string
+          title: string
+          updated_at: string
+          upvotes: number
+          user_id: string
+          user_vote: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1551,6 +1769,10 @@ export type Database = {
       recalculate_user_statistics: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      vote_on_suggestion: {
+        Args: { p_suggestion_id: string; p_vote_value: number }
+        Returns: Json
       }
     }
     Enums: {

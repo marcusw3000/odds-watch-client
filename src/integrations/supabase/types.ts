@@ -1514,6 +1514,10 @@ export type Database = {
         Returns: undefined
       }
       mask_ip_address: { Args: { ip_address: string }; Returns: string }
+      recalculate_user_statistics: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

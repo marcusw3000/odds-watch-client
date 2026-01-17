@@ -353,7 +353,7 @@ export function SuggestionDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <SuggestionComments suggestionId={suggestion.id} />
+          <SuggestionComments suggestionId={suggestion.id} suggestionTitle={suggestion.title} />
         </CardContent>
       </Card>
 

@@ -1795,6 +1795,8 @@ export type Database = {
         | "WITHDRAWAL_FAILED"
         | "WITHDRAWAL_REQUESTED"
         | "PRICE_ALERT"
+        | "SUGGESTION_COMMENT_MENTION"
+        | "SUGGESTION_COMMENT_REPLY"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -1961,6 +1963,8 @@ export const Constants = {
         "WITHDRAWAL_FAILED",
         "WITHDRAWAL_REQUESTED",
         "PRICE_ALERT",
+        "SUGGESTION_COMMENT_MENTION",
+        "SUGGESTION_COMMENT_REPLY",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

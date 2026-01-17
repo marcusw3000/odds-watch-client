@@ -241,7 +241,13 @@ export const SuggestionService = {
   /**
    * Add a comment to a suggestion
    */
-  async addComment(suggestionId: string, content: string, parentId?: string): Promise<SuggestionComment> {
+  async addComment(
+    suggestionId: string, 
+    content: string, 
+    parentId?: string,
+    mentionedUserIds?: string[],
+    suggestionTitle?: string
+  ): Promise<SuggestionComment> {
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user) throw new Error('Not authenticated');
 
@@ -257,6 +263,52 @@ export const SuggestionService = {
       .single();
 
     if (error) throw error;
+
+    // Get author name for notifications
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, full_name')
+      .eq('id', user.user.id)
+      .single();
+    
+    const authorName = profile?.display_name || profile?.full_name || 'Alguém';
+    const commentPreview = content.substring(0, 50);
+    const title = suggestionTitle || 'uma sugestão';
+
+    // Send mention notifications
+    if (mentionedUserIds && mentionedUserIds.length > 0) {
+      for (const mentionedUserId of mentionedUserIds) {
+        if (mentionedUserId !== user.user.id) {
+          await notifySuggestionCommentMention(
+            mentionedUserId,
+            authorName,
+            suggestionId,
+            title,
+            commentPreview
+          );
+        }
+      }
+    }
+
+    // Send reply notification to parent comment author
+    if (parentId) {
+      const { data: parentComment } = await supabase
+        .from('suggestion_comments')
+        .select('user_id')
+        .eq('id', parentId)
+        .single();
+      
+      if (parentComment && parentComment.user_id !== user.user.id) {
+        await notifySuggestionCommentReply(
+          parentComment.user_id,
+          authorName,
+          suggestionId,
+          title,
+          commentPreview
+        );
+      }
+    }
+
     return data as SuggestionComment;
   },
 

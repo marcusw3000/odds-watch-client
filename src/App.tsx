@@ -58,14 +58,25 @@ function OAuthCallbackHandler({ children }: { children: React.ReactNode }) {
       // Check for hash fragment with OAuth tokens
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       
-      if (accessToken) {
+      if (accessToken && refreshToken) {
         console.log('[Auth] Processing OAuth callback tokens...');
-        // Force refresh the session - Supabase client will process the tokens
-        await supabase.auth.getSession();
+        
+        // Use setSession to explicitly process the tokens
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        
+        if (error) {
+          console.error('[Auth] Error setting session:', error);
+        } else {
+          console.log('[Auth] Session established successfully');
+        }
+        
         // Clean up the URL hash
         window.history.replaceState(null, '', window.location.pathname);
-        console.log('[Auth] OAuth tokens processed, URL cleaned');
       }
     };
     

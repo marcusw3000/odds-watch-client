@@ -51,32 +51,83 @@ const AdminLoadingFallback = () => (
 
 const queryClient = new QueryClient();
 
-// Component to handle OAuth callback tokens
+// Component to handle OAuth callback tokens (supports both PKCE and implicit flows)
 function OAuthCallbackHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleAuthCallback = async () => {
-      // Check for hash fragment with OAuth tokens
+      const url = new URL(window.location.href);
+      
+      // Check for PKCE flow: ?code=... in query params
+      const code = url.searchParams.get('code');
+      
+      // Check for implicit flow: #access_token=... in hash
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       
-      if (accessToken && refreshToken) {
-        console.log('[Auth] Processing OAuth callback tokens...');
+      console.log('[Auth Callback] Checking for OAuth tokens...', {
+        hasCode: !!code,
+        hasHashTokens: !!(accessToken && refreshToken),
+        pathname: url.pathname,
+      });
+      
+      let sessionEstablished = false;
+      
+      // Handle PKCE flow (code in query params)
+      if (code) {
+        console.log('[Auth Callback] Processing PKCE code...');
         
-        // Use setSession to explicitly process the tokens
+        try {
+          // Exchange code for session - Supabase handles this automatically
+          // when detectSessionInUrl is true (default), but we ensure it's processed
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error('[Auth Callback] Error exchanging code for session:', error);
+          } else if (data.session) {
+            console.log('[Auth Callback] PKCE session established:', data.session.user?.email);
+            sessionEstablished = true;
+          }
+        } catch (err) {
+          console.error('[Auth Callback] Exception during code exchange:', err);
+        }
+        
+        // Clean up the URL (remove code param)
+        url.searchParams.delete('code');
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
+      
+      // Handle implicit flow (tokens in hash)
+      if (accessToken && refreshToken && !sessionEstablished) {
+        console.log('[Auth Callback] Processing hash tokens...');
+        
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
         
         if (error) {
-          console.error('[Auth] Error setting session:', error);
+          console.error('[Auth Callback] Error setting session from hash:', error);
         } else {
-          console.log('[Auth] Session established successfully');
+          console.log('[Auth Callback] Hash session established successfully');
+          sessionEstablished = true;
         }
         
         // Clean up the URL hash
         window.history.replaceState(null, '', window.location.pathname);
+      }
+      
+      // If session was established, handle redirect
+      if (sessionEstablished) {
+        const returnTo = localStorage.getItem('authReturnTo');
+        localStorage.removeItem('authReturnTo');
+        
+        console.log('[Auth Callback] Session ready, redirecting to:', returnTo || '/markets');
+        
+        // Small delay to ensure state propagates before navigation
+        setTimeout(() => {
+          window.location.href = returnTo || '/markets';
+        }, 100);
       }
     };
     

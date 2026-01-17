@@ -17,26 +17,47 @@ export function useAuth() {
         if (!mounted) return;
         
         console.log('[Auth] State change:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
         
-        // Defer role check to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            if (mounted) checkAdminRole(session.user.id);
-          }, 0);
-        } else {
+        // Update state for all relevant auth events
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            setTimeout(() => {
+              if (mounted) checkAdminRole(session.user.id);
+            }, 0);
+          } else {
+            setLoading(false);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
           setIsAdmin(false);
           setLoading(false);
+        } else {
+          // For other events, still update the state
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (!session?.user) {
+            setLoading(false);
+          }
         }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check for existing session with small delay
+    // to allow OAuthCallbackHandler to process tokens first
+    const checkSession = async () => {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
       if (!mounted) return;
       
-      console.log('[Auth] Initial session:', session?.user?.email);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!mounted) return;
+      
+      console.log('[Auth] Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -45,7 +66,9 @@ export function useAuth() {
       } else {
         setLoading(false);
       }
-    });
+    };
+    
+    checkSession();
 
     return () => {
       mounted = false;

@@ -6,6 +6,11 @@ import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketTags } from '@/components/market/MarketTags';
 import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface CardStyleMinimalProps {
   event: MarketEvent;
@@ -21,8 +26,6 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
-
-  // formatVolume is now imported from @/lib/formatters
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
@@ -101,20 +104,34 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
         <div className="flex items-center gap-1.5 shrink-0">
           {statusInfo.canTrade ? (
             <>
-              <Button
-                size="sm"
-                className="h-7 px-2.5 bg-yes/20 hover:bg-yes/30 text-yes border-0 text-xs font-bold"
-                onClick={() => onBuy(event.id, 'YES')}
-              >
-                {yesPrice}¢
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 px-2.5 bg-no/20 hover:bg-no/30 text-no border-0 text-xs font-bold"
-                onClick={() => onBuy(event.id, 'NO')}
-              >
-                {noPrice}¢
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="h-7 px-2.5 bg-yes/20 hover:bg-yes/30 text-yes border-0 text-xs font-bold"
+                    onClick={() => onBuy(event.id, 'YES')}
+                  >
+                    {yesPrice}¢
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Comprar SIM</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="h-7 px-2.5 bg-no/20 hover:bg-no/30 text-no border-0 text-xs font-bold"
+                    onClick={() => onBuy(event.id, 'NO')}
+                  >
+                    {noPrice}¢
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Comprar NÃO</p>
+                </TooltipContent>
+              </Tooltip>
             </>
           ) : (
             <div className={cn(
@@ -134,10 +151,17 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
         {event.tags && event.tags.length > 0 && (
           <MarketTags tags={event.tags} maxTags={2} size="sm" />
         )}
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto">
-          <TrendingUp className="h-2.5 w-2.5" />
-          <span>{formatVolume(event.volume)}</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto cursor-help">
+              <TrendingUp className="h-2.5 w-2.5" />
+              <span>{formatVolume(event.volume)}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>Volume negociado</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

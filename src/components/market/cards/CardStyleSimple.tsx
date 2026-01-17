@@ -7,6 +7,11 @@ import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
 import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface CardStyleSimpleProps {
   event: MarketEvent;
@@ -22,8 +27,6 @@ export const CardStyleSimple = memo(function CardStyleSimple({
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
-
-  // formatVolume is now imported from @/lib/formatters
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
@@ -89,12 +92,19 @@ export const CardStyleSimple = memo(function CardStyleSimple({
           </h3>
         </div>
 
-        <span className={cn(
-          "text-lg font-bold shrink-0",
-          isSettled ? (resultIsYes ? "text-yes" : "text-no") : "text-primary"
-        )}>
-          {yesPrice}%
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={cn(
+              "text-lg font-bold shrink-0 cursor-help",
+              isSettled ? (resultIsYes ? "text-yes" : "text-no") : "text-primary"
+            )}>
+              {yesPrice}%
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Probabilidade de SIM acontecer</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Tags */}
@@ -118,20 +128,34 @@ export const CardStyleSimple = memo(function CardStyleSimple({
       <div className="flex-1 flex flex-col justify-center my-3">
         {statusInfo.canTrade ? (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 h-9 border-yes/40 text-yes hover:bg-yes/10 hover:border-yes font-medium"
-              onClick={() => onBuy(event.id, 'YES')}
-            >
-              Yes
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 h-9 border-no/40 text-no hover:bg-no/10 hover:border-no font-medium"
-              onClick={() => onBuy(event.id, 'NO')}
-            >
-              No
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-9 border-yes/40 text-yes hover:bg-yes/10 hover:border-yes font-medium"
+                  onClick={() => onBuy(event.id, 'YES')}
+                >
+                  Yes
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Aposte que o evento vai acontecer</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-9 border-no/40 text-no hover:bg-no/10 hover:border-no font-medium"
+                  onClick={() => onBuy(event.id, 'NO')}
+                >
+                  No
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Aposte que o evento não vai acontecer</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -155,18 +179,32 @@ export const CardStyleSimple = memo(function CardStyleSimple({
         )}
 
         {/* Payout info */}
-        <div className="flex justify-between text-xs text-muted-foreground mt-3">
-          <span>R$1 → <span className="font-medium text-yes">R${(100 / yesPrice).toFixed(2)}</span></span>
-          <span>R$1 → <span className="font-medium text-no">R${(100 / event.outcomes.NO.price).toFixed(2)}</span></span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex justify-between text-xs text-muted-foreground mt-3 cursor-help">
+              <span>R$1 → <span className="font-medium text-yes">R${(100 / yesPrice).toFixed(2)}</span></span>
+              <span>R$1 → <span className="font-medium text-no">R${(100 / event.outcomes.NO.price).toFixed(2)}</span></span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>Se acertar, você recebe R$1,00 por contrato. O retorno depende do preço de compra.</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Footer - always at bottom */}
       <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <TrendingUp className="h-3 w-3" />
-          <span>{formatVolume(event.volume)}</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+              <TrendingUp className="h-3 w-3" />
+              <span>{formatVolume(event.volume)}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>Volume total negociado neste mercado</p>
+          </TooltipContent>
+        </Tooltip>
         <Button
           variant="ghost"
           size="sm"

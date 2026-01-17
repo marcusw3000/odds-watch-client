@@ -7,6 +7,11 @@ import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
 import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface CardStyleButtonsProps {
   event: MarketEvent;
@@ -22,8 +27,6 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
-
-  // formatVolume is now imported from @/lib/formatters
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
@@ -113,18 +116,32 @@ export const CardStyleButtons = memo(function CardStyleButtons({
       <div className="flex-1 flex flex-col justify-center my-3">
         {statusInfo.canTrade ? (
           <div className="flex gap-2">
-            <Button
-              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-              onClick={() => onBuy(event.id, 'YES')}
-            >
-              SIM {yesPrice}¢
-            </Button>
-            <Button
-              className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
-              onClick={() => onBuy(event.id, 'NO')}
-            >
-              NÃO {noPrice}¢
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                  onClick={() => onBuy(event.id, 'YES')}
+                >
+                  SIM {yesPrice}¢
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <p>Compre SIM se acredita que o evento <strong>vai</strong> acontecer</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                  onClick={() => onBuy(event.id, 'NO')}
+                >
+                  NÃO {noPrice}¢
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <p>Compre NÃO se acredita que o evento <strong>não vai</strong> acontecer</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -148,18 +165,32 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         )}
 
         {/* Payout info */}
-        <div className="flex justify-between text-xs text-muted-foreground mt-3">
-          <span>R$1 → R${(100 / yesPrice).toFixed(2)}</span>
-          <span>R$1 → R${(100 / noPrice).toFixed(2)}</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex justify-between text-xs text-muted-foreground mt-3 cursor-help">
+              <span>R$1 → R${(100 / yesPrice).toFixed(2)}</span>
+              <span>R$1 → R${(100 / noPrice).toFixed(2)}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>Se acertar, você recebe R$1,00 por contrato. O retorno depende do preço de compra.</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Footer - always at bottom */}
       <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <TrendingUp className="h-3 w-3" />
-          <span>{formatVolume(event.volume)}</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+              <TrendingUp className="h-3 w-3" />
+              <span>{formatVolume(event.volume)}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>Volume total negociado neste mercado</p>
+          </TooltipContent>
+        </Tooltip>
         <Button
           variant="ghost"
           size="sm"

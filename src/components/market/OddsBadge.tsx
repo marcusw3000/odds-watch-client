@@ -1,5 +1,10 @@
 import { memo, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface OddsBadgeProps {
   type: 'YES' | 'NO';
@@ -8,6 +13,7 @@ interface OddsBadgeProps {
   size?: 'sm' | 'md' | 'lg';
   showProbability?: boolean;
   animated?: boolean;
+  showTooltip?: boolean;
 }
 
 export const OddsBadge = memo(forwardRef<HTMLDivElement, OddsBadgeProps>(
@@ -18,6 +24,7 @@ export const OddsBadge = memo(forwardRef<HTMLDivElement, OddsBadgeProps>(
     size = 'md',
     showProbability = true,
     animated = false,
+    showTooltip = false,
   }, ref) {
     const isYes = type === 'YES';
 
@@ -29,7 +36,7 @@ export const OddsBadge = memo(forwardRef<HTMLDivElement, OddsBadgeProps>(
 
     const priceFormatted = `R$${(price / 100).toFixed(2)}`;
 
-    return (
+    const badge = (
       <div
         ref={ref}
         className={cn(
@@ -55,5 +62,23 @@ export const OddsBadge = memo(forwardRef<HTMLDivElement, OddsBadgeProps>(
         )}
       </div>
     );
+
+    if (showTooltip) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {badge}
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-center">
+            <p className="font-medium">Preço do contrato</p>
+            <p className="text-muted-foreground text-xs mt-1">
+              {isYes ? 'SIM' : 'NÃO'} custa {priceFormatted}. Se acertar, você recebe R$1,00 por contrato.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return badge;
   }
 ));

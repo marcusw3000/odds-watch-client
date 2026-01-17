@@ -1,10 +1,11 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import {
   Tooltip,
   TooltipContent,
@@ -26,7 +27,9 @@ export const FavoriteButton = memo(function FavoriteButton({
 }: FavoriteButtonProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { isFavorite, toggleFavorite, isAddingFavorite, isRemovingFavorite } = useFavorites();
+  const [justFavorited, setJustFavorited] = useState(false);
 
   const isFav = isFavorite(marketId);
   const isLoading = isAddingFavorite || isRemovingFavorite;
@@ -52,6 +55,17 @@ export const FavoriteButton = memo(function FavoriteButton({
       return;
     }
 
+    // Show animation and toast when adding to favorites
+    if (!isFav) {
+      setJustFavorited(true);
+      setTimeout(() => setJustFavorited(false), 600);
+      toast({
+        title: 'Adicionado aos favoritos',
+        description: 'Acesse seus favoritos no menu de perfil',
+        duration: 2000,
+      });
+    }
+
     toggleFavorite(marketId);
   };
 
@@ -75,7 +89,8 @@ export const FavoriteButton = memo(function FavoriteButton({
           iconSizes[size],
           'transition-transform duration-200',
           isFav && 'fill-current scale-110',
-          !isFav && 'hover:scale-110'
+          !isFav && 'hover:scale-110',
+          justFavorited && 'animate-heartbeat'
         )}
       />
     </Button>
@@ -100,7 +115,8 @@ export const FavoriteButton = memo(function FavoriteButton({
           className={cn(
             iconSizes[size],
             'mr-2',
-            isFav && 'fill-current'
+            isFav && 'fill-current',
+            justFavorited && 'animate-heartbeat'
           )}
         />
         {isFav ? 'Salvo' : 'Salvar'}

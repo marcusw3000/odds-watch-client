@@ -106,12 +106,26 @@ serve(async (req) => {
       });
     });
 
-    // Build response with masked emails
+    // Fetch roles for all users
+    const { data: rolesData } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", userIds);
+
+    const rolesMap = new Map<string, string[]>();
+    (rolesData || []).forEach((r: { user_id: string; role: string }) => {
+      const existing = rolesMap.get(r.user_id) || [];
+      existing.push(r.role);
+      rolesMap.set(r.user_id, existing);
+    });
+
+    // Build response with masked emails and roles
     const users = (walletsData || [])
       .map((wallet: any) => {
         const profile = profilesMap.get(wallet.user_id);
         const displayName = profile?.display_name || profile?.full_name || "Sem nome";
         const email = profile?.email;
+        const roles = rolesMap.get(wallet.user_id) || [];
 
         // Apply search filter
         if (search) {
@@ -119,7 +133,8 @@ serve(async (req) => {
           const matchesName = displayName.toLowerCase().includes(searchLower);
           const matchesEmail = email?.toLowerCase().includes(searchLower);
           const matchesId = wallet.user_id.toLowerCase().includes(searchLower);
-          if (!matchesName && !matchesEmail && !matchesId) {
+          const matchesRole = roles.some(r => r.toLowerCase().includes(searchLower));
+          if (!matchesName && !matchesEmail && !matchesId && !matchesRole) {
             return null;
           }
         }
@@ -134,6 +149,7 @@ serve(async (req) => {
           currency: wallet.currency,
           created_at: wallet.created_at,
           updated_at: wallet.updated_at,
+          roles: roles,
         };
       })
       .filter(Boolean);

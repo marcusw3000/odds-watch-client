@@ -43,6 +43,7 @@ export interface AdminUser {
   currency: string;
   created_at: string;
   updated_at: string;
+  roles: string[];
 }
 
 export interface UserDisplayInfo {
@@ -244,6 +245,31 @@ export function useAdjustWalletBalance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-ledger'] });
+    },
+  });
+}
+
+// Manage user roles (admin only)
+export function useManageUserRoles() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { userId: string; action: 'add' | 'remove'; role: string }) => {
+      const { data, error } = await supabase.functions.invoke('manage-user-roles', {
+        body: { 
+          user_id: params.userId, 
+          action: params.action, 
+          role: params.role 
+        },
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to manage role');
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
   });
 }

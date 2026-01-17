@@ -882,7 +882,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activated_referrals: number | null
           avatar_url: string | null
+          best_markets_won_streak: number | null
           best_streak: number
           best_trade_profit: number
           bio: string | null
@@ -891,21 +893,31 @@ export type Database = {
           display_name: string | null
           email: string | null
           full_name: string | null
+          has_contrarian_trade: boolean | null
+          has_early_trade: boolean | null
+          has_night_trade: boolean | null
+          has_speed_trade: boolean | null
           id: string
           is_public: boolean
+          markets_won_streak: number | null
           roi_percent: number
           show_profit: boolean
           show_roi: boolean
           show_trades: boolean
           show_volume: boolean
           total_profit: number
+          total_referral_commission: number | null
+          total_referrals: number | null
           total_trades: number
           total_volume: number
           updated_at: string
+          weekend_trades: number | null
           winning_trades: number
         }
         Insert: {
+          activated_referrals?: number | null
           avatar_url?: string | null
+          best_markets_won_streak?: number | null
           best_streak?: number
           best_trade_profit?: number
           bio?: string | null
@@ -914,21 +926,31 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           full_name?: string | null
+          has_contrarian_trade?: boolean | null
+          has_early_trade?: boolean | null
+          has_night_trade?: boolean | null
+          has_speed_trade?: boolean | null
           id: string
           is_public?: boolean
+          markets_won_streak?: number | null
           roi_percent?: number
           show_profit?: boolean
           show_roi?: boolean
           show_trades?: boolean
           show_volume?: boolean
           total_profit?: number
+          total_referral_commission?: number | null
+          total_referrals?: number | null
           total_trades?: number
           total_volume?: number
           updated_at?: string
+          weekend_trades?: number | null
           winning_trades?: number
         }
         Update: {
+          activated_referrals?: number | null
           avatar_url?: string | null
+          best_markets_won_streak?: number | null
           best_streak?: number
           best_trade_profit?: number
           bio?: string | null
@@ -937,17 +959,25 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           full_name?: string | null
+          has_contrarian_trade?: boolean | null
+          has_early_trade?: boolean | null
+          has_night_trade?: boolean | null
+          has_speed_trade?: boolean | null
           id?: string
           is_public?: boolean
+          markets_won_streak?: number | null
           roi_percent?: number
           show_profit?: boolean
           show_roi?: boolean
           show_trades?: boolean
           show_volume?: boolean
           total_profit?: number
+          total_referral_commission?: number | null
+          total_referrals?: number | null
           total_trades?: number
           total_volume?: number
           updated_at?: string
+          weekend_trades?: number | null
           winning_trades?: number
         }
         Relationships: []
@@ -1514,6 +1544,10 @@ export type Database = {
         Returns: undefined
       }
       mask_ip_address: { Args: { ip_address: string }; Returns: string }
+      process_market_settlement_achievements: {
+        Args: { p_market_id: string; p_winning_outcome: string }
+        Returns: undefined
+      }
       recalculate_user_statistics: {
         Args: { p_user_id: string }
         Returns: undefined

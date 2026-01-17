@@ -17,11 +17,26 @@ export interface AchievementProgress {
   metricLabel: string;
 }
 
+// Extended stats to include new achievement fields
+export interface ExtendedUserStats extends UserStats {
+  markets_won_streak?: number;
+  best_markets_won_streak?: number;
+  has_night_trade?: boolean;
+  has_early_trade?: boolean;
+  weekend_trades?: number;
+  has_speed_trade?: boolean;
+  has_contrarian_trade?: boolean;
+  total_referrals?: number;
+  activated_referrals?: number;
+  total_referral_commission?: number;
+}
+
 // Achievement code patterns and their targets
 const achievementTargets: Record<string, { 
-  metric: keyof UserStats; 
+  metric: keyof ExtendedUserStats; 
   target: number; 
   label: string;
+  isBool?: boolean;
 }> = {
   // Trading achievements
   'first_trade': { metric: 'total_trades', target: 1, label: 'trade' },
@@ -66,11 +81,33 @@ const achievementTargets: Record<string, {
   'roi_10': { metric: 'roi_percent', target: 10, label: '% ROI' },
   'roi_50': { metric: 'roi_percent', target: 50, label: '% ROI' },
   'roi_100': { metric: 'roi_percent', target: 100, label: '% ROI' },
+  
+  // Prophet achievements (markets won streak)
+  'prophet_3': { metric: 'best_markets_won_streak', target: 3, label: 'mercados acertados' },
+  'prophet_5': { metric: 'best_markets_won_streak', target: 5, label: 'mercados acertados' },
+  'prophet_10': { metric: 'best_markets_won_streak', target: 10, label: 'mercados acertados' },
+  
+  // Special time-based achievements
+  'night_owl': { metric: 'has_night_trade', target: 1, label: 'trade noturno', isBool: true },
+  'early_bird': { metric: 'has_early_trade', target: 1, label: 'trade matinal', isBool: true },
+  'weekend_warrior': { metric: 'weekend_trades', target: 10, label: 'trades no fim de semana' },
+  'speed_trader': { metric: 'has_speed_trade', target: 1, label: 'trade rápido', isBool: true },
+  'contrarian': { metric: 'has_contrarian_trade', target: 1, label: 'trade contrarian', isBool: true },
+  
+  // Referral achievements
+  'referral_first': { metric: 'total_referrals', target: 1, label: 'indicação' },
+  'referral_5': { metric: 'total_referrals', target: 5, label: 'indicações' },
+  'referral_10': { metric: 'total_referrals', target: 10, label: 'indicações' },
+  'referral_25': { metric: 'total_referrals', target: 25, label: 'indicações' },
+  'referral_activated_5': { metric: 'activated_referrals', target: 5, label: 'indicados ativos' },
+  'referral_earnings_100': { metric: 'total_referral_commission', target: 100, label: 'em comissões' },
+  'referral_earnings_500': { metric: 'total_referral_commission', target: 500, label: 'em comissões' },
+  'referral_earnings_1000': { metric: 'total_referral_commission', target: 1000, label: 'em comissões' },
 };
 
 export function getAchievementProgress(
   code: string,
-  stats: UserStats | null
+  stats: ExtendedUserStats | UserStats | null
 ): AchievementProgress {
   // Default for users without stats
   if (!stats) {
@@ -98,6 +135,10 @@ export function getAchievementProgress(
       config = { metric: 'winning_trades', target: number || 1, label: 'trades vencedores' };
     } else if (code.includes('roi')) {
       config = { metric: 'roi_percent', target: number || 10, label: '% ROI' };
+    } else if (code.includes('prophet')) {
+      config = { metric: 'best_markets_won_streak', target: number || 3, label: 'mercados acertados' };
+    } else if (code.includes('referral')) {
+      config = { metric: 'total_referrals', target: number || 1, label: 'indicações' };
     }
   }
 
@@ -106,7 +147,20 @@ export function getAchievementProgress(
     return { current: 0, target: 1, percent: 0, metricLabel: 'progresso' };
   }
 
-  const current = Math.max(0, stats[config.metric] || 0);
+  // Handle boolean metrics
+  if (config.isBool) {
+    const boolValue = (stats as ExtendedUserStats)[config.metric as keyof ExtendedUserStats];
+    const current = boolValue === true ? 1 : 0;
+    return {
+      current,
+      target: 1,
+      percent: current * 100,
+      metricLabel: config.label,
+    };
+  }
+
+  const extStats = stats as ExtendedUserStats;
+  const current = Math.max(0, Number(extStats[config.metric]) || 0);
   const target = config.target;
   const percent = Math.min(100, Math.round((current / target) * 100));
 

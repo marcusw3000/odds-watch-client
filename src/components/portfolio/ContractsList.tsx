@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingUp, Clock, CheckCircle, XCircle, ArrowRightLeft, Share2 } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, XCircle, ArrowRightLeft, Share2, Loader2 } from 'lucide-react';
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { SellModal } from '@/components/market/SellModal';
@@ -20,6 +20,8 @@ interface ContractsListProps {
 export function ContractsList({ contracts, type, onContractSold }: ContractsListProps) {
   const [sellingContract, setSellingContract] = useState<UserContract | null>(null);
   const [currentMarketPrice, setCurrentMarketPrice] = useState(0);
+  const [marketPrices, setMarketPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
   const { toast } = useToast();
 
   const filteredContracts = contracts.filter((c) =>

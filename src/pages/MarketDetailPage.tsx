@@ -462,7 +462,12 @@ export function MarketDetailPage() {
               </div>
 
               {/* Bid-Ask Spread Info */}
-              <BidAskSpread eventId={event.id} quantity={10} />
+              <BidAskSpread 
+                eventId={event.id} 
+                quantity={10}
+                yesShares={event.lmsr.qYes}
+                noShares={event.lmsr.qNo}
+              />
 
               {/* Info Box */}
               <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">

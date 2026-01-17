@@ -3,6 +3,7 @@ import { AlertCircle, RefreshCw, Clock, TrendingDown, Calculator, Zap, Lock, Che
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { OddsBadge } from './OddsBadge';
+import { SlippageSelector } from './SlippageSelector';
 import { cn } from '@/lib/utils';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
@@ -26,7 +27,7 @@ interface SellModalProps {
 
 const PRICE_VALIDITY_SECONDS = 15;
 const CONFIRM_COUNTDOWN_SECONDS = 3;
-const SLIPPAGE_TOLERANCE = 0.02; // 2% tolerance for price variations
+const DEFAULT_SLIPPAGE_TOLERANCE = 0.02; // 2% default tolerance for sell
 
 type ConfirmState = 'idle' | 'countdown' | 'executing' | 'success';
 
@@ -48,6 +49,7 @@ export function SellModal({
   const [confirmState, setConfirmState] = useState<ConfirmState>('idle');
   const [confirmCountdown, setConfirmCountdown] = useState(CONFIRM_COUNTDOWN_SECONDS);
   const [lockedPrice, setLockedPrice] = useState<number | null>(null);
+  const [slippageTolerance, setSlippageTolerance] = useState(DEFAULT_SLIPPAGE_TOLERANCE);
   const confirmTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isYes = contract.outcome === 'YES';
@@ -152,7 +154,7 @@ export function SellModal({
     // Lock the current price for display
     setLockedPrice(quote.cost);
     // Calculate minimum value with slippage tolerance for backend
-    const minValueWithSlippage = quote.cost * (1 - SLIPPAGE_TOLERANCE);
+    const minValueWithSlippage = quote.cost * (1 - slippageTolerance);
     
     setConfirmState('countdown');
     setConfirmCountdown(CONFIRM_COUNTDOWN_SECONDS);
@@ -170,7 +172,7 @@ export function SellModal({
         return prev - 1;
       });
     }, 1000);
-  }, [priceExpired, quote, executeConfirm]);
+  }, [priceExpired, quote, slippageTolerance, executeConfirm]);
 
   const cancelConfirmCountdown = useCallback(() => {
     if (confirmTimerRef.current) {
@@ -381,9 +383,13 @@ export function SellModal({
                 </div>
               )}
               
-              {/* Slippage tolerance info */}
-              <div className="text-xs text-muted-foreground text-center pt-1">
-                Tolerância de variação: até 2%
+              {/* Slippage tolerance selector */}
+              <div className="flex items-center justify-center pt-1">
+                <SlippageSelector 
+                  value={slippageTolerance} 
+                  onChange={setSlippageTolerance}
+                  disabled={confirmState !== 'idle'}
+                />
               </div>
 
               <div className="flex justify-between pt-2 border-t border-border">

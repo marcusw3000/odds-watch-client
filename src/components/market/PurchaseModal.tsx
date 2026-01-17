@@ -10,6 +10,7 @@ import { TradeQuote } from '@/services/LMSRCalculator';
 import { FeeEngine } from '@/services/FeeEngine';
 import { FeeRule } from '@/types/financial';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
+import { SlippageSelector } from './SlippageSelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Drawer,
@@ -67,6 +68,7 @@ export function PurchaseModal({
   const [feeRule, setFeeRule] = useState<FeeRule | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [slippageDetected, setSlippageDetected] = useState(false);
+  const [slippageTolerance, setSlippageTolerance] = useState(0.05); // 5% default
   
   const isMobile = useIsMobile();
 
@@ -177,8 +179,8 @@ export function PurchaseModal({
       const totalCost = quote.cost;
       const potentialProfit = sharesNum - totalCost;
       
-      // Add 5% slippage tolerance to maxCost to handle small price movements
-      const maxCostWithSlippage = quote.cost * 1.05;
+      // Use selected slippage tolerance for maxCost
+      const maxCostWithSlippage = quote.cost * (1 + slippageTolerance);
 
       await onConfirm(sharesNum, maxCostWithSlippage);
       
@@ -408,9 +410,13 @@ export function PurchaseModal({
                 Se {selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} vencer, cada contrato paga R$1,00
               </p>
 
-              <p className="text-xs text-center text-muted-foreground/70">
-                Tolerância de variação: até 5%
-              </p>
+              <div className="flex items-center justify-center">
+                <SlippageSelector 
+                  value={slippageTolerance} 
+                  onChange={setSlippageTolerance}
+                  disabled={isConfirming}
+                />
+              </div>
             </div>
           );
         })()}

@@ -24,9 +24,45 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
   const [loadingPrices, setLoadingPrices] = useState(false);
   const { toast } = useToast();
 
-  const filteredContracts = contracts.filter((c) =>
-    type === 'active' ? c.status === 'ACTIVE' : c.status !== 'ACTIVE'
+  const activeContracts = useMemo(() => 
+    contracts.filter((c) => c.status === 'ACTIVE'), 
+    [contracts]
   );
+
+  const filteredContracts = useMemo(() => 
+    contracts.filter((c) =>
+      type === 'active' ? c.status === 'ACTIVE' : c.status !== 'ACTIVE'
+    ), 
+    [contracts, type]
+  );
+
+  // Fetch current market prices for active contracts
+  useEffect(() => {
+    if (type !== 'active' || activeContracts.length === 0) return;
+
+    const fetchPrices = async () => {
+      setLoadingPrices(true);
+      const prices: Record<string, number> = {};
+      
+      await Promise.all(
+        activeContracts.map(async (contract) => {
+          try {
+            const price = await MarketDataProvider.getCurrentPriceForContract(contract);
+            prices[contract.id] = price;
+          } catch (err) {
+            console.error(`Failed to fetch price for contract ${contract.id}:`, err);
+            // Fallback to purchase price if fetch fails
+            prices[contract.id] = contract.priceAtPurchase;
+          }
+        })
+      );
+      
+      setMarketPrices(prices);
+      setLoadingPrices(false);
+    };
+
+    fetchPrices();
+  }, [activeContracts, type]);
 
   const handleOpenSellModal = async (contract: UserContract) => {
     const price = await MarketDataProvider.getCurrentPriceForContract(contract);
@@ -80,7 +116,17 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
           const isYes = contract.outcome === 'YES';
           const purchasePrice = (contract.priceAtPurchase / 100) * contract.quantity;
           const potentialPayout = contract.quantity;
-          const potentialProfit = potentialPayout - purchasePrice;
+          
+          // Use current market price for active contracts, fallback to purchase price
+          const currentPrice = contract.status === 'ACTIVE' 
+            ? (marketPrices[contract.id] ?? contract.priceAtPurchase)
+            : contract.priceAtPurchase;
+          
+          // Calculate unrealized P&L for active contracts
+          const currentValue = (currentPrice / 100) * contract.quantity;
+          const unrealizedPnL = currentValue - purchasePrice;
+          const pnlPercent = purchasePrice > 0 ? (unrealizedPnL / purchasePrice) * 100 : 0;
+          const isPnLPositive = unrealizedPnL >= 0;
 
           return (
             <div
@@ -132,12 +178,30 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
                 <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">
-                      {contract.status === 'ACTIVE' ? 'Lucro potencial' : 'Resultado'}
+                      {contract.status === 'ACTIVE' ? 'P&L Atual' : 'Resultado'}
                     </p>
                     {contract.status === 'ACTIVE' ? (
-                      <p className="font-mono font-bold text-success">
-                        +R${potentialProfit.toFixed(2)}
-                      </p>
+                      loadingPrices ? (
+                        <div className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span className="text-xs text-muted-foreground">...</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className={cn(
+                            "font-mono font-bold",
+                            isPnLPositive ? "text-success" : "text-destructive"
+                          )}>
+                            {isPnLPositive ? '+' : ''}R${unrealizedPnL.toFixed(2)}
+                          </p>
+                          <p className={cn(
+                            "text-xs",
+                            isPnLPositive ? "text-success/80" : "text-destructive/80"
+                          )}>
+                            ({isPnLPositive ? '+' : ''}{pnlPercent.toFixed(1)}%)
+                          </p>
+                        </div>
+                      )
                     ) : contract.status === 'WON' ? (
                       <p className="font-mono font-bold text-success">
                         +R${(contract.payout || potentialPayout).toFixed(2)}
@@ -160,8 +224,8 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
                           outcome: contract.outcome,
                           quantity: contract.quantity,
                           priceAtPurchase: contract.priceAtPurchase,
-                          currentPrice: contract.priceAtPurchase, // Simplified
-                          profitPercent: ((potentialPayout - purchasePrice) / purchasePrice) * 100,
+                          currentPrice: currentPrice,
+                          profitPercent: pnlPercent,
                         }}
                         trigger={
                           <Button variant="ghost" size="icon" className="h-8 w-8">

@@ -1,74 +1,78 @@
-# Plano de Correcao - Bugs de Alta Prioridade
+# Plano: Melhorar Tratamento de Erro de Slippage
 
-## Objetivo
-Corrigir 3 bugs identificados na analise:
-1. Filtro CONTESTED ausente
-2. Inconsistencia Ledger/Wallet
-3. Calculo de lucro potencial incorreto
+## Problema Identificado
+Quando o preco muda mais de 5% entre a cotacao e a execucao:
+1. O backend retorna uma mensagem especifica: "O preco mudou significativamente..."
+2. O frontend ignora essa mensagem e mostra: "Erro ao processar compra. Tente novamente."
+3. O usuario nao sabe o que aconteceu e nao tem opcao de atualizar o preco
 
----
+## Solucao Proposta
 
-## Correcao 1: Adicionar CONTESTED ao Filtro
+### Modificar `src/components/market/PurchaseModal.tsx`
 
-**Arquivo**: `src/components/market/AdvancedFilters.tsx`
-
-**Linha 45 atual**:
+**1. Adicionar estado para detectar slippage:**
 ```typescript
-const statusOptions: MarketStatus[] = ['OPEN', 'HALTED', 'PENDING', 'SETTLED'];
+const [slippageDetected, setSlippageDetected] = useState(false);
 ```
 
-**Alterar para**:
+**2. Modificar o catch para tratar erros especificos:**
 ```typescript
-const statusOptions: MarketStatus[] = ['OPEN', 'HALTED', 'PENDING', 'CONTESTED', 'SETTLED'];
+} catch (err) {
+  const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+  
+  // Detectar erro de slippage
+  if (errorMessage.includes('preco mudou') || errorMessage.includes('slippage')) {
+    setSlippageDetected(true);
+    setError('O preco mudou desde sua cotacao. Atualize o preco para continuar.');
+    // Atualizar preco automaticamente
+    await handleRefreshPrice();
+  } else {
+    setError(errorMessage || 'Erro ao processar compra. Tente novamente.');
+  }
+}
 ```
 
----
+**3. Adicionar UI especial para slippage:**
+- Mostrar alerta amarelo (warning) quando slippage for detectado
+- Mostrar novo preco apos atualizacao
+- Destacar a diferenca de preco para o usuario
+- Adicionar botao "Tentar com novo preco"
 
-## Correcao 2: Ledger Entries para Depositos/Saques
+**4. Resetar estado de slippage ao atualizar preco:**
+```typescript
+const handleRefreshPrice = useCallback(async () => {
+  setSlippageDetected(false);  // Resetar flag
+  // ... resto do codigo
+}, [...]);
+```
 
-**Nova migracao SQL** para atualizar as funcoes atomicas:
+### Fluxo de UX Melhorado
 
-### atomic_deposit_balance
-- Apos atualizar o saldo, criar um `ledger_entry` com:
-  - direction: 'CREDIT'
-  - ref_type: 'DEPOSIT'
-  - status: 'COMPLETED'
-
-### atomic_withdraw_balance
-- Apos atualizar o saldo, criar um `ledger_entry` com:
-  - direction: 'DEBIT'
-  - ref_type: 'WITHDRAWAL'
-  - status: 'COMPLETED'
-
----
-
-## Correcao 3: Calculo de P&L Real
-
-**Arquivo**: `src/components/portfolio/ContractsList.tsx`
-
-### Mudancas:
-1. Adicionar estado para armazenar precos atuais de mercado
-2. Buscar precos ao montar o componente (para contratos ativos)
-3. Calcular P&L usando:
-   - Valor atual = (preco_atual / 100) x quantidade
-   - Custo = (preco_compra / 100) x quantidade
-   - P&L = Valor atual - Custo
-4. Mostrar P&L com cores (verde para lucro, vermelho para prejuizo)
-5. Adicionar loading state enquanto busca precos
-
----
+```
+Usuario tenta comprar
+       |
+       v
+Preco mudou > 5%?
+       |
+  +----+----+
+  |         |
+ Nao       Sim
+  |         |
+  v         v
+Sucesso   Mostrar warning:
+          "O preco mudou de R$X para R$Y"
+          [Atualizar e Tentar Novamente]
+          [Cancelar]
+```
 
 ## Arquivos a Modificar
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/market/AdvancedFilters.tsx` | Adicionar 'CONTESTED' |
-| Nova migracao SQL | Criar ledger entries |
-| `src/components/portfolio/ContractsList.tsx` | Calcular P&L real |
+| `src/components/market/PurchaseModal.tsx` | Adicionar tratamento de slippage |
 
----
-
-## Resultado Esperado
-- Usuarios podem filtrar mercados em contestacao
-- Depositos e saques criam registros de auditoria
-- Portfolio mostra lucro/prejuizo real baseado no preco atual de mercado
+## Beneficios
+- Usuario entende o que aconteceu (preco mudou)
+- Ve o novo preco automaticamente
+- Pode decidir se quer continuar com o novo preco
+- Experiencia mais transparente e profissional

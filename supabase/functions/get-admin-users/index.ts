@@ -6,13 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Mask email for privacy: john.doe@gmail.com -> j***@gmail.com
-function maskEmail(email: string | null): string {
-  if (!email) return "N/A";
-  const [localPart, domain] = email.split("@");
-  if (!domain || localPart.length < 2) return "***@***";
-  return `${localPart[0]}***@${domain}`;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -143,7 +136,7 @@ serve(async (req) => {
           id: wallet.id,
           user_id: wallet.user_id,
           display_name: displayName,
-          email_masked: maskEmail(email ?? null),
+          email: email ?? "N/A",
           balance_available: wallet.balance_available,
           balance_locked: wallet.balance_locked,
           currency: wallet.currency,

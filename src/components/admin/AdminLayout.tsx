@@ -19,7 +19,8 @@ import {
   Gift,
   Palette,
   Loader2,
-  Flag
+  Flag,
+  Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ const navItems = [
   { path: '/admin/ledger', label: 'Ledger', icon: BookOpen },
   { path: '/admin/revenue', label: 'Receita', icon: TrendingUp },
   { section: 'Moderação' },
+  { path: '/admin/suggestions', label: 'Sugestões', icon: Lightbulb },
   { path: '/admin/reports', label: 'Denúncias', icon: Flag },
   { section: 'Sistema' },
   { path: '/admin/audit-logs', label: 'Logs de Auditoria', icon: ClipboardList },

@@ -342,7 +342,8 @@ export function PurchaseModal({
 
         {/* Summary with LMSR data */}
         {quote && sharesNum > 0 && (() => {
-          const potentialProfit = sharesNum - quote.cost;
+          const potentialReturn = sharesNum; // R$1 per contract if wins
+          const roi = ((potentialReturn - quote.cost) / quote.cost) * 100;
           
           return (
             <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
@@ -360,25 +361,27 @@ export function PurchaseModal({
                   <span className="text-muted-foreground">Preço médio</span>
                   <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
                 </div>
-                
-                {/* Total */}
-                <div className="flex justify-between pt-2 border-t border-border font-medium">
-                  <span>Custo contratos</span>
-                  <span className="font-mono text-foreground">R${quote.cost.toFixed(2)}</span>
-                </div>
+              </div>
 
-                <div className="flex justify-between pt-2 border-t border-border">
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    Lucro potencial
-                  </span>
-                  <span className={cn(
-                    "font-mono font-bold",
-                    potentialProfit >= 0 ? "text-success" : "text-destructive"
-                  )}>
-                    {potentialProfit >= 0 ? '+' : ''}R${potentialProfit.toFixed(2)}
+              {/* CUSTO - DESTAQUE PRINCIPAL */}
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total a pagar</span>
+                  <span className="font-mono text-lg font-bold text-foreground">
+                    R${quote.cost.toFixed(2)}
                   </span>
                 </div>
+              </div>
+
+              {/* Retorno potencial - SECUNDÁRIO */}
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />
+                  Retorno se {selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} vencer
+                </span>
+                <span className="font-mono">
+                  R${potentialReturn.toFixed(2)} (+{roi.toFixed(0)}%)
+                </span>
               </div>
 
               {/* Price Impact Warning */}

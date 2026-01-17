@@ -43,6 +43,8 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   COMMENT_MENTION: AtSign,
   COMMENT_LIKE: Heart,
   COMMENT_REPLY: MessageCircle,
+  SUGGESTION_COMMENT_MENTION: AtSign,
+  SUGGESTION_COMMENT_REPLY: MessageCircle,
 };
 
 const notificationColors: Record<NotificationType, string> = {
@@ -62,6 +64,8 @@ const notificationColors: Record<NotificationType, string> = {
   COMMENT_MENTION: 'text-indigo-500 bg-indigo-500/10',
   COMMENT_LIKE: 'text-pink-500 bg-pink-500/10',
   COMMENT_REPLY: 'text-cyan-500 bg-cyan-500/10',
+  SUGGESTION_COMMENT_MENTION: 'text-indigo-500 bg-indigo-500/10',
+  SUGGESTION_COMMENT_REPLY: 'text-cyan-500 bg-cyan-500/10',
 };
 
 // Types that can be grouped
@@ -81,6 +85,10 @@ function getNotificationLink(notification: Notification): string | null {
     case 'COMMENT_LIKE':
     case 'PRICE_ALERT':
       return data?.market_id ? `/market/${data.market_id}` : null;
+    
+    case 'SUGGESTION_COMMENT_MENTION':
+    case 'SUGGESTION_COMMENT_REPLY':
+      return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : null;
     
     case 'DEPOSIT_CONFIRMED':
     case 'WITHDRAWAL_COMPLETED':

@@ -25,6 +25,7 @@ import { OddsChart } from '@/components/market/OddsChart';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { TradingHaltBanner } from '@/components/market/TradingHaltBanner';
 import { ContestationPanel } from '@/components/market/ContestationPanel';
+import { BidAskSpread } from '@/components/market/BidAskSpread';
 import { ShareButton } from '@/components/social/ShareButton';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { MarketDetailSkeleton } from '@/components/market/MarketDetailSkeleton';
@@ -459,6 +460,9 @@ export function MarketDetailPage() {
                   </Button>
                 </div>
               </div>
+
+              {/* Bid-Ask Spread Info */}
+              <BidAskSpread eventId={event.id} quantity={10} />
 
               {/* Info Box */}
               <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">

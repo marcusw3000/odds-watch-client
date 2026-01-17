@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, ChevronUp, ChevronDown, Zap } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -379,8 +379,37 @@ export function PurchaseModal({
                 </div>
               </div>
 
+              {/* Price Impact Warning */}
+              {Math.abs(quote.priceImpact) > 0.5 && (
+                <div className={cn(
+                  "flex items-center gap-2 p-2 rounded-md",
+                  Math.abs(quote.priceImpact) > 5 
+                    ? "bg-warning/20 text-warning" 
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  <Zap className="h-3.5 w-3.5" />
+                  <span className="text-xs">
+                    Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(1)}%
+                  </span>
+                </div>
+              )}
+
+              {/* New prices after purchase */}
+              <div className="pt-2 border-t border-border text-xs text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Preços após compra:</span>
+                  <span className="font-mono">
+                    SIM: {quote.newYesPrice}¢ | NÃO: {quote.newNoPrice}¢
+                  </span>
+                </div>
+              </div>
+
               <p className="text-xs text-muted-foreground">
                 Se {selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} vencer, cada contrato paga R$1,00
+              </p>
+
+              <p className="text-xs text-center text-muted-foreground/70">
+                Tolerância de variação: até 5%
               </p>
             </div>
           );

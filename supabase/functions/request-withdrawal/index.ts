@@ -118,23 +118,10 @@ serve(async (req) => {
       throw new Error("Solicitação de saque já está sendo processada. Aguarde alguns instantes.");
     }
 
-    // Check for pending duplicate withdrawal in last 30 seconds
-    const { data: hasPendingDuplicate, error: pendingCheckError } = await supabaseAdmin
-      .rpc('check_pending_withdrawal', {
-        p_user_id: user.id,
-        p_amount: amount,
-        p_pix_key: pix_key
-      });
-
-    if (pendingCheckError) {
-      logStep("Pending check error", { error: pendingCheckError.message });
-    }
-
-    if (hasPendingDuplicate) {
-      logStep("Pending duplicate withdrawal detected", { userId: user.id, amount, pix_key });
-      throw new Error("Já existe um saque pendente com estes dados. Aguarde o processamento.");
-    }
-    logStep("No duplicate withdrawals found");
+    // Note: Duplicate detection relies on idempotency_key mechanism above
+    // The database-level check_pending_withdrawal function was removed because
+    // it compared encrypted PIX keys (which use random IVs and never match)
+    logStep("Duplicate check completed via idempotency key");
 
     // Rate limiting: max 3 withdrawal requests per hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();

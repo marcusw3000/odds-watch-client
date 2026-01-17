@@ -165,11 +165,19 @@ export function AuthPage() {
     setIsGoogleLoading(true);
     setError(null);
 
+    // Store return URL and referral code before redirect
+    if (returnTo && returnTo !== '/') {
+      localStorage.setItem('authReturnTo', returnTo);
+    }
+    if (referralCode) {
+      localStorage.setItem('pendingReferralCode', referralCode);
+    }
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${returnTo}`,
+          redirectTo: window.location.origin,
         },
       });
 

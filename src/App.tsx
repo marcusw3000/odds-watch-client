@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Layout } from "./components/layout/Layout";
 import { MarketsPage } from "./pages/MarketsPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
+import { supabase } from "@/integrations/supabase/client";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import NotFound from "./pages/NotFound";
 import { AuthPage } from "./pages/AuthPage";
@@ -50,6 +51,30 @@ const AdminLoadingFallback = () => (
 
 const queryClient = new QueryClient();
 
+// Component to handle OAuth callback tokens
+function OAuthCallbackHandler({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      // Check for hash fragment with OAuth tokens
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      
+      if (accessToken) {
+        console.log('[Auth] Processing OAuth callback tokens...');
+        // Force refresh the session - Supabase client will process the tokens
+        await supabase.auth.getSession();
+        // Clean up the URL hash
+        window.history.replaceState(null, '', window.location.pathname);
+        console.log('[Auth] OAuth tokens processed, URL cleaned');
+      }
+    };
+    
+    handleAuthCallback();
+  }, []);
+
+  return <>{children}</>;
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -57,8 +82,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
+          <OAuthCallbackHandler>
+            <Routes>
+              <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/markets" replace />} />
               <Route path="/markets" element={<MarketsPage />} />
               <Route path="/market/:id" element={<MarketDetailPage />} />
@@ -102,9 +128,10 @@ const App = () => (
               <Route path="reports" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReportsPage /></Suspense>} />
             </Route>
             
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </OAuthCallbackHandler>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

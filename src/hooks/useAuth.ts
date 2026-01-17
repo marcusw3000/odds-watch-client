@@ -9,16 +9,21 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
+        console.log('[Auth] State change:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
         // Defer role check to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            checkAdminRole(session.user.id);
+            if (mounted) checkAdminRole(session.user.id);
           }, 0);
         } else {
           setIsAdmin(false);
@@ -29,6 +34,9 @@ export function useAuth() {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
+      console.log('[Auth] Initial session:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -39,7 +47,10 @@ export function useAuth() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkAdminRole = async (userId: string) => {

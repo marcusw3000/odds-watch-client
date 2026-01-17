@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Heart, Reply, Trash2, Loader2, ChevronDown, ChevronUp, MessageSquare, Flag } from 'lucide-react';
@@ -49,6 +49,13 @@ export function SuggestionCommentThread({
   const isOwner = user?.id === comment.user_id;
   const canNest = depth < MAX_DEPTH;
   const repliesCount = comment.replies_count || 0;
+
+  // Auto-load replies for root comments that have replies
+  useEffect(() => {
+    if (depth === 0 && repliesCount > 0 && !hasLoadedReplies) {
+      loadReplies();
+    }
+  }, [depth, repliesCount, hasLoadedReplies]);
 
   const loadReplies = async () => {
     if (hasLoadedReplies && replies.length > 0) {

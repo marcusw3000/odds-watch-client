@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, AlertCircle, Mail, Gift } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Gift, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,11 +11,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ReferralService } from '@/services/ReferralService';
 import { useToast } from '@/hooks/use-toast';
-
 const loginSchema = z.object({
   email: z.string().trim().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
@@ -41,9 +41,16 @@ export function AuthPage() {
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isOAuthProcessing, setIsOAuthProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  
+  // Password recovery state
+  const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [isRecoveryLoading, setIsRecoveryLoading] = useState(false);
+  const [recoverySuccess, setRecoverySuccess] = useState(false);
   
   // Referral code from URL
   const referralCode = searchParams.get('ref');
@@ -77,9 +84,10 @@ export function AuthPage() {
     const url = new URL(window.location.href);
     const isOAuthCallback = url.searchParams.has('code') || window.location.hash.includes('access_token');
     
-    // If we're processing an OAuth callback, let OAuthCallbackHandler handle it
+    // If we're processing an OAuth callback, show loading and let OAuthCallbackHandler handle it
     if (isOAuthCallback) {
-      console.log('[AuthPage] OAuth callback detected, skipping auto-redirect');
+      console.log('[AuthPage] OAuth callback detected, showing loading state');
+      setIsOAuthProcessing(true);
       return;
     }
     
@@ -212,6 +220,41 @@ export function AuthPage() {
       setIsGoogleLoading(false);
     }
   };
+
+  const handlePasswordRecovery = async () => {
+    if (!recoveryEmail.trim()) {
+      return;
+    }
+
+    setIsRecoveryLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail.trim(), {
+        redirectTo: `${window.location.origin}/auth?recovery=true`,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setRecoverySuccess(true);
+      }
+    } catch (err) {
+      setError('Erro ao enviar email de recuperação. Tente novamente.');
+    } finally {
+      setIsRecoveryLoading(false);
+    }
+  };
+
+  // Full-screen loading during OAuth callback processing
+  if (isOAuthProcessing) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-lg text-muted-foreground">Finalizando login...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -348,6 +391,64 @@ export function AuthPage() {
                       'Entrar'
                     )}
                   </Button>
+
+                  {/* Password Recovery Dialog */}
+                  <Dialog open={isRecoveryOpen} onOpenChange={(open) => {
+                    setIsRecoveryOpen(open);
+                    if (!open) {
+                      setRecoveryEmail('');
+                      setRecoverySuccess(false);
+                      setError(null);
+                    }
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button variant="link" type="button" className="w-full text-sm text-muted-foreground">
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        Esqueceu sua senha?
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Recuperar Senha</DialogTitle>
+                        <DialogDescription>
+                          Digite seu email para receber um link de recuperação de senha.
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      {recoverySuccess ? (
+                        <Alert className="bg-primary/10 border-primary/30">
+                          <Mail className="h-4 w-4 text-primary" />
+                          <AlertDescription className="text-primary">
+                            Email enviado! Verifique sua caixa de entrada para redefinir sua senha.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <div className="space-y-4">
+                          <Input
+                            type="email"
+                            placeholder="seu@email.com"
+                            value={recoveryEmail}
+                            onChange={(e) => setRecoveryEmail(e.target.value)}
+                            disabled={isRecoveryLoading}
+                          />
+                          <Button 
+                            onClick={handlePasswordRecovery} 
+                            className="w-full"
+                            disabled={isRecoveryLoading || !recoveryEmail.trim()}
+                          >
+                            {isRecoveryLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Enviando...
+                              </>
+                            ) : (
+                              'Enviar Link de Recuperação'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
                 </form>
               </Form>
             </TabsContent>

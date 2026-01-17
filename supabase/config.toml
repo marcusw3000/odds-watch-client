@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.export-user-data]
 verify_jwt = false
+
+[functions.manage-user-roles]
+verify_jwt = false

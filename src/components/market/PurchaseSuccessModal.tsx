@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Check, Copy, Download, PartyPopper, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Confetti } from '@/components/ui/confetti';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { generateMarketShareLink, generateSocialShareLinks } from '@/lib/deepLinks';
 import html2canvas from 'html2canvas';
+import { haptics } from '@/lib/haptics';
 
 // Custom X icon
 const XIcon = () => (
@@ -48,7 +50,13 @@ export function PurchaseSuccessModal({
 }: PurchaseSuccessModalProps) {
   const [copied, setCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Trigger haptic feedback on mount
+  useEffect(() => {
+    haptics.success();
+  }, []);
 
   const shareLink = generateMarketShareLink(eventId, { outcome, source: 'copy' });
   const socialLinks = generateSocialShareLinks({
@@ -124,40 +132,45 @@ export function PurchaseSuccessModal({
   const isYes = outcome === 'YES';
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 animate-fade-in"
-      onClick={onClose}
-    >
+    <>
+      {/* Real confetti animation */}
+      {showConfetti && (
+        <Confetti 
+          count={60} 
+          duration={3500} 
+          onComplete={() => setShowConfetti(false)} 
+        />
+      )}
+      
       <div 
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 animate-fade-in"
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="purchase-success-title"
       >
-        {/* Success Header */}
-        <div className={cn(
-          "relative p-6 text-center",
-          isYes 
-            ? "bg-gradient-to-br from-yes/20 via-yes/10 to-transparent" 
-            : "bg-gradient-to-br from-no/20 via-no/10 to-transparent"
-        )}>
-          {/* Confetti animation elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-2 left-4 text-2xl animate-bounce" style={{ animationDelay: '0ms' }}>🎉</div>
-            <div className="absolute top-4 right-6 text-xl animate-bounce" style={{ animationDelay: '200ms' }}>✨</div>
-            <div className="absolute top-8 left-1/4 text-lg animate-bounce" style={{ animationDelay: '400ms' }}>🎊</div>
-            <div className="absolute top-6 right-1/4 text-xl animate-bounce" style={{ animationDelay: '100ms' }}>🚀</div>
-          </div>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onClose}
+        <div 
+          className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Success Header */}
+          <div className={cn(
+            "relative p-6 text-center",
+            isYes 
+              ? "bg-gradient-to-br from-yes/20 via-yes/10 to-transparent" 
+              : "bg-gradient-to-br from-no/20 via-no/10 to-transparent"
+          )}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
             className="absolute top-3 right-3"
           >
             <X className="h-5 w-5" />
           </Button>
           
           <div className={cn(
-            "mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4",
+            "mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 animate-scale-in",
             isYes ? "bg-yes/20" : "bg-no/20"
           )}>
             <PartyPopper className={cn(
@@ -166,7 +179,7 @@ export function PurchaseSuccessModal({
             )} />
           </div>
           
-          <h2 className="text-xl font-bold mb-1">Compra Confirmada! 🎉</h2>
+          <h2 id="purchase-success-title" className="text-xl font-bold mb-1">Compra Confirmada! 🎉</h2>
           <p className="text-sm text-muted-foreground">
             Sua aposta foi registrada com sucesso
           </p>
@@ -310,5 +323,6 @@ export function PurchaseSuccessModal({
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -26,7 +26,7 @@ export function SuggestionsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<SuggestionFilterOption>('all');
   const [sort, setSort] = useState<SuggestionSortOption>('trending');
-  const [category, setCategory] = useState<string>('');
+  const [category, setCategory] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
 
   const categories = SuggestionService.getCategories();
@@ -43,7 +43,7 @@ export function SuggestionsPage() {
           limit: 50,
           sort,
           filter: filter === 'mine' ? undefined : filter,
-          category: category || undefined,
+          category: category === 'all' ? undefined : category,
         });
       }
       
@@ -188,7 +188,7 @@ export function SuggestionsPage() {
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat.value} value={cat.value}>
                   {cat.label}

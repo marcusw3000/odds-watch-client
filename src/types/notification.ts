@@ -14,7 +14,9 @@ export type NotificationType =
   | 'PRICE_ALERT'
   | 'COMMENT_MENTION'
   | 'COMMENT_LIKE'
-  | 'COMMENT_REPLY';
+  | 'COMMENT_REPLY'
+  | 'SUGGESTION_COMMENT_MENTION'
+  | 'SUGGESTION_COMMENT_REPLY';
 
 export interface Notification {
   id: string;

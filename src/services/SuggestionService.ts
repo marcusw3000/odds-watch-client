@@ -1,4 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  notifySuggestionCommentMention, 
+  notifySuggestionCommentReply 
+} from './NotificationService';
 import type { 
   Suggestion, 
   SuggestionComment, 

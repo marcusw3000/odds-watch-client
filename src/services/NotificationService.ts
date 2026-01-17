@@ -261,3 +261,38 @@ export async function notifyPriceAlert(
     sendEmail: false,
   });
 }
+
+// Suggestion comment notifications
+export async function notifySuggestionCommentMention(
+  userId: string,
+  mentionedByName: string,
+  suggestionId: string,
+  suggestionTitle: string,
+  commentPreview: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUGGESTION_COMMENT_MENTION',
+    title: `${mentionedByName} mencionou você`,
+    message: `Em sugestão "${suggestionTitle}": "${commentPreview}..."`,
+    data: { suggestion_id: suggestionId, mentioned_by: mentionedByName },
+    sendEmail: true,
+  });
+}
+
+export async function notifySuggestionCommentReply(
+  userId: string,
+  repliedByName: string,
+  suggestionId: string,
+  suggestionTitle: string,
+  replyPreview: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUGGESTION_COMMENT_REPLY',
+    title: `${repliedByName} respondeu ao seu comentário`,
+    message: `Em sugestão "${suggestionTitle}": "${replyPreview}..."`,
+    data: { suggestion_id: suggestionId, replied_by: repliedByName },
+    sendEmail: false,
+  });
+}

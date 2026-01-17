@@ -23,6 +23,7 @@ interface SuggestionCommentThreadProps {
 }
 
 const MAX_DEPTH = 3;
+const AUTO_SHOW_REPLIES_THRESHOLD = 3;
 
 export function SuggestionCommentThread({
   comment,
@@ -35,7 +36,7 @@ export function SuggestionCommentThread({
 }: SuggestionCommentThreadProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [showReplies, setShowReplies] = useState(depth === 0);
+  const [showReplies, setShowReplies] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [replyMentions, setReplyMentions] = useState<string[]>([]);
@@ -50,9 +51,9 @@ export function SuggestionCommentThread({
   const canNest = depth < MAX_DEPTH;
   const repliesCount = comment.replies_count || 0;
 
-  // Auto-load replies for root comments that have replies
+  // Auto-load replies for root comments with few replies
   useEffect(() => {
-    if (depth === 0 && repliesCount > 0 && !hasLoadedReplies) {
+    if (depth === 0 && repliesCount > 0 && repliesCount <= AUTO_SHOW_REPLIES_THRESHOLD && !hasLoadedReplies) {
       loadReplies();
     }
   }, [depth, repliesCount, hasLoadedReplies]);

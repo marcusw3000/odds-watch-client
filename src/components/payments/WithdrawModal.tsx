@@ -19,6 +19,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useRequestWithdrawal } from '@/hooks/usePayments';
 import type { PixKeyType } from '@/types/payment';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from '@/components/ui/drawer';
 
 interface WithdrawModalProps {
   balance: number;
@@ -100,6 +108,7 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
   const requestWithdrawal = useRequestWithdrawal();
   const { toast } = useToast();
   const lastSubmitTime = useRef<number>(0);
+  const isMobile = useIsMobile();
 
   const numericAmount = parseFloat(amount) || 0;
   const fee = 0;
@@ -232,6 +241,183 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
     await executeWithdrawal();
   };
 
+  // Modal content (shared between Dialog and Drawer)
+  const modalContent = (
+    <div className="p-5 space-y-6">
+      {/* Available Balance */}
+      <div className="p-4 rounded-lg bg-muted/50 border border-border">
+        <p className="text-sm text-muted-foreground">Saldo disponível</p>
+        <p className="text-2xl font-bold">R${balance.toFixed(2)}</p>
+      </div>
+
+      {/* Amount Input */}
+      <div className="space-y-2">
+        <Label>Valor do saque</Label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+          <Input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="pl-10 text-2xl font-bold h-14"
+            placeholder="0,00"
+            min={20}
+            max={Math.min(5000, balance)}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Mínimo R$20,00</span>
+          <Button 
+            variant="link" 
+            className="h-auto p-0 text-xs"
+            onClick={() => setAmount(Math.min(5000, balance).toString())}
+          >
+            Sacar tudo
+          </Button>
+        </div>
+      </div>
+
+      {/* PIX Key Type */}
+      <div className="space-y-2">
+        <Label>Tipo de chave PIX</Label>
+        <Select value={pixKeyType} onValueChange={(v) => handlePixKeyTypeChange(v as PixKeyType)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {pixKeyTypes.map((type) => (
+              <SelectItem key={type.value} value={type.value}>
+                {type.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* PIX Key Input */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <Label>Chave PIX</Label>
+          {pixValidation.isValid && pixKey.trim() && (
+            <span className="flex items-center gap-1 text-xs text-green-500">
+              <CheckCircle2 className="h-3 w-3" />
+              Válida
+            </span>
+          )}
+        </div>
+        <Input
+          value={pixKey}
+          onChange={(e) => handlePixKeyChange(e.target.value)}
+          placeholder={selectedPixType?.placeholder}
+          maxLength={validator.maxLength}
+          className={cn(
+            showPixError && "border-destructive focus-visible:ring-destructive"
+          )}
+          aria-invalid={showPixError}
+          aria-describedby={showPixError ? "pix-error" : undefined}
+        />
+        {showPixError ? (
+          <p id="pix-error" className="text-xs text-destructive flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {pixValidation.error}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {selectedPixType?.hint}
+          </p>
+        )}
+      </div>
+
+      {/* Processing Info */}
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Saque sem taxas! Processamento em até 24h úteis.
+        </AlertDescription>
+      </Alert>
+
+      {/* Summary */}
+      {isValidAmount && (
+        <div className="space-y-2 p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+          <div className="flex justify-between pt-2">
+            <span className="font-medium">Você receberá</span>
+            <span className="text-xl font-bold text-orange-500">
+              R${netAmount.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <Button 
+        className="w-full h-12 text-base"
+        variant="outline"
+        onClick={handleRequestWithdraw}
+        disabled={!isValidAmount || !isValidPixKey || isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Processando...
+          </>
+        ) : (
+          <>
+            <ArrowUpFromLine className="h-4 w-4 mr-2" />
+            Solicitar Saque
+          </>
+        )}
+      </Button>
+    </div>
+  );
+
+  // Mobile: use Drawer
+  if (isMobile) {
+    return (
+      <>
+        <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-2">
+                <ArrowUpFromLine className="h-5 w-5 text-orange-500" />
+                <DrawerTitle>Sacar</DrawerTitle>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="ghost" size="icon">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DrawerClose>
+            </DrawerHeader>
+            <div className="overflow-y-auto">
+              {modalContent}
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Confirmation Dialog */}
+        <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Saque</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>Você está solicitando um saque de:</p>
+                <p className="text-lg font-semibold text-foreground">R${netAmount.toFixed(2)}</p>
+                <p className="text-sm">Para a chave PIX ({selectedPixType?.label}):</p>
+                <p className="font-mono text-sm bg-muted p-2 rounded break-all">{pixKey}</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmWithdraw}>
+                Confirmar Saque
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Desktop: use existing fixed modal
   return (
     <>
       <div 
@@ -253,132 +439,7 @@ export function WithdrawModal({ balance, onClose }: WithdrawModalProps) {
             </Button>
           </div>
 
-          {/* Content */}
-          <div className="p-5 space-y-6">
-            {/* Available Balance */}
-            <div className="p-4 rounded-lg bg-muted/50 border border-border">
-              <p className="text-sm text-muted-foreground">Saldo disponível</p>
-              <p className="text-2xl font-bold">R${balance.toFixed(2)}</p>
-            </div>
-
-            {/* Amount Input */}
-            <div className="space-y-2">
-              <Label>Valor do saque</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                <Input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="pl-10 text-2xl font-bold h-14"
-                  placeholder="0,00"
-                  min={20}
-                  max={Math.min(5000, balance)}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Mínimo R$20,00</span>
-                <Button 
-                  variant="link" 
-                  className="h-auto p-0 text-xs"
-                  onClick={() => setAmount(Math.min(5000, balance).toString())}
-                >
-                  Sacar tudo
-                </Button>
-              </div>
-            </div>
-
-            {/* PIX Key Type */}
-            <div className="space-y-2">
-              <Label>Tipo de chave PIX</Label>
-              <Select value={pixKeyType} onValueChange={(v) => handlePixKeyTypeChange(v as PixKeyType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pixKeyTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* PIX Key Input */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>Chave PIX</Label>
-                {pixValidation.isValid && pixKey.trim() && (
-                  <span className="flex items-center gap-1 text-xs text-green-500">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Válida
-                  </span>
-                )}
-              </div>
-              <Input
-                value={pixKey}
-                onChange={(e) => handlePixKeyChange(e.target.value)}
-                placeholder={selectedPixType?.placeholder}
-                maxLength={validator.maxLength}
-                className={cn(
-                  showPixError && "border-destructive focus-visible:ring-destructive"
-                )}
-                aria-invalid={showPixError}
-                aria-describedby={showPixError ? "pix-error" : undefined}
-              />
-              {showPixError ? (
-                <p id="pix-error" className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {pixValidation.error}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {selectedPixType?.hint}
-                </p>
-              )}
-            </div>
-
-            {/* Processing Info */}
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Saque sem taxas! Processamento em até 24h úteis.
-              </AlertDescription>
-            </Alert>
-
-            {/* Summary */}
-            {isValidAmount && (
-              <div className="space-y-2 p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
-                <div className="flex justify-between pt-2">
-                  <span className="font-medium">Você receberá</span>
-                  <span className="text-xl font-bold text-orange-500">
-                    R${netAmount.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button 
-              className="w-full h-12 text-base"
-              variant="outline"
-              onClick={handleRequestWithdraw}
-              disabled={!isValidAmount || !isValidPixKey || isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <ArrowUpFromLine className="h-4 w-4 mr-2" />
-                  Solicitar Saque
-                </>
-              )}
-            </Button>
-          </div>
+          {modalContent}
         </div>
       </div>
 

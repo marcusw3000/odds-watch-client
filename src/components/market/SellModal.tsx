@@ -8,11 +8,12 @@ import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
 import { Progress } from '@/components/ui/progress';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModalRoot,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalFooter,
+} from '@/components/ui/responsive-modal';
 
 interface SellModalProps {
   contract: UserContract;
@@ -206,11 +207,11 @@ export function SellModal({
   }, [confirmState, onOpenChange]);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0">
-        <DialogHeader className="p-5 pb-0">
-          <DialogTitle>Vender Contrato</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModalRoot open={open} onOpenChange={handleClose}>
+      <ResponsiveModalContent className="sm:max-w-md">
+        <ResponsiveModalHeader className="p-5 pb-0">
+          <ResponsiveModalTitle>Vender Contrato</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
         {/* Content */}
         <div className="p-5 space-y-5">
@@ -393,7 +394,7 @@ export function SellModal({
         </div>
 
         {/* Footer */}
-        <div className="p-5 pt-0">
+        <ResponsiveModalFooter className="p-5 pt-0">
           <Button
             variant={confirmState === 'countdown' ? 'default' : 'outline'}
             size="lg"
@@ -407,8 +408,8 @@ export function SellModal({
           >
             {buttonContent}
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModalRoot>
   );
 }

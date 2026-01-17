@@ -17,6 +17,8 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { FeesPage } from "./pages/FeesPage";
 import { ReferralPage } from "./pages/ReferralPage";
 import ProfilePage from "./pages/ProfilePage";
+import { SuggestionsPage } from "./pages/SuggestionsPage";
+import { SuggestionDetailPage } from "./pages/SuggestionDetailPage";
 import { Loader2 } from "lucide-react";
 
 // Lazy load admin pages for bundle optimization
@@ -38,6 +40,7 @@ const AdminMarketEventsPage = lazy(() => import("./pages/admin/AdminMarketEvents
 const AdminReferralsPage = lazy(() => import("./pages/admin/AdminReferralsPage").then(m => ({ default: m.AdminReferralsPage })));
 const AdminAppearancePage = lazy(() => import("./pages/admin/AdminAppearancePage").then(m => ({ default: m.AdminAppearancePage })));
 const AdminReportsPage = lazy(() => import("./pages/admin/AdminReportsPage").then(m => ({ default: m.AdminReportsPage })));
+const AdminSuggestionsPage = lazy(() => import("./pages/admin/AdminSuggestionsPage").then(m => ({ default: m.AdminSuggestionsPage })));
 
 // Loading fallback for lazy-loaded components
 const AdminLoadingFallback = () => (
@@ -162,6 +165,8 @@ const App = () => (
               <Route path="/fees" element={<FeesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/:userId" element={<ProfilePage />} />
+              <Route path="/suggestions" element={<SuggestionsPage />} />
+              <Route path="/suggestions/:id" element={<SuggestionDetailPage />} />
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}
@@ -192,6 +197,7 @@ const App = () => (
               <Route path="referrals" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReferralsPage /></Suspense>} />
               <Route path="appearance" element={<Suspense fallback={<AdminLoadingFallback />}><AdminAppearancePage /></Suspense>} />
               <Route path="reports" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReportsPage /></Suspense>} />
+              <Route path="suggestions" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSuggestionsPage /></Suspense>} />
             </Route>
             
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

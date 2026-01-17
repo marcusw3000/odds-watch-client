@@ -168,23 +168,35 @@ export function AuthPage() {
     // Store return URL and referral code before redirect
     if (returnTo && returnTo !== '/') {
       localStorage.setItem('authReturnTo', returnTo);
+    } else {
+      // Default to /markets if no specific return URL
+      localStorage.setItem('authReturnTo', '/markets');
     }
     if (referralCode) {
       localStorage.setItem('pendingReferralCode', referralCode);
     }
 
     try {
+      console.log('[Auth] Starting Google OAuth flow...');
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          // Use the current origin - Supabase will redirect back here with ?code=...
+          redirectTo: `${window.location.origin}/auth`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
       if (error) {
+        console.error('[Auth] Google OAuth error:', error);
         setError(error.message);
       }
     } catch (err) {
+      console.error('[Auth] Google OAuth exception:', err);
       setError('Erro ao conectar com Google. Tente novamente.');
     } finally {
       setIsGoogleLoading(false);

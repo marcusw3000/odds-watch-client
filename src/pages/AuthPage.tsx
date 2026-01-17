@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ReferralService } from '@/services/ReferralService';
@@ -508,6 +509,7 @@ export function AuthPage() {
                             {...field}
                           />
                         </FormControl>
+                        <PasswordStrengthIndicator password={field.value} />
                         <FormMessage />
                       </FormItem>
                     )}

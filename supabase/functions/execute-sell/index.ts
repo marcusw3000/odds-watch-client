@@ -137,6 +137,14 @@ Deno.serve(async (req) => {
 
     const sharesToSell = requestedShares || contract.shares;
 
+    console.log('[EXECUTE-SELL] Request:', {
+      userId,
+      contractId,
+      shares: sharesToSell,
+      minValue: minValue || 0,
+      position: contract.position,
+    });
+
     // Execute atomic sell using the database function
     // This prevents race conditions by using row-level locks
     const { data: result, error: sellError } = await supabaseAdmin.rpc(
@@ -150,7 +158,7 @@ Deno.serve(async (req) => {
     );
 
     if (sellError) {
-      console.error("Atomic sell error:", sellError);
+      console.error("[EXECUTE-SELL] Atomic sell error:", sellError);
       return new Response(
         JSON.stringify({ success: false, message: "Erro ao executar operação" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -170,6 +178,7 @@ Deno.serve(async (req) => {
     };
 
     if (!sellResult.success) {
+      console.log('[EXECUTE-SELL] Sell failed:', { error: sellResult.error, minValue, sellResult });
       const errorMessage = sellResult.error === "Contract not found"
         ? "Contrato não encontrado"
         : sellResult.error === "Insufficient shares"
@@ -191,6 +200,14 @@ Deno.serve(async (req) => {
     }
 
     const marketData = contract.markets as unknown as { title: string } | null;
+
+    console.log('[EXECUTE-SELL] Success:', {
+      userId,
+      contractId,
+      shares: sharesToSell,
+      sellValue: sellResult.sell_value,
+      pricePerShare: sellResult.price_per_share,
+    });
 
     return new Response(
       JSON.stringify({

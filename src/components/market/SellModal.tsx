@@ -26,6 +26,7 @@ interface SellModalProps {
 
 const PRICE_VALIDITY_SECONDS = 15;
 const CONFIRM_COUNTDOWN_SECONDS = 3;
+const SLIPPAGE_TOLERANCE = 0.02; // 2% tolerance for price variations
 
 type ConfirmState = 'idle' | 'countdown' | 'executing' | 'success';
 
@@ -124,24 +125,35 @@ export function SellModal({
     }
   }, [onRefreshPrice, fetchQuote]);
 
-  const executeConfirm = useCallback(async () => {
+  const executeConfirm = useCallback(async (minValueWithSlippage: number) => {
     setConfirmState('executing');
 
     try {
-      await onConfirm(lockedPrice ?? saleValue);
+      await onConfirm(minValueWithSlippage);
       setConfirmState('success');
-    } catch {
-      setError('Erro ao processar venda. Tente novamente.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      // Specific message for slippage errors
+      if (message.includes('slippage') || message.includes('preço') || message.includes('Price')) {
+        setError('O preço mudou durante a confirmação. Atualize e tente novamente.');
+      } else if (message) {
+        setError(message);
+      } else {
+        setError('Erro ao processar venda. Tente novamente.');
+      }
       setConfirmState('idle');
       setLockedPrice(null);
     }
-  }, [onConfirm, lockedPrice, saleValue]);
+  }, [onConfirm]);
 
   const startConfirmCountdown = useCallback(() => {
     if (priceExpired || !quote) return;
     
-    // Lock the current price
+    // Lock the current price for display
     setLockedPrice(quote.cost);
+    // Calculate minimum value with slippage tolerance for backend
+    const minValueWithSlippage = quote.cost * (1 - SLIPPAGE_TOLERANCE);
+    
     setConfirmState('countdown');
     setConfirmCountdown(CONFIRM_COUNTDOWN_SECONDS);
     setError(null);
@@ -152,7 +164,7 @@ export function SellModal({
           if (confirmTimerRef.current) {
             clearInterval(confirmTimerRef.current);
           }
-          executeConfirm();
+          executeConfirm(minValueWithSlippage);
           return 0;
         }
         return prev - 1;
@@ -368,6 +380,11 @@ export function SellModal({
                   </div>
                 </div>
               )}
+              
+              {/* Slippage tolerance info */}
+              <div className="text-xs text-muted-foreground text-center pt-1">
+                Tolerância de variação: até 2%
+              </div>
 
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-muted-foreground flex items-center gap-1">

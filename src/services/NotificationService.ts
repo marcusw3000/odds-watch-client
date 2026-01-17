@@ -24,7 +24,7 @@ export async function createNotification({
       .from('notifications')
       .insert({
         user_id: userId,
-        type,
+        type: type as any, // Type assertion for new notification types until types are regenerated
         title,
         message,
         data,

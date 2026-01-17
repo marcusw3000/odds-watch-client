@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Send } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MentionInput } from '@/components/market/MentionInput';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { SuggestionService } from '@/services/SuggestionService';
@@ -12,14 +12,16 @@ import type { SuggestionComment } from '@/types/suggestion';
 
 interface SuggestionCommentsProps {
   suggestionId: string;
+  suggestionTitle?: string;
 }
 
-export function SuggestionComments({ suggestionId }: SuggestionCommentsProps) {
+export function SuggestionComments({ suggestionId, suggestionTitle = '' }: SuggestionCommentsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<SuggestionComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
+  const [mentions, setMentions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const loadComments = useCallback(async () => {
@@ -42,8 +44,9 @@ export function SuggestionComments({ suggestionId }: SuggestionCommentsProps) {
 
     setSubmitting(true);
     try {
-      await SuggestionService.addComment(suggestionId, newComment.trim());
+      await SuggestionService.addComment(suggestionId, newComment.trim(), undefined, mentions, suggestionTitle);
       setNewComment('');
+      setMentions([]);
       await loadComments();
       toast({
         title: 'Comentário enviado!',
@@ -129,11 +132,12 @@ export function SuggestionComments({ suggestionId }: SuggestionCommentsProps) {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-2">
-            <Textarea
+            <MentionInput
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Adicione um comentário..."
-              className="min-h-[80px] resize-none"
+              onChange={setNewComment}
+              onMentionsChange={setMentions}
+              placeholder="Adicione um comentário... Use @ para mencionar"
+              minHeight="80px"
             />
             <div className="flex justify-end">
               <Button
@@ -169,6 +173,7 @@ export function SuggestionComments({ suggestionId }: SuggestionCommentsProps) {
               key={comment.id}
               comment={comment}
               suggestionId={suggestionId}
+              suggestionTitle={suggestionTitle}
               onLike={handleLike}
               onDelete={handleDelete}
               onReplyAdded={handleReplyAdded}

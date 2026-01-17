@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Heart, Reply, Trash2, Loader2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { MentionInput } from '@/components/market/MentionInput';
 import { useAuth } from '@/hooks/useAuth';
 import { SuggestionService } from '@/services/SuggestionService';
 import type { SuggestionComment } from '@/types/suggestion';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 interface SuggestionCommentThreadProps {
   comment: SuggestionComment;
   suggestionId: string;
+  suggestionTitle?: string;
   depth?: number;
   onLike: (commentId: string) => Promise<void>;
   onDelete: (commentId: string) => Promise<void>;
@@ -24,6 +25,7 @@ const MAX_DEPTH = 3;
 export function SuggestionCommentThread({
   comment,
   suggestionId,
+  suggestionTitle = '',
   depth = 0,
   onLike,
   onDelete,
@@ -33,6 +35,7 @@ export function SuggestionCommentThread({
   const [showReplies, setShowReplies] = useState(depth === 0);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
+  const [replyMentions, setReplyMentions] = useState<string[]>([]);
   const [replies, setReplies] = useState<SuggestionComment[]>([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
@@ -72,8 +75,9 @@ export function SuggestionCommentThread({
 
     setIsSubmittingReply(true);
     try {
-      await SuggestionService.addComment(suggestionId, replyContent.trim(), comment.id);
+      await SuggestionService.addComment(suggestionId, replyContent.trim(), comment.id, replyMentions, suggestionTitle);
       setReplyContent('');
+      setReplyMentions([]);
       setIsReplying(false);
       
       // Reload replies to show the new one
@@ -176,11 +180,13 @@ export function SuggestionCommentThread({
       {/* Reply form */}
       {isReplying && (
         <div className="mt-3 ml-11 pl-3 border-l-2 border-muted">
-          <Textarea
+          <MentionInput
             value={replyContent}
-            onChange={(e) => setReplyContent(e.target.value)}
-            placeholder={`Respondendo a ${comment.author_name}...`}
-            className="min-h-[60px] resize-none text-sm"
+            onChange={setReplyContent}
+            onMentionsChange={setReplyMentions}
+            placeholder={`Respondendo a ${comment.author_name}... Use @ para mencionar`}
+            minHeight="60px"
+            autoFocus
           />
           <div className="flex justify-end gap-2 mt-2">
             <Button size="sm" variant="ghost" onClick={() => setIsReplying(false)}>
@@ -243,6 +249,7 @@ export function SuggestionCommentThread({
               key={reply.id}
               comment={reply}
               suggestionId={suggestionId}
+              suggestionTitle={suggestionTitle}
               depth={depth + 1}
               onLike={onLike}
               onDelete={handleDeleteReply}

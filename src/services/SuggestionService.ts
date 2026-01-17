@@ -358,6 +358,29 @@ export const SuggestionService = {
     if (error) throw error;
   },
 
+  /**
+   * Report a comment
+   */
+  async reportComment(
+    commentId: string,
+    reason: 'spam' | 'offensive' | 'misinformation' | 'other',
+    description?: string
+  ): Promise<void> {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('suggestion_comment_reports' as any)
+      .insert({
+        comment_id: commentId,
+        reporter_id: user.user.id,
+        reason,
+        description
+      });
+
+    if (error) throw error;
+  },
+
   // ============ Admin Functions ============
 
   /**

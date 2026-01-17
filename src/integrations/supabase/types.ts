@@ -1208,6 +1208,53 @@ export type Database = {
           },
         ]
       }
+      suggestion_comment_reports: {
+        Row: {
+          action_taken: string | null
+          comment_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          comment_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          comment_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_comment_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "suggestion_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suggestion_comments: {
         Row: {
           content: string

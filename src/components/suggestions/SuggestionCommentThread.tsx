@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Heart, Reply, Trash2, Loader2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Heart, Reply, Trash2, Loader2, ChevronDown, ChevronUp, MessageSquare, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MentionInput } from '@/components/market/MentionInput';
+import { ReportCommentDialog } from '@/components/market/ReportCommentDialog';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { SuggestionService } from '@/services/SuggestionService';
 import type { SuggestionComment } from '@/types/suggestion';
 import { cn } from '@/lib/utils';
@@ -32,6 +34,7 @@ export function SuggestionCommentThread({
   onReplyAdded,
 }: SuggestionCommentThreadProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showReplies, setShowReplies] = useState(depth === 0);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
@@ -41,6 +44,7 @@ export function SuggestionCommentThread({
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [hasLoadedReplies, setHasLoadedReplies] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   const isOwner = user?.id === comment.user_id;
   const canNest = depth < MAX_DEPTH;
@@ -108,6 +112,26 @@ export function SuggestionCommentThread({
     setReplies((prev) => prev.filter((r) => r.id !== replyId));
   };
 
+  const handleReport = async (
+    reason: 'spam' | 'offensive' | 'misinformation' | 'other',
+    description?: string
+  ) => {
+    try {
+      await SuggestionService.reportComment(comment.id, reason, description);
+      toast({
+        title: 'Denúncia enviada',
+        description: 'Obrigado por ajudar a manter a comunidade segura.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao denunciar',
+        description: 'Não foi possível enviar a denúncia. Tente novamente.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   return (
     <div className={cn('relative', depth > 0 && 'border-l-2 border-muted pl-4 ml-4')}>
       {/* Comment content */}
@@ -171,6 +195,16 @@ export function SuggestionCommentThread({
               >
                 <Trash2 size={14} />
                 <span>Excluir</span>
+              </button>
+            )}
+
+            {user && !isOwner && (
+              <button
+                onClick={() => setShowReportDialog(true)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Flag size={14} />
+                <span>Denunciar</span>
               </button>
             )}
           </div>
@@ -318,6 +352,13 @@ export function SuggestionCommentThread({
           ))}
         </div>
       )}
+
+      {/* Report Dialog */}
+      <ReportCommentDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        onSubmit={handleReport}
+      />
     </div>
   );
 }

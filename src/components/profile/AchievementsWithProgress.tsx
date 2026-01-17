@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAchievements, useMyAchievements } from '@/hooks/useLeaderboard';
 import { useAuth } from '@/hooks/useAuth';
 import { AchievementCard } from './AchievementCard';
-import type { UserStats } from '@/lib/achievementProgress';
+import type { ExtendedUserStats } from '@/lib/achievementProgress';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -22,6 +22,7 @@ const categories: Record<string, string> = {
   volume: 'Volume',
   leaderboard: 'Ranking',
   special: 'Especial',
+  referral: 'Indicação',
 };
 
 export function AchievementsWithProgress() {
@@ -32,17 +33,23 @@ export function AchievementsWithProgress() {
   const { data: allAchievements, isLoading: loadingAll } = useAchievements();
   const { data: myAchievements, isLoading: loadingMine } = useMyAchievements();
   
-  // Fetch user stats for progress calculation
+  // Fetch user stats for progress calculation (including new achievement fields)
   const { data: stats } = useQuery({
     queryKey: ['my-profile-stats', user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('total_trades, total_profit, total_volume, winning_trades, best_streak, current_streak, roi_percent, best_trade_profit')
+        .select(`
+          total_trades, total_profit, total_volume, winning_trades, 
+          best_streak, current_streak, roi_percent, best_trade_profit,
+          markets_won_streak, best_markets_won_streak, has_night_trade,
+          has_early_trade, weekend_trades, has_speed_trade, has_contrarian_trade,
+          total_referrals, activated_referrals, total_referral_commission
+        `)
         .eq('id', user.id)
         .single();
-      return data as UserStats | null;
+      return data as ExtendedUserStats | null;
     },
     enabled: !!user,
   });

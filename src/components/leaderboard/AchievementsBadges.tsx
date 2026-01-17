@@ -22,6 +22,7 @@ export function AchievementsBadges() {
     volume: 'Volume',
     leaderboard: 'Ranking',
     special: 'Especial',
+    referral: 'Indicação',
   };
 
   const groupedAchievements = allAchievements?.reduce((acc, achievement) => {

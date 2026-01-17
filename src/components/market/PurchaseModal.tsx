@@ -174,8 +174,11 @@ export function PurchaseModal({
       // Calculate profit for success modal (no fee)
       const totalCost = quote.cost;
       const potentialProfit = sharesNum - totalCost;
+      
+      // Add 5% slippage tolerance to maxCost to handle small price movements
+      const maxCostWithSlippage = quote.cost * 1.05;
 
-      await onConfirm(sharesNum, quote.cost);
+      await onConfirm(sharesNum, maxCostWithSlippage);
       
       // Show success modal
       setSuccessData({

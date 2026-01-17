@@ -66,6 +66,7 @@ export function PurchaseModal({
   const [error, setError] = useState<string | null>(null);
   const [feeRule, setFeeRule] = useState<FeeRule | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const [slippageDetected, setSlippageDetected] = useState(false);
   
   const isMobile = useIsMobile();
 
@@ -124,6 +125,7 @@ export function PurchaseModal({
   const handleRefreshPrice = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
+    setSlippageDetected(false);
     
     try {
       await onRefreshPrice();
@@ -186,8 +188,18 @@ export function PurchaseModal({
         totalCost: totalCost,
         potentialProfit,
       });
-    } catch {
-      setError('Erro ao processar compra. Tente novamente.');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '';
+      
+      // Detectar erro de slippage
+      if (errorMessage.includes('preço mudou') || errorMessage.includes('preco mudou') || errorMessage.includes('slippage')) {
+        setSlippageDetected(true);
+        setError('O preço mudou desde sua cotação. O preço foi atualizado automaticamente.');
+        // Atualizar preço automaticamente
+        handleRefreshPrice();
+      } else {
+        setError(errorMessage || 'Erro ao processar compra. Tente novamente.');
+      }
     } finally {
       setIsConfirming(false);
     }
@@ -374,11 +386,26 @@ export function PurchaseModal({
           );
         })()}
 
-        {/* Error Message */}
+        {/* Error/Slippage Message */}
         {error && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            {error}
+          <div className={cn(
+            "flex items-center gap-2 p-3 rounded-lg text-sm",
+            slippageDetected 
+              ? "bg-warning/10 border border-warning/30 text-warning-foreground" 
+              : "bg-destructive/10 border border-destructive/30 text-destructive"
+          )}>
+            <AlertCircle className={cn(
+              "h-4 w-4 flex-shrink-0",
+              slippageDetected ? "text-warning" : "text-destructive"
+            )} />
+            <div className="flex-1">
+              <p>{error}</p>
+              {slippageDetected && quote && (
+                <p className="mt-1 font-medium">
+                  Novo preço: R${(quote.avgPrice / 100).toFixed(2)} por contrato
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

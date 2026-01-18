@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,12 @@ export function CopyTraderCard({ trader, onSubscribe, isSubscribed }: CopyTrader
       </div>
       
       <CardHeader className="pb-4 relative">
-        <div className="flex items-start gap-4">
-          <Avatar className="h-14 w-14 border-2 border-primary/20">
+        <Link 
+          to={`/profile/${trader.user_id}`}
+          className="flex items-start gap-4 hover:opacity-90 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Avatar className="h-14 w-14 border-2 border-primary/20 hover:ring-2 hover:ring-primary/50 transition-all">
             <AvatarImage src={trader.avatar_url || undefined} alt={trader.display_name} />
             <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
               {trader.display_name.slice(0, 2).toUpperCase()}
@@ -32,7 +37,7 @@ export function CopyTraderCard({ trader, onSubscribe, isSubscribed }: CopyTrader
           </Avatar>
           
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg text-foreground truncate">
+            <h3 className="font-semibold text-lg text-foreground truncate hover:text-primary transition-colors">
               {trader.display_name}
             </h3>
             {trader.bio && (
@@ -41,7 +46,7 @@ export function CopyTraderCard({ trader, onSubscribe, isSubscribed }: CopyTrader
               </p>
             )}
           </div>
-        </div>
+        </Link>
       </CardHeader>
       
       <CardContent className="pb-4 relative">

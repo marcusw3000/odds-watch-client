@@ -86,17 +86,21 @@ export function SuggestionCard({ suggestion, onVote, disabled }: SuggestionCardP
             {/* Meta info */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {/* Author */}
-              <div className="flex items-center gap-1.5">
-                <Avatar className="h-5 w-5">
+              <Link 
+                to={`/profile/${suggestion.user_id}`}
+                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Avatar className="h-5 w-5 hover:ring-2 hover:ring-primary/50 transition-all">
                   <AvatarImage src={suggestion.author_avatar} />
                   <AvatarFallback className="text-[10px]">
                     {suggestion.author_name?.charAt(0).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground hover:text-primary hover:underline transition-colors">
                   {suggestion.author_name}
                 </span>
-              </div>
+              </Link>
 
               <span className="text-muted-foreground">•</span>
 

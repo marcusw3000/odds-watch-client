@@ -40,6 +40,10 @@ const ACTION_LABELS: Record<string, string> = {
   'WALLET_ADJUSTED': 'Saldo Ajustado',
   'MARKET_CLOSED': 'Mercado Fechado',
   'MARKET_SETTLED': 'Mercado Liquidado',
+  'ROLE_ASSIGNED': 'Role Atribuído',
+  'ROLE_REMOVED': 'Role Removido',
+  'WITHDRAWAL_COMPLETED': 'Saque Aprovado',
+  'WITHDRAWAL_FAILED': 'Saque Rejeitado',
 };
 
 export function AdminAuditLogsPage() {
@@ -139,6 +143,10 @@ export function AdminAuditLogsPage() {
                   <SelectItem value="EVENT_SETTLED">Evento Liquidado</SelectItem>
                   <SelectItem value="MANUAL_ADJUST">Ajuste Manual</SelectItem>
                   <SelectItem value="WALLET_ADJUSTED">Saldo Ajustado</SelectItem>
+                  <SelectItem value="ROLE_ASSIGNED">Role Atribuído</SelectItem>
+                  <SelectItem value="ROLE_REMOVED">Role Removido</SelectItem>
+                  <SelectItem value="WITHDRAWAL_COMPLETED">Saque Aprovado</SelectItem>
+                  <SelectItem value="WITHDRAWAL_FAILED">Saque Rejeitado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -158,6 +166,8 @@ export function AdminAuditLogsPage() {
                   <SelectItem value="wallets">Carteiras</SelectItem>
                   <SelectItem value="markets">Mercados</SelectItem>
                   <SelectItem value="ledger_entries">Ledger</SelectItem>
+                  <SelectItem value="user_roles">Roles de Usuário</SelectItem>
+                  <SelectItem value="payments">Pagamentos</SelectItem>
                 </SelectContent>
               </Select>
             </div>

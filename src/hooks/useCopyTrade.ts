@@ -58,18 +58,11 @@ export function useUpdateCopyTradeSettings() {
 // Fetch all copy traders (for admin)
 export function useCopyTraders(status?: string) {
   return useQuery({
-    queryKey: ['copy-traders', status],
+    queryKey: ['copy-traders-admin', status],
     queryFn: async (): Promise<CopyTrader[]> => {
       let query = supabase
         .from('copy_traders')
-        .select(`
-          *,
-          profile:profiles!copy_traders_user_id_fkey(
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (status) {
@@ -77,9 +70,31 @@ export function useCopyTraders(status?: string) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as unknown as CopyTrader[];
+      
+      if (error) {
+        console.error('Error fetching copy traders:', error);
+        throw error;
+      }
+      
+      // Fetch profiles separately to avoid RLS join issues
+      if (data && data.length > 0) {
+        const userIds = data.map(t => t.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, avatar_url')
+          .in('id', userIds);
+        
+        // Merge profiles with traders
+        return data.map(trader => ({
+          ...trader,
+          profile: profiles?.find(p => p.id === trader.user_id) || null
+        })) as CopyTrader[];
+      }
+      
+      return (data || []) as CopyTrader[];
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -165,6 +180,7 @@ export function useApplyCopyTrader() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-trader-status'] });
+      queryClient.invalidateQueries({ queryKey: ['copy-traders-admin'] });
       toast.success('Solicitação enviada! Aguarde aprovação do admin.');
     },
     onError: (error) => {

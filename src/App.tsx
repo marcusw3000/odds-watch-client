@@ -46,6 +46,8 @@ const AdminAppearancePage = lazy(() => import("./pages/admin/AdminAppearancePage
 const AdminReportsPage = lazy(() => import("./pages/admin/AdminReportsPage").then(m => ({ default: m.AdminReportsPage })));
 const AdminSuggestionsPage = lazy(() => import("./pages/admin/AdminSuggestionsPage").then(m => ({ default: m.AdminSuggestionsPage })));
 const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
+const AdminCopyTradeSettingsPage = lazy(() => import("./pages/admin/AdminCopyTradeSettingsPage"));
+const AdminCopyTradersPage = lazy(() => import("./pages/admin/AdminCopyTradersPage"));
 
 // Loading fallback for lazy-loaded components
 const AdminLoadingFallback = () => (
@@ -208,6 +210,8 @@ const App = () => (
               <Route path="reports" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReportsPage /></Suspense>} />
               <Route path="suggestions" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSuggestionsPage /></Suspense>} />
               <Route path="support" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSupportPage /></Suspense>} />
+              <Route path="copy-trade-settings" element={<Suspense fallback={<AdminLoadingFallback />}><AdminCopyTradeSettingsPage /></Suspense>} />
+              <Route path="copy-traders" element={<Suspense fallback={<AdminLoadingFallback />}><AdminCopyTradersPage /></Suspense>} />
             </Route>
             
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

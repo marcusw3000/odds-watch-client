@@ -21,7 +21,9 @@ import {
   Loader2,
   Flag,
   Lightbulb,
-  Headphones
+  Headphones,
+  Copy,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,6 +39,9 @@ const navItems = [
   { path: '/admin/fees', label: 'Taxas', icon: Receipt },
   { path: '/admin/ledger', label: 'Ledger', icon: BookOpen },
   { path: '/admin/revenue', label: 'Receita', icon: TrendingUp },
+  { section: 'Copy Trade' },
+  { path: '/admin/copy-trade-settings', label: 'Configurações', icon: Settings },
+  { path: '/admin/copy-traders', label: 'Traders', icon: Copy },
   { section: 'Moderação' },
   { path: '/admin/suggestions', label: 'Sugestões', icon: Lightbulb },
   { path: '/admin/reports', label: 'Denúncias', icon: Flag },

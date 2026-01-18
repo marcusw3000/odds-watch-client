@@ -82,6 +82,8 @@ export interface EventFormData {
   oddsNo: number;
   
   oddsChangeReason?: string;
+  
+  cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
 }
 
 // Dashboard Metrics

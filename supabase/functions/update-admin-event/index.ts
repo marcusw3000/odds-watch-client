@@ -212,6 +212,42 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'update_card_style') {
+      const { cardStyle } = body;
+      
+      if (!['default', 'buttons', 'simple', 'minimal'].includes(cardStyle)) {
+        return new Response(JSON.stringify({ error: 'Invalid card style' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: updatedEvent, error: updateError } = await adminClient
+        .from('markets')
+        .update({
+          card_style: cardStyle,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', eventId)
+        .select()
+        .single();
+
+      if (updateError) {
+        logError(functionName, 'Card style update failed', { error: updateError });
+        return new Response(JSON.stringify({ error: 'Failed to update card style' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      logStep(functionName, 'Card style updated', { eventId, cardStyle });
+
+      return new Response(
+        JSON.stringify({ success: true, event: updatedEvent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'delete') {
       // Get current event for validation
       const { data: currentEvent, error: fetchError } = await adminClient

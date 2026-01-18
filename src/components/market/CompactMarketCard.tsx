@@ -17,7 +17,8 @@ export const CompactMarketCard = memo(function CompactMarketCard({
   onViewDetails,
   styleOverride,
 }: CompactMarketCardProps) {
-  const cardStyle = styleOverride || getCardStyle();
+  // Priority: styleOverride (prop) > event.cardStyle (individual) > getCardStyle() (global)
+  const cardStyle = styleOverride || event.cardStyle || getCardStyle();
 
   const commonProps = { event, onBuy, onViewDetails };
 

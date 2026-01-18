@@ -32,6 +32,8 @@ import {
 } from '@/types/admin';
 import { ImageEditor } from '@/components/admin/ImageEditor';
 import { TagsInput } from '@/components/admin/TagsInput';
+import { CardStyleSelector } from '@/components/admin/CardStyleSelector';
+import { CardStyleType } from '@/types/cardStyles';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -63,6 +65,9 @@ export function AdminEventFormPage() {
   const [oddsYes, setOddsYes] = useState(50);
   const [oddsNo, setOddsNo] = useState(50);
   const [oddsChangeReason, setOddsChangeReason] = useState('');
+
+  // Card style
+  const [cardStyle, setCardStyle] = useState<CardStyleType>('default');
 
   // Tags state
   const [tags, setTags] = useState<string[]>([]);
@@ -166,6 +171,7 @@ export function AdminEventFormPage() {
       oddsYes,
       oddsNo,
       oddsChangeReason: oddsChangeReason || undefined,
+      cardStyle,
     };
 
     try {
@@ -530,6 +536,20 @@ export function AdminEventFormPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Block D - Card Appearance */}
+        <CardStyleSelector
+          value={cardStyle}
+          onChange={setCardStyle}
+          previewEvent={{
+            title: title || 'Título do evento',
+            category: category || 'Economia',
+            outcomes: {
+              YES: { price: oddsYes, probability: oddsYes },
+              NO: { price: oddsNo, probability: oddsNo },
+            },
+          }}
+        />
 
         {/* Submit */}
         <div className="flex gap-3 justify-end">

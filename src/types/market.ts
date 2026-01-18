@@ -111,6 +111,9 @@ export interface MarketEvent {
   
   // Tags for categorization
   tags?: string[];
+  
+  // Card display style
+  cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
 }
 
 // Database market type (from Supabase)
@@ -141,6 +144,7 @@ export interface DbMarket {
   market_type: string;
   options_exclusive: boolean;
   tags: string[] | null;
+  card_style: string | null;
 }
 
 // Database market option type

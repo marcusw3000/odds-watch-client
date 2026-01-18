@@ -32,6 +32,10 @@ export interface CommentReport {
   reporterName?: string;
   commentAuthorName?: string;
   marketTitle?: string;
+  suggestionTitle?: string;
+  // Source type
+  source: 'market' | 'suggestion';
+  suggestionId?: string;
 }
 
 export const REPORT_REASONS = [

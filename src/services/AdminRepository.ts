@@ -24,7 +24,6 @@ const SEED_EVENTS: MarketEvent[] = [
     status: 'OPEN',
     expiryAt: new Date('2025-03-15'),
     odds: { yes: 65, no: 35 },
-    oddsConfig: { mode: 'MANUAL_PROBABILITY', spreadPolicy: 'AUTO_COMPLEMENT' },
     resolutionSource: {
       type: 'API',
       name: 'BCB - Taxa Selic',
@@ -44,7 +43,6 @@ const SEED_EVENTS: MarketEvent[] = [
     status: 'OPEN',
     expiryAt: new Date('2025-01-31'),
     odds: { yes: 72, no: 28 },
-    oddsConfig: { mode: 'MANUAL_PROBABILITY', spreadPolicy: 'AUTO_COMPLEMENT' },
     resolutionSource: {
       type: 'API',
       name: 'BCB - PTAX',
@@ -64,7 +62,6 @@ const SEED_EVENTS: MarketEvent[] = [
     status: 'HALTED',
     expiryAt: new Date('2025-07-15'),
     odds: { yes: 45, no: 55 },
-    oddsConfig: { mode: 'MANUAL_PROBABILITY', spreadPolicy: 'AUTO_COMPLEMENT' },
     resolutionSource: {
       type: 'MANUAL',
       name: 'CONMEBOL',
@@ -84,7 +81,6 @@ const SEED_EVENTS: MarketEvent[] = [
     status: 'PENDING',
     expiryAt: new Date('2025-01-10'),
     odds: { yes: 80, no: 20 },
-    oddsConfig: { mode: 'MANUAL_PROBABILITY', spreadPolicy: 'AUTO_COMPLEMENT' },
     resolutionSource: {
       type: 'DATASET',
       name: 'IBGE - IPCA',
@@ -151,8 +147,7 @@ export const AdminRepository = {
       category: formData.category,
       status: 'HALTED', // New events start as HALTED (paused) - admin needs to open them
       expiryAt: formData.expiryAt,
-      odds: { yes: formData.oddsYes, no: formData.oddsNo },
-      oddsConfig: formData.oddsConfig,
+      odds: { yes: formData.oddsYes, no: 100 - formData.oddsYes },
       resolutionSource: formData.resolutionSource,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -184,8 +179,7 @@ export const AdminRepository = {
     const event = events[index];
     
     // Check if odds changed
-    const oddsChanged = formData.oddsYes !== undefined && 
-      (formData.oddsYes !== event.odds.yes || formData.oddsNo !== event.odds.no);
+    const oddsChanged = formData.oddsYes !== undefined && formData.oddsYes !== event.odds.yes;
 
     const updated: MarketEvent = {
       ...event,
@@ -194,9 +188,8 @@ export const AdminRepository = {
       category: formData.category ?? event.category,
       expiryAt: formData.expiryAt ?? event.expiryAt,
       odds: formData.oddsYes !== undefined 
-        ? { yes: formData.oddsYes, no: formData.oddsNo ?? (100 - formData.oddsYes) }
+        ? { yes: formData.oddsYes, no: 100 - formData.oddsYes }
         : event.odds,
-      oddsConfig: formData.oddsConfig ?? event.oddsConfig,
       resolutionSource: formData.resolutionSource ?? event.resolutionSource,
       updatedAt: new Date(),
       updatedBy: MOCK_ADMIN.id,

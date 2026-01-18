@@ -210,6 +210,58 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     `,
   }),
 
+  SUPPORT_REPLY: (data) => ({
+    subject: `📩 Nova resposta no seu ticket: ${data.subject || 'Suporte'}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>📩 Nova Resposta no Suporte</h2>
+        <p style="color: #666;">Nossa equipe respondeu ao seu ticket de suporte.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #64748b; margin: 0 0 8px 0;"><strong>Assunto:</strong> ${data.subject || 'Suporte'}</p>
+          ${data.message_preview ? `<p style="color: #334155; margin: 0; font-style: italic;">"${data.message_preview}..."</p>` : ''}
+        </div>
+
+        <a href="https://predictmarket.com/settings?tab=support&ticket=${data.ticket_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver resposta completa
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Você recebeu este email porque abriu um ticket de suporte no PredictMarket.
+        </p>
+      </div>
+    `,
+  }),
+
+  SUPPORT_TICKET_RESOLVED: (data) => ({
+    subject: `✅ Ticket resolvido: ${data.subject || 'Suporte'}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>✅ Ticket Resolvido</h2>
+        <p style="color: #666;">Seu ticket de suporte foi marcado como resolvido.</p>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #166534; margin: 0;"><strong>Assunto:</strong> ${data.subject || 'Suporte'}</p>
+          <p style="color: #22c55e; margin: 8px 0 0 0; font-weight: bold;">Status: Resolvido ✓</p>
+        </div>
+
+        <p style="color: #666;">
+          Se você ainda tiver dúvidas ou o problema persistir, você pode reabrir o ticket ou criar um novo.
+        </p>
+
+        <a href="https://predictmarket.com/settings?tab=support" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver meus tickets
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Obrigado por entrar em contato! Esperamos ter ajudado.
+        </p>
+      </div>
+    `,
+  }),
+
   DEFAULT: (data) => ({
     subject: data.title || 'Notificação do PredictMarket',
     html: `

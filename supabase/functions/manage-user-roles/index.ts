@@ -157,13 +157,13 @@ serve(async (req) => {
     const { error: auditError } = await supabaseAdmin
       .from("admin_audit_logs")
       .insert({
-        actor_id: actorUserId,
+        actor_user_id: actorUserId,
         action: action === "add" ? "ROLE_ASSIGNED" : "ROLE_REMOVED",
-        entity_type: "USER_ROLE",
+        entity: "user_roles",
         entity_id: user_id,
         ip_address: req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || null,
-        data_before: action === "remove" ? { role } : null,
-        data_after: action === "add" ? { role } : null,
+        before_data: action === "remove" ? { role } : null,
+        after_data: action === "add" ? { role } : null,
       });
 
     if (auditError) {

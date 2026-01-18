@@ -36,9 +36,9 @@ export const CommentService = {
   // Get display info for a user via Edge Function
   async getUserDisplayInfo(userId: string): Promise<{ displayName: string; avatarUrl?: string } | null> {
     try {
-      const { data, error } = await supabase.functions.invoke('get-user-display-info', {
-        body: { targetUserId: userId }
-      });
+      const { data, error } = await supabase.functions.invoke(
+        `get-user-display-info?user_id=${encodeURIComponent(userId)}`
+      );
 
       if (error || !data) {
         return null;

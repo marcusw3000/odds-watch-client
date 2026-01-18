@@ -191,10 +191,11 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="stats" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${isOwnProfile ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="stats">Estatísticas</TabsTrigger>
           <TabsTrigger value="achievements">Conquistas</TabsTrigger>
           <TabsTrigger value="history">Histórico</TabsTrigger>
+          {isOwnProfile && <TabsTrigger value="settings">Configurações</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="stats" className="mt-6">
@@ -212,15 +213,16 @@ export default function ProfilePage() {
             isOwnProfile={isOwnProfile}
           />
         </TabsContent>
-      </Tabs>
 
-      {/* Privacy Settings (own profile only) */}
-      {isOwnProfile && (
-        <ProfilePrivacySettings
-          profile={profile}
-          onUpdate={handleUpdateProfile}
-        />
-      )}
+        {isOwnProfile && (
+          <TabsContent value="settings" className="mt-6">
+            <ProfilePrivacySettings
+              profile={profile}
+              onUpdate={handleUpdateProfile}
+            />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

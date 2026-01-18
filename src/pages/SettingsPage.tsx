@@ -1,7 +1,6 @@
-import { Settings, Bell, User, Shield, Download, Headphones } from 'lucide-react';
+import { Settings, Bell, Shield, Download, Headphones, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
-import { LeaderboardProfileSettings } from '@/components/leaderboard/LeaderboardProfileSettings';
 import { ExportDataButton } from '@/components/settings/ExportDataButton';
 import { SupportTicketsList } from '@/components/support/SupportTicketsList';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,9 +49,9 @@ export function SettingsPage() {
             <Bell className="h-4 w-4" />
             <span className="hidden sm:inline">Notificações</span>
           </TabsTrigger>
-          <TabsTrigger value="leaderboard" className="gap-2">
+          <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Leaderboard</span>
+            <span className="hidden sm:inline">Perfil</span>
           </TabsTrigger>
           <TabsTrigger value="support" className="gap-2">
             <Headphones className="h-4 w-4" />
@@ -68,8 +67,23 @@ export function SettingsPage() {
           <NotificationSettings />
         </TabsContent>
 
-        <TabsContent value="leaderboard">
-          <LeaderboardProfileSettings />
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Configurações de Perfil
+              </CardTitle>
+              <CardDescription>
+                Gerencie seu perfil público e configurações do leaderboard.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link to="/profile?tab=settings">Ir para Configurações do Perfil</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="support">

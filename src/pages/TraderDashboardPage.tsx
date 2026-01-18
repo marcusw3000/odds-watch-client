@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
-import { format } from "date-fns";
+import { format, subDays, startOfDay, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Users,
@@ -13,7 +13,22 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  BarChart3,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,6 +93,75 @@ export function TraderDashboardPage() {
       pendingCommissions,
     };
   }, [followers, copiedTrades, commissions]);
+
+  // Generate chart data for last 30 days
+  const chartData = useMemo(() => {
+    const today = new Date();
+    const thirtyDaysAgo = subDays(today, 29);
+    const days = eachDayOfInterval({ start: thirtyDaysAgo, end: today });
+
+    return days.map(day => {
+      const dayStart = startOfDay(day);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      // Count followers acquired up to this day
+      const followersCount = followers?.filter(f => 
+        new Date(f.created_at) <= dayEnd
+      ).length || 0;
+
+      // Sum commissions for this specific day
+      const dayCommissions = commissions?.filter(c => {
+        const cDate = new Date(c.created_at);
+        return cDate >= dayStart && cDate <= dayEnd;
+      }).reduce((sum, c) => sum + (c.trader_share || 0), 0) || 0;
+
+      // Count trades copied on this day
+      const dayTrades = copiedTrades?.filter(t => {
+        const tDate = new Date(t.created_at);
+        return tDate >= dayStart && tDate <= dayEnd && t.status === "EXECUTED";
+      }).length || 0;
+
+      return {
+        date: format(day, "dd/MM", { locale: ptBR }),
+        fullDate: format(day, "dd/MM/yyyy", { locale: ptBR }),
+        followers: followersCount,
+        commissions: dayCommissions,
+        trades: dayTrades,
+      };
+    });
+  }, [followers, commissions, copiedTrades]);
+
+  // Cumulative commissions for area chart
+  const cumulativeData = useMemo(() => {
+    let cumulative = 0;
+    return chartData.map(day => {
+      cumulative += day.commissions;
+      return {
+        ...day,
+        cumulativeCommissions: cumulative,
+      };
+    });
+  }, [chartData]);
+
+  const chartConfig = {
+    followers: {
+      label: "Seguidores",
+      color: "hsl(var(--primary))",
+    },
+    commissions: {
+      label: "Comissões",
+      color: "hsl(var(--success))",
+    },
+    trades: {
+      label: "Trades",
+      color: "hsl(var(--accent))",
+    },
+    cumulativeCommissions: {
+      label: "Total Acumulado",
+      color: "hsl(var(--success))",
+    },
+  };
 
   if (authLoading || traderLoading) {
     return (
@@ -186,12 +270,200 @@ export function TraderDashboardPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="followers" className="space-y-4">
+      <Tabs defaultValue="performance" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="performance">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Performance
+          </TabsTrigger>
           <TabsTrigger value="followers">Seguidores</TabsTrigger>
           <TabsTrigger value="trades">Trades Copiados</TabsTrigger>
           <TabsTrigger value="commissions">Comissões</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="performance" className="space-y-4">
+          {/* Followers Evolution Chart */}
+          <Card className="bg-gradient-card border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Evolução de Seguidores
+              </CardTitle>
+              <CardDescription>
+                Crescimento da sua base de seguidores nos últimos 30 dias
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <AreaChart data={cumulativeData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="followersGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }} 
+                    tickLine={false}
+                    axisLine={false}
+                    className="fill-muted-foreground"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }} 
+                    tickLine={false}
+                    axisLine={false}
+                    className="fill-muted-foreground"
+                    allowDecimals={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="followers"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    fill="url(#followersGradient)"
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Commissions Chart */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="bg-gradient-card border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-success" />
+                  Comissões Diárias
+                </CardTitle>
+                <CardDescription>
+                  Comissões recebidas por dia
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `R$${value}`}
+                    />
+                    <ChartTooltip 
+                      content={<ChartTooltipContent />}
+                      formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Comissão"]}
+                    />
+                    <Bar 
+                      dataKey="commissions" 
+                      fill="hsl(var(--success))" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-success" />
+                  Comissões Acumuladas
+                </CardTitle>
+                <CardDescription>
+                  Total acumulado ao longo do tempo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                  <AreaChart data={cumulativeData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="commissionsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `R$${value}`}
+                    />
+                    <ChartTooltip 
+                      content={<ChartTooltipContent />}
+                      formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Total"]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="cumulativeCommissions"
+                      stroke="hsl(var(--success))"
+                      strokeWidth={2}
+                      fill="url(#commissionsGradient)"
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Trades Chart */}
+          <Card className="bg-gradient-card border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Copy className="h-5 w-5 text-accent" />
+                Trades Copiados por Dia
+              </CardTitle>
+              <CardDescription>
+                Volume de trades copiados pelos seus seguidores
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }} 
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }} 
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line
+                    type="monotone"
+                    dataKey="trades"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--accent))", strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5, fill: "hsl(var(--accent))" }}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="followers" className="space-y-4">
           <Card className="bg-gradient-card border-border/50">

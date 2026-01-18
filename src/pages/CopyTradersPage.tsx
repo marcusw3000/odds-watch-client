@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useApprovedCopyTraders, useMyCopySubscriptions, useVerifyCopySubscription } from "@/hooks/useCopyTrade";
+import { useApprovedCopyTraders, useMyCopySubscriptions, useVerifyCopySubscription, useMyTraderStatus } from "@/hooks/useCopyTrade";
 import { useAuth } from "@/hooks/useAuth";
-import { CopyTraderCard, SubscribeModal } from "@/components/copyTrade";
+import { CopyTraderCard, SubscribeModal, TraderStatusCard } from "@/components/copyTrade";
 import { CopyTrader } from "@/types/copyTrade";
 import { Loader2, Users, TrendingUp, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ export function CopyTradersPage() {
   const { user } = useAuth();
   const { data: traders, isLoading: loadingTraders } = useApprovedCopyTraders();
   const { data: mySubscriptions } = useMyCopySubscriptions();
+  const { data: myTraderStatus, isLoading: loadingTraderStatus } = useMyTraderStatus();
   const verifySubscription = useVerifyCopySubscription();
   
   // Get user balance
@@ -66,6 +67,14 @@ export function CopyTradersPage() {
           Siga traders experientes e copie seus trades automaticamente.
         </p>
       </div>
+      
+      {/* Trader Status Card - only show if user is logged in */}
+      {user && (
+        <TraderStatusCard 
+          traderStatus={myTraderStatus || null} 
+          isLoading={loadingTraderStatus} 
+        />
+      )}
       
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

@@ -23,6 +23,7 @@ import { TermosPage } from "./pages/TermosPage";
 import { PrivacidadePage } from "./pages/PrivacidadePage";
 import { LGPDPage } from "./pages/LGPDPage";
 import { FAQPage } from "./pages/FAQPage";
+import { CopyTradersPage } from "./pages/CopyTradersPage";
 import { Loader2 } from "lucide-react";
 
 // Lazy load admin pages for bundle optimization
@@ -178,6 +179,7 @@ const App = () => (
               <Route path="/privacidade" element={<PrivacidadePage />} />
               <Route path="/lgpd" element={<LGPDPage />} />
               <Route path="/faq" element={<FAQPage />} />
+              <Route path="/copy-traders" element={<CopyTradersPage />} />
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}

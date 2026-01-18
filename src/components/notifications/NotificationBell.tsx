@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Check, CheckCheck, Trash2, TrendingUp, Trophy, Gift, 
   AlertCircle, Megaphone, Heart, MessageCircle, AtSign, Wallet,
-  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale
+  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,7 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   ADMIN_NEW_TICKET: Headphones,
   ADMIN_NEW_REPORT: Flag,
   ADMIN_NEW_CONTESTATION: Scale,
+  USER_WARNING: AlertTriangle,
 };
 
 const notificationColors: Record<NotificationType, string> = {
@@ -72,6 +73,7 @@ const notificationColors: Record<NotificationType, string> = {
   ADMIN_NEW_TICKET: 'text-amber-500 bg-amber-500/10',
   ADMIN_NEW_REPORT: 'text-red-500 bg-red-500/10',
   ADMIN_NEW_CONTESTATION: 'text-orange-500 bg-orange-500/10',
+  USER_WARNING: 'text-amber-600 bg-amber-600/10',
 };
 
 // Types that can be grouped

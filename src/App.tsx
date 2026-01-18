@@ -41,6 +41,7 @@ const AdminReferralsPage = lazy(() => import("./pages/admin/AdminReferralsPage")
 const AdminAppearancePage = lazy(() => import("./pages/admin/AdminAppearancePage").then(m => ({ default: m.AdminAppearancePage })));
 const AdminReportsPage = lazy(() => import("./pages/admin/AdminReportsPage").then(m => ({ default: m.AdminReportsPage })));
 const AdminSuggestionsPage = lazy(() => import("./pages/admin/AdminSuggestionsPage").then(m => ({ default: m.AdminSuggestionsPage })));
+const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
 
 // Loading fallback for lazy-loaded components
 const AdminLoadingFallback = () => (
@@ -198,6 +199,7 @@ const App = () => (
               <Route path="appearance" element={<Suspense fallback={<AdminLoadingFallback />}><AdminAppearancePage /></Suspense>} />
               <Route path="reports" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReportsPage /></Suspense>} />
               <Route path="suggestions" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSuggestionsPage /></Suspense>} />
+              <Route path="support" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSupportPage /></Suspense>} />
             </Route>
             
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

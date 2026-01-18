@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Trophy, Settings, Award, BarChart3 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Trophy, Award, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { LeaderboardTable } from '@/components/leaderboard/LeaderboardTable';
-import { LeaderboardProfileSettings } from '@/components/leaderboard/LeaderboardProfileSettings';
 import { AchievementsBadges } from '@/components/leaderboard/AchievementsBadges';
 import { MyStatsCard } from '@/components/leaderboard/MyStatsCard';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
@@ -18,11 +19,21 @@ export function LeaderboardPage() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Trophy className="h-6 w-6 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Trophy className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold">Leaderboard</h1>
           </div>
-          <h1 className="text-3xl font-bold">Leaderboard</h1>
+          {user && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/profile" className="gap-2">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Configurar Perfil</span>
+              </Link>
+            </Button>
+          )}
         </div>
         <p className="text-muted-foreground">
           Ranking dos melhores traders da plataforma. Participe e mostre suas habilidades!
@@ -30,7 +41,7 @@ export function LeaderboardPage() {
       </div>
 
       <Tabs defaultValue="ranking" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
           <TabsTrigger value="ranking" className="gap-2">
             <Trophy className="h-4 w-4" />
             <span className="hidden sm:inline">Ranking</span>
@@ -39,12 +50,6 @@ export function LeaderboardPage() {
             <Award className="h-4 w-4" />
             <span className="hidden sm:inline">Conquistas</span>
           </TabsTrigger>
-          {user && (
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Configurações</span>
-            </TabsTrigger>
-          )}
         </TabsList>
 
         {/* Ranking Tab */}
@@ -64,14 +69,6 @@ export function LeaderboardPage() {
         <TabsContent value="achievements">
           <AchievementsBadges />
         </TabsContent>
-
-        {/* Settings Tab */}
-        {user && (
-          <TabsContent value="settings" className="space-y-6">
-            <LeaderboardProfileSettings />
-            <MyStatsCard />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );

@@ -67,7 +67,10 @@ export default function AdminCopyTradersPage() {
   });
 
   const { data: settings } = useCopyTradeSettings();
-  const { data: traders, isLoading } = useCopyTraders(activeTab === 'all' ? undefined : activeTab.toUpperCase());
+  const { data: traders, isLoading, error } = useCopyTraders(activeTab === 'all' ? undefined : activeTab.toUpperCase());
+  
+  // Debug log
+  console.log('Admin Copy Traders:', { activeTab, tradersCount: traders?.length, isLoading, error });
   const manageTrader = useManageCopyTrader();
   const updateSettings = useUpdateTraderSettings();
 

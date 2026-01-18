@@ -8,7 +8,8 @@ import {
   UserPlus, 
   ExternalLink,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  LayoutDashboard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +87,7 @@ export function TraderStatusCard({ traderStatus, isLoading }: TraderStatusCardPr
       badgeVariant: "outline" as const,
       badgeClass: "border-success text-success",
       title: "Trader Aprovado",
-      description: "Parabéns! Você é um Copy Trader aprovado. Seus seguidores podem copiar seus trades.",
+      description: "Parabéns! Você é um Copy Trader aprovado. Acesse seu dashboard para ver estatísticas.",
     },
     REJECTED: {
       icon: XCircle,
@@ -132,7 +133,7 @@ export function TraderStatusCard({ traderStatus, isLoading }: TraderStatusCardPr
         
         <CardContent className="pt-0">
           {traderStatus.status === 'APPROVED' && (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>
                   <strong className="text-foreground">{traderStatus.total_followers}</strong> seguidores
@@ -141,6 +142,12 @@ export function TraderStatusCard({ traderStatus, isLoading }: TraderStatusCardPr
                   <strong className="text-foreground">{traderStatus.total_trades_copied}</strong> trades copiados
                 </span>
               </div>
+              <Button asChild>
+                <Link to="/trader/dashboard">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Ver Dashboard
+                </Link>
+              </Button>
             </div>
           )}
 

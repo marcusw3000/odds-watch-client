@@ -262,6 +262,110 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     `,
   }),
 
+  COPY_TRADER_APPROVED: (data) => ({
+    subject: `🎉 Parabéns! Sua candidatura como Copy Trader foi aprovada!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>🎉 Candidatura Aprovada!</h2>
+        <p style="color: #666;">Parabéns, <strong>${data.display_name || 'Trader'}</strong>! Sua candidatura como Copy Trader foi aprovada.</p>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="font-size: 24px; margin: 0;">✅</p>
+          <p style="font-size: 18px; font-weight: bold; color: #22c55e; margin: 8px 0;">Você agora é um Copy Trader!</p>
+        </div>
+
+        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+          <strong>O que acontece agora:</strong>
+          <ul style="color: #64748b; margin: 8px 0; padding-left: 20px;">
+            <li>Seu perfil aparecerá na lista de Copy Traders</li>
+            <li>Outros usuários podem seguir e copiar seus trades</li>
+            <li>Você ganhará comissões sobre lucros dos seguidores</li>
+            ${data.monthly_fee ? `<li>Mensalidade definida: <strong>R$${Number(data.monthly_fee).toFixed(2)}</strong></li>` : ''}
+            ${data.profit_share_percent ? `<li>Comissão sobre lucro: <strong>${data.profit_share_percent}%</strong></li>` : ''}
+          </ul>
+        </div>
+
+        <a href="https://predictmarket.com/trader/dashboard" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Acessar meu Dashboard
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Dúvidas? Entre em contato com nosso suporte.
+        </p>
+      </div>
+    `,
+  }),
+
+  COPY_TRADER_REJECTED: (data) => ({
+    subject: `📋 Atualização sobre sua candidatura como Copy Trader`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>📋 Candidatura Não Aprovada</h2>
+        <p style="color: #666;">Olá, <strong>${data.display_name || 'Trader'}</strong>.</p>
+        <p style="color: #666;">Infelizmente, sua candidatura como Copy Trader não foi aprovada neste momento.</p>
+        
+        ${data.rejection_reason ? `
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #dc2626; margin: 0;"><strong>Motivo:</strong></p>
+          <p style="color: #991b1b; margin: 8px 0 0 0;">${data.rejection_reason}</p>
+        </div>
+        ` : ''}
+
+        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+          <strong>O que você pode fazer:</strong>
+          <ul style="color: #64748b; margin: 8px 0; padding-left: 20px;">
+            <li>Revise as informações da sua candidatura</li>
+            <li>Melhore seu histórico de trades na plataforma</li>
+            <li>Você pode se candidatar novamente a qualquer momento</li>
+          </ul>
+        </div>
+
+        <a href="https://predictmarket.com/copy-traders" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Tentar Novamente
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Dúvidas? Entre em contato com nosso suporte.
+        </p>
+      </div>
+    `,
+  }),
+
+  COPY_TRADER_SUSPENDED: (data) => ({
+    subject: `⚠️ Sua conta de Copy Trader foi suspensa`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>⚠️ Conta de Trader Suspensa</h2>
+        <p style="color: #666;">Olá, <strong>${data.display_name || 'Trader'}</strong>.</p>
+        <p style="color: #666;">Sua conta de Copy Trader foi temporariamente suspensa.</p>
+        
+        <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #92400e; margin: 0;">Durante a suspensão:</p>
+          <ul style="color: #92400e; margin: 8px 0; padding-left: 20px;">
+            <li>Seus seguidores não poderão copiar novos trades</li>
+            <li>Seu perfil não aparecerá na lista de traders</li>
+            <li>Você ainda pode realizar trades normalmente</li>
+          </ul>
+        </div>
+
+        <p style="color: #666;">
+          Se você acredita que isso foi um erro ou deseja mais informações, entre em contato com nosso suporte.
+        </p>
+
+        <a href="https://predictmarket.com/settings?tab=support" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Contatar Suporte
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Este email foi enviado automaticamente pelo PredictMarket.
+        </p>
+      </div>
+    `,
+  }),
+
   DEFAULT: (data) => ({
     subject: data.title || 'Notificação do PredictMarket',
     html: `

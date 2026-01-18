@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, startOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Headphones,
@@ -14,6 +14,9 @@ import {
   User,
   Send,
   X,
+  Calendar,
+  ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -44,7 +47,13 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useAuth } from '@/hooks/useAuth';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   getAllTickets,
   getTicketMessages,
@@ -63,7 +72,6 @@ import {
   type SupportStatus,
   type SupportCategory,
   type SupportPriority,
-  type SupportMessage,
 } from '@/types/support';
 import { cn } from '@/lib/utils';
 
@@ -82,13 +90,61 @@ const PRIORITY_VARIANTS: Record<SupportPriority, 'default' | 'secondary' | 'outl
   urgent: 'destructive',
 };
 
+type DateFilter = 'all' | 'today' | 'week' | 'month';
+
+const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+  all: 'Qualquer data',
+  today: 'Hoje',
+  week: 'Últimos 7 dias',
+  month: 'Últimos 30 dias',
+};
+
 export default function AdminSupportPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TicketFilters>({});
   const [search, setSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
+
+  // Debounce search
+  const debouncedSearch = useDebounce(search, 300);
+
+  // Update filters when debounced search changes
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, search: debouncedSearch || undefined }));
+  }, [debouncedSearch]);
+
+  // Calculate active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.status) count++;
+    if (filters.category) count++;
+    if (filters.priority) count++;
+    if (filters.assignedTo) count++;
+    if (dateFilter !== 'all') count++;
+    return count;
+  }, [filters, dateFilter]);
+
+  const hasActiveFilters = activeFilterCount > 0 || !!debouncedSearch;
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({});
+    setSearch('');
+    setDateFilter('all');
+  };
+
+  // Remove individual filter
+  const removeFilter = (key: keyof TicketFilters | 'date') => {
+    if (key === 'date') {
+      setDateFilter('all');
+    } else {
+      setFilters((prev) => ({ ...prev, [key]: undefined }));
+    }
+  };
 
   // Stats query
   const { data: stats } = useQuery({
@@ -157,10 +213,6 @@ export default function AdminSupportPage() {
     onError: () => toast.error('Erro ao enviar resposta'),
   });
 
-  const handleSearch = () => {
-    setFilters((prev) => ({ ...prev, search }));
-  };
-
   const handleAssignToMe = (ticket: SupportTicket) => {
     if (user) {
       assignMutation.mutate({ ticketId: ticket.id, userId: user.id });
@@ -172,15 +224,34 @@ export default function AdminSupportPage() {
     replyMutation.mutate({ ticketId: selectedTicket.id, message: replyMessage.trim() });
   };
 
-  const filteredTickets = tickets.filter((ticket) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      ticket.subject.toLowerCase().includes(searchLower) ||
-      ticket.user_display_name?.toLowerCase().includes(searchLower) ||
-      ticket.user_email?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Filter tickets by date locally
+  const filteredTickets = useMemo(() => {
+    let result = tickets;
+
+    // Apply date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+
+      switch (dateFilter) {
+        case 'today':
+          startDate = startOfDay(now);
+          break;
+        case 'week':
+          startDate = subDays(now, 7);
+          break;
+        case 'month':
+          startDate = subDays(now, 30);
+          break;
+        default:
+          startDate = new Date(0);
+      }
+
+      result = result.filter((ticket) => new Date(ticket.created_at) >= startDate);
+    }
+
+    return result;
+  }, [tickets, dateFilter]);
 
   return (
     <div className="space-y-6">
@@ -254,88 +325,221 @@ export default function AdminSupportPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="flex gap-2">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            {/* Search Bar and Filter Toggle */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por assunto ou usuário..."
+                  placeholder="Buscar por assunto, usuário ou email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-9"
                 />
-                <Button variant="outline" onClick={handleSearch}>
-                  <Search className="h-4 w-4" />
-                </Button>
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
+
+              <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    Filtros
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", filtersOpen && "rotate-180")} />
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-2 text-muted-foreground">
+                  <Trash2 className="h-4 w-4" />
+                  Limpar filtros
+                </Button>
+              )}
             </div>
 
-            <Select
-              value={filters.status || 'all'}
-              onValueChange={(v) => setFilters((prev) => ({ ...prev, status: v === 'all' ? undefined : v as SupportStatus }))}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Active Filters Chips */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2">
+                {debouncedSearch && (
+                  <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                    <Search className="h-3 w-3 mr-1" />
+                    "{debouncedSearch}"
+                    <button
+                      onClick={() => setSearch('')}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filters.status && (
+                  <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                    Status: {STATUS_LABELS[filters.status]}
+                    <button
+                      onClick={() => removeFilter('status')}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filters.category && (
+                  <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                    Categoria: {CATEGORY_LABELS[filters.category]}
+                    <button
+                      onClick={() => removeFilter('category')}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filters.priority && (
+                  <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                    Prioridade: {PRIORITY_LABELS[filters.priority]}
+                    <button
+                      onClick={() => removeFilter('priority')}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filters.assignedTo && (
+                  <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                    {filters.assignedTo === 'unassigned' ? 'Não atribuído' : 'Meus tickets'}
+                    <button
+                      onClick={() => removeFilter('assignedTo')}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {dateFilter !== 'all' && (
+                  <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {DATE_FILTER_LABELS[dateFilter]}
+                    <button
+                      onClick={() => removeFilter('date')}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+            )}
 
-            <Select
-              value={filters.category || 'all'}
-              onValueChange={(v) => setFilters((prev) => ({ ...prev, category: v === 'all' ? undefined : v as SupportCategory }))}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Collapsible Filters */}
+            <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <CollapsibleContent className="pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Status</label>
+                    <Select
+                      value={filters.status || 'all'}
+                      onValueChange={(v) => setFilters((prev) => ({ ...prev, status: v === 'all' ? undefined : v as SupportStatus }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            <Select
-              value={filters.priority || 'all'}
-              onValueChange={(v) => setFilters((prev) => ({ ...prev, priority: v === 'all' ? undefined : v as SupportPriority }))}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Prioridade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Categoria</label>
+                    <Select
+                      value={filters.category || 'all'}
+                      onValueChange={(v) => setFilters((prev) => ({ ...prev, category: v === 'all' ? undefined : v as SupportCategory }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            <Select
-              value={filters.assignedTo || 'all'}
-              onValueChange={(v) => setFilters((prev) => ({ ...prev, assignedTo: v === 'all' ? undefined : v }))}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Atribuído" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="unassigned">Não atribuído</SelectItem>
-                {user && <SelectItem value={user.id}>Meus tickets</SelectItem>}
-              </SelectContent>
-            </Select>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
+                    <Select
+                      value={filters.priority || 'all'}
+                      onValueChange={(v) => setFilters((prev) => ({ ...prev, priority: v === 'all' ? undefined : v as SupportPriority }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Atribuição</label>
+                    <Select
+                      value={filters.assignedTo || 'all'}
+                      onValueChange={(v) => setFilters((prev) => ({ ...prev, assignedTo: v === 'all' ? undefined : v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="unassigned">Não atribuído</SelectItem>
+                        {user && <SelectItem value={user.id}>Meus tickets</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Período</label>
+                    <Select
+                      value={dateFilter}
+                      onValueChange={(v) => setDateFilter(v as DateFilter)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Qualquer data" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(DATE_FILTER_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </CardContent>
       </Card>
@@ -357,6 +561,11 @@ export default function AdminSupportPage() {
             <div className="text-center py-8 text-muted-foreground">
               <Headphones className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>Nenhum ticket encontrado</p>
+              {hasActiveFilters && (
+                <Button variant="link" onClick={clearFilters} className="mt-2">
+                  Limpar filtros
+                </Button>
+              )}
             </div>
           ) : (
             <Table>

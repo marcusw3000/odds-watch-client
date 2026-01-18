@@ -3,7 +3,8 @@ import { Comment, CommentReport } from '@/types/comment';
 import { 
   notifyCommentMention, 
   notifyCommentLike, 
-  notifyCommentReply 
+  notifyCommentReply,
+  notifyUserWarning
 } from './NotificationService';
 
 interface MentionUser {
@@ -630,29 +631,56 @@ export const CommentService = {
 
     // If action is to warn the user, send a notification
     if (actionTaken === 'user_warned') {
-      const { data: report } = await supabase
-        .from(tableName)
-        .select('comment_id, reason')
-        .eq('id', reportId)
-        .single();
+      console.log('[CommentService] Processing user_warned action for report:', reportId);
+      
+      try {
+        const { data: report, error: reportError } = await supabase
+          .from(tableName)
+          .select('comment_id, reason')
+          .eq('id', reportId)
+          .single();
 
-      if (report) {
-        const { data: comment } = await supabase
+        if (reportError) {
+          console.error('[CommentService] Error fetching report:', reportError);
+          return;
+        }
+
+        if (!report) {
+          console.error('[CommentService] Report not found:', reportId);
+          return;
+        }
+
+        console.log('[CommentService] Found report:', report);
+
+        const { data: comment, error: commentError } = await supabase
           .from(commentsTable)
           .select('user_id, content')
           .eq('id', report.comment_id)
           .single();
 
-        if (comment) {
-          // Dynamic import to avoid circular dependencies
-          const { notifyUserWarning } = await import('@/services/NotificationService');
-          await notifyUserWarning(
-            comment.user_id,
-            report.reason,
-            comment.content.slice(0, 50),
-            source
-          );
+        if (commentError) {
+          console.error('[CommentService] Error fetching comment:', commentError);
+          return;
         }
+
+        if (!comment) {
+          console.error('[CommentService] Comment not found:', report.comment_id);
+          return;
+        }
+
+        console.log('[CommentService] Found comment, notifying user:', comment.user_id);
+
+        // Use static import for reliability
+        await notifyUserWarning(
+          comment.user_id,
+          report.reason,
+          comment.content.slice(0, 50),
+          source
+        );
+
+        console.log('[CommentService] User warning notification sent successfully');
+      } catch (error) {
+        console.error('[CommentService] Error sending user warning notification:', error);
       }
     }
   },

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Check, CheckCheck, Trash2, TrendingUp, Trophy, Gift, 
   AlertCircle, Megaphone, Heart, MessageCircle, AtSign, Wallet,
-  CheckCircle, XCircle, Clock, ChevronRight
+  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,9 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   COMMENT_REPLY: MessageCircle,
   SUGGESTION_COMMENT_MENTION: AtSign,
   SUGGESTION_COMMENT_REPLY: MessageCircle,
+  ADMIN_NEW_TICKET: Headphones,
+  ADMIN_NEW_REPORT: Flag,
+  ADMIN_NEW_CONTESTATION: Scale,
 };
 
 const notificationColors: Record<NotificationType, string> = {
@@ -66,6 +69,9 @@ const notificationColors: Record<NotificationType, string> = {
   COMMENT_REPLY: 'text-cyan-500 bg-cyan-500/10',
   SUGGESTION_COMMENT_MENTION: 'text-indigo-500 bg-indigo-500/10',
   SUGGESTION_COMMENT_REPLY: 'text-cyan-500 bg-cyan-500/10',
+  ADMIN_NEW_TICKET: 'text-amber-500 bg-amber-500/10',
+  ADMIN_NEW_REPORT: 'text-red-500 bg-red-500/10',
+  ADMIN_NEW_CONTESTATION: 'text-orange-500 bg-orange-500/10',
 };
 
 // Types that can be grouped
@@ -100,9 +106,20 @@ function getNotificationLink(notification: Notification): string | null {
       return '/profile';
     
     case 'LEADERBOARD_RANK':
+      return '/leaderboard';
     
     case 'REFERRAL_ACTIVATED':
       return '/referral';
+    
+    // Admin notification types
+    case 'ADMIN_NEW_TICKET':
+      return '/admin/support';
+    
+    case 'ADMIN_NEW_REPORT':
+      return '/admin/reports';
+    
+    case 'ADMIN_NEW_CONTESTATION':
+      return '/admin/settlements';
     
     default:
       return null;

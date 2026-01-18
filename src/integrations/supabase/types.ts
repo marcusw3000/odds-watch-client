@@ -1883,6 +1883,15 @@ export type Database = {
         Returns: undefined
       }
       mask_ip_address: { Args: { ip_address: string }; Returns: string }
+      notify_admins: {
+        Args: {
+          p_data?: Json
+          p_message: string
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
+      }
       process_market_settlement_achievements: {
         Args: { p_market_id: string; p_winning_outcome: string }
         Returns: undefined

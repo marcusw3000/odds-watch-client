@@ -16,7 +16,10 @@ export type NotificationType =
   | 'COMMENT_LIKE'
   | 'COMMENT_REPLY'
   | 'SUGGESTION_COMMENT_MENTION'
-  | 'SUGGESTION_COMMENT_REPLY';
+  | 'SUGGESTION_COMMENT_REPLY'
+  | 'ADMIN_NEW_TICKET'
+  | 'ADMIN_NEW_REPORT'
+  | 'ADMIN_NEW_CONTESTATION';
 
 export interface Notification {
   id: string;

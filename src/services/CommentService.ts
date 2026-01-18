@@ -58,10 +58,7 @@ export const CommentService = {
   async getRootComments(marketId: string, currentUserId?: string): Promise<Comment[]> {
     const { data, error } = await supabase
       .from('comments')
-      .select(`
-        *,
-        profiles:user_id (avatar_url)
-      `)
+      .select('*')
       .eq('market_id', marketId)
       .is('parent_id', null)
       .eq('is_hidden', false)
@@ -105,8 +102,7 @@ export const CommentService = {
       userId: comment.user_id,
       parentId: comment.parent_id || undefined,
       authorName: displayInfoMap.get(comment.user_id)?.displayName || 'Usuário',
-      authorAvatar: displayInfoMap.get(comment.user_id)?.avatarUrl || 
-        (comment.profiles as any)?.avatar_url || undefined,
+      authorAvatar: displayInfoMap.get(comment.user_id)?.avatarUrl,
       content: comment.content,
       createdAt: new Date(comment.created_at),
       likesCount: comment.likes_count,
@@ -123,10 +119,7 @@ export const CommentService = {
       .from('comments')
       .select(`
         *,
-        profiles:user_id (avatar_url),
-        parent:parent_id (
-          user_id
-        )
+        parent:parent_id (user_id)
       `)
       .eq('parent_id', parentId)
       .eq('is_hidden', false)
@@ -177,8 +170,7 @@ export const CommentService = {
         userId: comment.user_id,
         parentId: comment.parent_id || undefined,
         authorName: displayInfoMap.get(comment.user_id)?.displayName || 'Usuário',
-        authorAvatar: displayInfoMap.get(comment.user_id)?.avatarUrl || 
-          (comment.profiles as any)?.avatar_url || undefined,
+        authorAvatar: displayInfoMap.get(comment.user_id)?.avatarUrl,
         content: comment.content,
         createdAt: new Date(comment.created_at),
         likesCount: comment.likes_count,

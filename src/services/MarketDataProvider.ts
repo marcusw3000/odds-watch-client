@@ -1,4 +1,4 @@
-import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, MarketStatus, SettlementType, SettlementConfig } from '@/types/market';
+import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption } from '@/types/market';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   getPriceYes, 
@@ -13,8 +13,24 @@ import {
 } from './LMSRCalculator';
 import { FeeEngine } from './FeeEngine';
 
+// Transform DB market option to frontend MarketOption
+function transformDbMarketOption(dbOption: DbMarketOption): MarketOption {
+  return {
+    id: dbOption.id,
+    label: dbOption.label,
+    description: dbOption.description || undefined,
+    imageUrl: dbOption.image_url || undefined,
+    shares: dbOption.shares,
+    currentPrice: Math.round(dbOption.current_price * 100), // Convert decimal to percentage
+    displayOrder: dbOption.display_order,
+  };
+}
+
 // Transform DB market to frontend MarketEvent
-function transformDbMarket(dbMarket: DbMarket & { image_zoom?: number; image_position_x?: number; image_position_y?: number }): MarketEvent {
+function transformDbMarket(
+  dbMarket: DbMarket & { image_zoom?: number; image_position_x?: number; image_position_y?: number },
+  dbOptions?: DbMarketOption[]
+): MarketEvent {
   const lmsr: LMSRState = {
     b: dbMarket.lmsr_b,
     qYes: dbMarket.yes_shares,
@@ -23,6 +39,9 @@ function transformDbMarket(dbMarket: DbMarket & { image_zoom?: number; image_pos
 
   const yesPrice = getPriceYes(lmsr);
   const noPrice = getPriceNo(lmsr);
+
+  // Transform options if present
+  const options = dbOptions?.map(transformDbMarketOption).sort((a, b) => a.displayOrder - b.displayOrder);
 
   return {
     id: dbMarket.id,
@@ -57,6 +76,8 @@ function transformDbMarket(dbMarket: DbMarket & { image_zoom?: number; image_pos
     marketType: (dbMarket.market_type as 'BINARY' | 'MULTIPLE') || 'BINARY',
     optionsExclusive: dbMarket.options_exclusive ?? true,
     tags: dbMarket.tags || undefined,
+    cardStyle: (dbMarket.card_style as 'default' | 'buttons' | 'simple' | 'minimal') || undefined,
+    options,
   };
 }
 
@@ -240,7 +261,34 @@ export const MarketDataProvider = {
       return mockMarkets;
     }
 
-    return data.map(m => transformDbMarket(m as unknown as DbMarket));
+    // Fetch options for MULTIPLE markets
+    const multipleMarketIds = data
+      .filter(m => m.market_type === 'MULTIPLE')
+      .map(m => m.id);
+
+    let optionsMap: Record<string, DbMarketOption[]> = {};
+    
+    if (multipleMarketIds.length > 0) {
+      const { data: optionsData } = await supabase
+        .from('market_options')
+        .select('*')
+        .in('market_id', multipleMarketIds)
+        .order('display_order', { ascending: true });
+
+      if (optionsData) {
+        optionsMap = optionsData.reduce((acc, opt) => {
+          const marketId = opt.market_id;
+          if (!acc[marketId]) acc[marketId] = [];
+          acc[marketId].push(opt as unknown as DbMarketOption);
+          return acc;
+        }, {} as Record<string, DbMarketOption[]>);
+      }
+    }
+
+    return data.map(m => transformDbMarket(
+      m as unknown as DbMarket,
+      optionsMap[m.id]
+    ));
   },
 
   // Busca evento específico por ID
@@ -262,7 +310,21 @@ export const MarketDataProvider = {
       return null;
     }
 
-    return transformDbMarket(data as unknown as DbMarket);
+    // Fetch options if it's a MULTIPLE market
+    let options: DbMarketOption[] | undefined;
+    if (data.market_type === 'MULTIPLE') {
+      const { data: optionsData } = await supabase
+        .from('market_options')
+        .select('*')
+        .eq('market_id', id)
+        .order('display_order', { ascending: true });
+
+      if (optionsData) {
+        options = optionsData as unknown as DbMarketOption[];
+      }
+    }
+
+    return transformDbMarket(data as unknown as DbMarket, options);
   },
 
   // Busca odds atualizadas (simula refresh)

@@ -217,3 +217,78 @@ export function useUpdateCardStyle() {
     },
   });
 }
+
+export interface CreateEventData {
+  title: string;
+  description: string;
+  category: string;
+  closeDate: string;
+  imageUrl?: string;
+  tags?: string[];
+  yesPrice: number;
+  settlementType?: string;
+  resolution?: Record<string, unknown>;
+  cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
+}
+
+export function useCreateEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventData: CreateEventData) => {
+      const { data, error } = await supabase.functions.invoke('create-admin-event', {
+        method: 'POST',
+        body: eventData,
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+    },
+  });
+}
+
+export interface UpdateEventData {
+  eventId: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  closeDate?: string;
+  imageUrl?: string;
+  tags?: string[];
+  yesPrice?: number;
+  settlementType?: string;
+  resolution?: Record<string, unknown>;
+  cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
+  reason?: string;
+}
+
+export function useUpdateEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ eventId, ...updateData }: UpdateEventData) => {
+      const { data, error } = await supabase.functions.invoke('update-admin-event', {
+        method: 'POST',
+        body: {
+          action: 'update_event',
+          eventId,
+          ...updateData,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-event', variables.eventId] });
+    },
+  });
+}

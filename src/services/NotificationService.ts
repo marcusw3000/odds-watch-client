@@ -328,3 +328,37 @@ export async function notifyUserWarning(
     sendEmail: true,
   });
 }
+
+// Support notifications
+export async function notifySupportReply(
+  userId: string,
+  ticketId: string,
+  ticketSubject: string,
+  messagePreview: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUPPORT_REPLY',
+    title: 'Nova Resposta no Suporte 📩',
+    message: `Nossa equipe respondeu ao seu ticket "${ticketSubject}".`,
+    data: { ticket_id: ticketId, subject: ticketSubject, message_preview: messagePreview },
+    sendEmail: true,
+  });
+}
+
+export async function notifySupportResolved(
+  userId: string,
+  ticketId: string,
+  ticketSubject: string,
+  status: 'resolved' | 'closed'
+) {
+  const statusLabel = status === 'resolved' ? 'resolvido' : 'fechado';
+  return createNotification({
+    userId,
+    type: 'SUPPORT_TICKET_RESOLVED',
+    title: 'Ticket Resolvido ✅',
+    message: `Seu ticket "${ticketSubject}" foi marcado como ${statusLabel}.`,
+    data: { ticket_id: ticketId, subject: ticketSubject, status },
+    sendEmail: true,
+  });
+}

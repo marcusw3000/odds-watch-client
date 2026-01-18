@@ -49,6 +49,8 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   ADMIN_NEW_REPORT: Flag,
   ADMIN_NEW_CONTESTATION: Scale,
   USER_WARNING: AlertTriangle,
+  SUPPORT_REPLY: Headphones,
+  SUPPORT_TICKET_RESOLVED: CheckCircle,
 };
 
 const notificationColors: Record<NotificationType, string> = {
@@ -74,6 +76,8 @@ const notificationColors: Record<NotificationType, string> = {
   ADMIN_NEW_REPORT: 'text-red-500 bg-red-500/10',
   ADMIN_NEW_CONTESTATION: 'text-orange-500 bg-orange-500/10',
   USER_WARNING: 'text-amber-600 bg-amber-600/10',
+  SUPPORT_REPLY: 'text-blue-500 bg-blue-500/10',
+  SUPPORT_TICKET_RESOLVED: 'text-green-500 bg-green-500/10',
 };
 
 // Types that can be grouped
@@ -122,6 +126,11 @@ function getNotificationLink(notification: Notification): string | null {
     
     case 'ADMIN_NEW_CONTESTATION':
       return '/admin/settlements';
+    
+    // User support notifications
+    case 'SUPPORT_REPLY':
+    case 'SUPPORT_TICKET_RESOLVED':
+      return data?.ticket_id ? `/settings?tab=support&ticket=${data.ticket_id}` : '/settings?tab=support';
     
     default:
       return null;

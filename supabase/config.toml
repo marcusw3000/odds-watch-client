@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.admin-warn-user]
 verify_jwt = false
+
+[functions.notify-support-reply]
+verify_jwt = false

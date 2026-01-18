@@ -88,6 +88,14 @@ export async function sendMessage(ticketId: string, message: string): Promise<Su
     .single();
 
   if (error) throw error;
+
+  // Update ticket status to in_progress if it was waiting_customer
+  await supabase
+    .from('support_tickets')
+    .update({ status: 'in_progress' })
+    .eq('id', ticketId)
+    .eq('status', 'waiting_customer');
+
   return data as SupportMessage;
 }
 
@@ -186,6 +194,22 @@ export async function updateTicketStatus(ticketId: string, status: SupportStatus
     .eq('id', ticketId);
 
   if (error) throw error;
+
+  // Notify user when ticket is resolved or closed
+  if (status === 'resolved' || status === 'closed') {
+    try {
+      await supabase.functions.invoke('notify-support-reply', {
+        body: {
+          ticket_id: ticketId,
+          message_preview: null,
+          action: status,
+        },
+      });
+    } catch (notifyError) {
+      console.error('Error notifying user about ticket resolution:', notifyError);
+      // Don't fail the operation if notification fails
+    }
+  }
 }
 
 export async function updateTicketPriority(ticketId: string, priority: SupportPriority): Promise<void> {
@@ -220,6 +244,21 @@ export async function sendStaffMessage(ticketId: string, message: string): Promi
     .from('support_tickets')
     .update({ status: 'waiting_customer' })
     .eq('id', ticketId);
+
+  // Notify user about the reply via Edge Function
+  try {
+    const messagePreview = message.length > 100 ? message.substring(0, 100) : message;
+    await supabase.functions.invoke('notify-support-reply', {
+      body: {
+        ticket_id: ticketId,
+        message_preview: messagePreview,
+        action: 'reply',
+      },
+    });
+  } catch (notifyError) {
+    console.error('Error notifying user about support reply:', notifyError);
+    // Don't fail the operation if notification fails
+  }
 
   return data as SupportMessage;
 }

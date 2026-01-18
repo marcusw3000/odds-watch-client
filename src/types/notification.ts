@@ -20,7 +20,9 @@ export type NotificationType =
   | 'ADMIN_NEW_TICKET'
   | 'ADMIN_NEW_REPORT'
   | 'ADMIN_NEW_CONTESTATION'
-  | 'USER_WARNING';
+  | 'USER_WARNING'
+  | 'SUPPORT_REPLY'
+  | 'SUPPORT_TICKET_RESOLVED';
 
 export interface Notification {
   id: string;

@@ -173,6 +173,50 @@ export function useApplyCopyTrader() {
   });
 }
 
+// Reapply as a copy trader (for rejected traders)
+export function useReapplyCopyTrader() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      trader_id, 
+      display_name, 
+      bio 
+    }: { 
+      trader_id: string;
+      display_name: string; 
+      bio: string 
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      const { data, error } = await supabase
+        .from('copy_traders')
+        .update({
+          display_name,
+          bio,
+          status: 'PENDING',
+          rejection_reason: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', trader_id)
+        .eq('user_id', user.id) // Security: ensure user owns this record
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-trader-status'] });
+      toast.success('Solicitação reenviada! Aguarde aprovação do admin.');
+    },
+    onError: (error) => {
+      toast.error('Erro ao reenviar solicitação: ' + error.message);
+    },
+  });
+}
+
 // Manage copy trader (admin actions)
 export function useManageCopyTrader() {
   const queryClient = useQueryClient();

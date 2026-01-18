@@ -94,7 +94,7 @@ export function TraderStatusCard({ traderStatus, isLoading }: TraderStatusCardPr
       badgeVariant: "outline" as const,
       badgeClass: "border-destructive text-destructive",
       title: "Candidatura Recusada",
-      description: traderStatus.rejection_reason || "Sua candidatura não foi aprovada. Você pode tentar novamente.",
+      description: "Sua candidatura não foi aprovada. Você pode atualizar suas informações e tentar novamente.",
     },
     SUSPENDED: {
       icon: Ban,
@@ -177,6 +177,7 @@ export function TraderStatusCard({ traderStatus, isLoading }: TraderStatusCardPr
       <ApplyTraderModal
         isOpen={showApplyModal}
         onClose={() => setShowApplyModal(false)}
+        existingTrader={traderStatus}
       />
     </>
   );

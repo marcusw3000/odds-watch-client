@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.verify-copy-subscription]
 verify_jwt = false
+
+[functions.copy-trade-to-followers]
+verify_jwt = false

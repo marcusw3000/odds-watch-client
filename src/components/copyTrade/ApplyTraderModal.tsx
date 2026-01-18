@@ -1,7 +1,8 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, UserPlus, Info } from "lucide-react";
+import { Loader2, UserPlus, Info, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useApplyCopyTrader } from "@/hooks/useCopyTrade";
+import { useApplyCopyTrader, useReapplyCopyTrader } from "@/hooks/useCopyTrade";
+import { CopyTrader } from "@/types/copyTrade";
 
 const applyTraderSchema = z.object({
   display_name: z
@@ -42,10 +44,15 @@ type ApplyTraderFormData = z.infer<typeof applyTraderSchema>;
 interface ApplyTraderModalProps {
   isOpen: boolean;
   onClose: () => void;
+  existingTrader?: CopyTrader | null;
 }
 
-export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
+export function ApplyTraderModal({ isOpen, onClose, existingTrader }: ApplyTraderModalProps) {
   const applyMutation = useApplyCopyTrader();
+  const reapplyMutation = useReapplyCopyTrader();
+  
+  const isReapplying = existingTrader?.status === 'REJECTED';
+  const isPending = applyMutation.isPending || reapplyMutation.isPending;
 
   const form = useForm<ApplyTraderFormData>({
     resolver: zodResolver(applyTraderSchema),
@@ -55,16 +62,44 @@ export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
     },
   });
 
+  // Pre-populate form when reapplying
+  useEffect(() => {
+    if (isOpen && existingTrader) {
+      form.reset({
+        display_name: existingTrader.display_name || "",
+        bio: existingTrader.bio || "",
+      });
+    } else if (!isOpen) {
+      form.reset({
+        display_name: "",
+        bio: "",
+      });
+    }
+  }, [isOpen, existingTrader, form]);
+
   const onSubmit = (data: ApplyTraderFormData) => {
-    applyMutation.mutate({
-      display_name: data.display_name,
-      bio: data.bio,
-    }, {
-      onSuccess: () => {
-        form.reset();
-        onClose();
-      },
-    });
+    if (isReapplying && existingTrader) {
+      reapplyMutation.mutate({
+        trader_id: existingTrader.id,
+        display_name: data.display_name,
+        bio: data.bio,
+      }, {
+        onSuccess: () => {
+          form.reset();
+          onClose();
+        },
+      });
+    } else {
+      applyMutation.mutate({
+        display_name: data.display_name,
+        bio: data.bio,
+      }, {
+        onSuccess: () => {
+          form.reset();
+          onClose();
+        },
+      });
+    }
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -79,11 +114,23 @@ export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-primary" />
-            Tornar-se um Copy Trader
+            {isReapplying ? (
+              <>
+                <RefreshCw className="h-5 w-5 text-primary" />
+                Reaplicar como Copy Trader
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-5 w-5 text-primary" />
+                Tornar-se um Copy Trader
+              </>
+            )}
           </DialogTitle>
           <DialogDescription>
-            Compartilhe suas estratégias e ganhe comissões quando outros copiarem seus trades.
+            {isReapplying 
+              ? "Atualize suas informações e reenvie sua candidatura para análise."
+              : "Compartilhe suas estratégias e ganhe comissões quando outros copiarem seus trades."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -99,7 +146,7 @@ export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
                     <Input
                       placeholder="Ex: Trader Pro"
                       {...field}
-                      disabled={applyMutation.isPending}
+                      disabled={isPending}
                     />
                   </FormControl>
                   <FormDescription>
@@ -121,7 +168,7 @@ export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
                       placeholder="Descreva sua estratégia de trading, experiência e estilo de operação..."
                       className="min-h-[120px] resize-none"
                       {...field}
-                      disabled={applyMutation.isPending}
+                      disabled={isPending}
                     />
                   </FormControl>
                   <FormDescription>
@@ -135,8 +182,10 @@ export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
             <Alert variant="default" className="bg-muted/50">
               <Info className="h-4 w-4" />
               <AlertDescription>
-                Sua candidatura será analisada pela equipe antes da aprovação. 
-                Você será notificado sobre o resultado.
+                {isReapplying 
+                  ? "Sua candidatura será reanalisada pela equipe. Você será notificado sobre o resultado."
+                  : "Sua candidatura será analisada pela equipe antes da aprovação. Você será notificado sobre o resultado."
+                }
               </AlertDescription>
             </Alert>
 
@@ -145,16 +194,18 @@ export function ApplyTraderModal({ isOpen, onClose }: ApplyTraderModalProps) {
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                disabled={applyMutation.isPending}
+                disabled={isPending}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={applyMutation.isPending}>
-                {applyMutation.isPending ? (
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Enviando...
                   </>
+                ) : isReapplying ? (
+                  "Reenviar Candidatura"
                 ) : (
                   "Enviar Candidatura"
                 )}

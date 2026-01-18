@@ -215,6 +215,35 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Trigger copy trades for followers (fire and forget)
+    // This is non-blocking so the user gets immediate response
+    try {
+      const copyTradePayload = {
+        trader_user_id: userId,
+        transaction_id: tradeResult.transaction_id,
+        market_id: marketId,
+        outcome,
+        original_amount: tradeResult.trade_cost,
+        original_shares: shares,
+        price_per_share: tradeResult.price_per_share,
+      };
+
+      // Call the copy-trade function asynchronously
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/copy-trade-to-followers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify(copyTradePayload),
+      }).catch((err) => {
+        console.error("Error triggering copy trades:", err);
+      });
+    } catch (copyError) {
+      // Don't fail the main trade if copy fails
+      console.error("Error initiating copy trades:", copyError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

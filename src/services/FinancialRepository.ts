@@ -390,6 +390,7 @@ export class FinancialRepository {
     startDate?: string;
     endDate?: string;
     limit?: number;
+    offset?: number;
   }): Promise<AdminAuditLog[]> {
     let query = supabase
       .from('admin_audit_logs')
@@ -413,6 +414,9 @@ export class FinancialRepository {
     }
     if (filters?.limit) {
       query = query.limit(filters.limit);
+    }
+    if (filters?.offset) {
+      query = query.range(filters.offset, filters.offset + (filters.limit || 25) - 1);
     }
 
     const { data, error } = await query;

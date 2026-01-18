@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TablePagination } from '@/components/ui/table-pagination';
+import { usePagination } from '@/hooks/usePagination';
 import { useAdminLedger, useFeePolicySnapshot, type LedgerEntrySecure } from '@/hooks/useSecureData';
 import { Search, Download, Eye, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -32,6 +34,11 @@ import { format } from 'date-fns';
 export function AdminLedgerPage() {
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntrySecure | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Pagination
+  const pagination = usePagination({
+    initialPageSize: 25,
+  });
 
   // Filters
   const [filters, setFilters] = useState({
@@ -46,8 +53,8 @@ export function AdminLedgerPage() {
 
   const [activeFilters, setActiveFilters] = useState(filters);
 
-  // Use secure hooks
-  const { data: entries = [], isLoading, refetch } = useAdminLedger({
+  // Use secure hooks with pagination
+  const { data: entriesData, isLoading, refetch } = useAdminLedger({
     userId: activeFilters.userId || undefined,
     refType: activeFilters.refType !== 'all' ? activeFilters.refType : undefined,
     status: activeFilters.status !== 'all' ? activeFilters.status : undefined,
@@ -55,8 +62,14 @@ export function AdminLedgerPage() {
     endDate: activeFilters.endDate || undefined,
     minAmount: activeFilters.minAmount ? parseFloat(activeFilters.minAmount) : undefined,
     maxAmount: activeFilters.maxAmount ? parseFloat(activeFilters.maxAmount) : undefined,
-    limit: 100,
+    limit: pagination.pageSize,
   });
+
+  const entries = entriesData || [];
+  // Estimate total count based on returned data
+  const totalCount = entries.length === pagination.pageSize 
+    ? (pagination.page) * pagination.pageSize + 1 
+    : pagination.offset + entries.length;
 
   const { data: snapshot } = useFeePolicySnapshot(selectedEntry?.fee_snapshot_id || null);
 
@@ -66,6 +79,7 @@ export function AdminLedgerPage() {
   };
 
   const handleSearch = () => {
+    pagination.resetPage();
     setActiveFilters({ ...filters });
   };
 
@@ -319,6 +333,21 @@ export function AdminLedgerPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={totalCount}
+            totalPages={Math.ceil(totalCount / pagination.pageSize) || 1}
+            pageNumbers={pagination.pageNumbers}
+            canPrevPage={pagination.canPrevPage}
+            canNextPage={pagination.canNextPage}
+            startItem={pagination.startItem}
+            endItem={Math.min(pagination.endItem, totalCount)}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
         </CardContent>
       </Card>
 

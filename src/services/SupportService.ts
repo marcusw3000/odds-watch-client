@@ -130,15 +130,27 @@ export interface TicketFilters {
   priority?: SupportPriority;
   assignedTo?: string | 'unassigned';
   search?: string;
+  limit?: number;
+  offset?: number;
 }
 
-export async function getAllTickets(filters?: TicketFilters): Promise<SupportTicket[]> {
+export interface TicketsResponse {
+  tickets: SupportTicket[];
+  totalCount: number;
+}
+
+export async function getAllTickets(filters?: TicketFilters): Promise<TicketsResponse> {
   const { data, error } = await supabase.functions.invoke('get-admin-support-tickets', {
     body: filters || {},
   });
 
   if (error) throw error;
-  return data || [];
+  
+  // Handle both old format (array) and new format (object with tickets and totalCount)
+  if (Array.isArray(data)) {
+    return { tickets: data, totalCount: data.length };
+  }
+  return data || { tickets: [], totalCount: 0 };
 }
 
 export async function getTicketById(ticketId: string): Promise<SupportTicket | null> {

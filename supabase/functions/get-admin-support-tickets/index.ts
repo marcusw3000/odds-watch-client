@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     // Parse filters from request body
     const body = await req.json().catch(() => ({}));
-    const { status, category, priority, assignedTo, search, ticketId } = body;
+    const { status, category, priority, assignedTo, search, ticketId, limit = 25, offset = 0 } = body;
 
     // If fetching single ticket by ID
     if (ticketId) {
@@ -105,11 +105,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Build count query for total
+    let countQuery = supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true });
+
+    if (status) countQuery = countQuery.eq('status', status);
+    if (category) countQuery = countQuery.eq('category', category);
+    if (priority) countQuery = countQuery.eq('priority', priority);
+    if (assignedTo === 'unassigned') {
+      countQuery = countQuery.is('assigned_to', null);
+    } else if (assignedTo) {
+      countQuery = countQuery.eq('assigned_to', assignedTo);
+    }
+    if (search) countQuery = countQuery.ilike('subject', `%${search}%`);
+
+    const { count: totalCount, error: countError } = await countQuery;
+    if (countError) throw countError;
+
     // Build query using service role (bypasses RLS)
     let query = supabase
       .from('support_tickets')
       .select('*')
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (status) query = query.eq('status', status);
     if (category) query = query.eq('category', category);
@@ -126,7 +145,7 @@ Deno.serve(async (req) => {
 
     if (!tickets || tickets.length === 0) {
       console.log('No tickets found');
-      return new Response(JSON.stringify([]), {
+      return new Response(JSON.stringify({ tickets: [], totalCount: totalCount || 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -152,7 +171,7 @@ Deno.serve(async (req) => {
       assigned_name: ticket.assigned_to ? profileMap.get(ticket.assigned_to)?.display_name : null,
     }));
 
-    return new Response(JSON.stringify(enrichedTickets), {
+    return new Response(JSON.stringify({ tickets: enrichedTickets, totalCount: totalCount || 0 }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {

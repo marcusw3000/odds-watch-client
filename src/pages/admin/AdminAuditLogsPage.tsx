@@ -25,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TablePagination } from '@/components/ui/table-pagination';
+import { usePagination } from '@/hooks/usePagination';
 import { FinancialRepository } from '@/services/FinancialRepository';
 import type { AdminAuditLog } from '@/types/financial';
 import { format } from 'date-fns';
@@ -48,9 +50,16 @@ const ACTION_LABELS: Record<string, string> = {
 
 export function AdminAuditLogsPage() {
   const [logs, setLogs] = useState<AdminAuditLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<AdminAuditLog | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Pagination
+  const pagination = usePagination({
+    initialPageSize: 25,
+    totalItems: totalCount,
+  });
 
   // Filters
   const [filters, setFilters] = useState({
@@ -62,7 +71,7 @@ export function AdminAuditLogsPage() {
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [pagination.page, pagination.pageSize]);
 
   const loadLogs = async () => {
     setLoading(true);
@@ -71,9 +80,17 @@ export function AdminAuditLogsPage() {
       entity: filters.entity || undefined,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
-      limit: 100
+      limit: pagination.pageSize,
+      offset: pagination.offset,
     });
     setLogs(data);
+    // For now, we don't have total count from the API, so we estimate
+    // If data length equals pageSize, there might be more
+    if (data.length === pagination.pageSize) {
+      setTotalCount((pagination.page) * pagination.pageSize + 1);
+    } else {
+      setTotalCount(pagination.offset + data.length);
+    }
     setLoading(false);
   };
 
@@ -83,6 +100,7 @@ export function AdminAuditLogsPage() {
   };
 
   const handleSearch = () => {
+    pagination.resetPage();
     loadLogs();
   };
 
@@ -259,6 +277,21 @@ export function AdminAuditLogsPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={totalCount}
+            totalPages={Math.ceil(totalCount / pagination.pageSize) || 1}
+            pageNumbers={pagination.pageNumbers}
+            canPrevPage={pagination.canPrevPage}
+            canNextPage={pagination.canNextPage}
+            startItem={pagination.startItem}
+            endItem={Math.min(pagination.endItem, totalCount)}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
         </CardContent>
       </Card>
 

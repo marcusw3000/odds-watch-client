@@ -205,7 +205,7 @@ export function AdminEventFormPage() {
     }
   };
 
-  const isSourceEditable = !isEditing || event?.status === 'HALTED';
+  const isSourceEditable = true;
   const isOddsEditable = !isEditing || event?.status === 'OPEN' || event?.status === 'HALTED';
 
   // Loading state for edit mode
@@ -347,14 +347,6 @@ export function AdminEventFormPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!isSourceEditable && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  A fonte oficial não pode ser alterada após o evento ser aberto.
-                </AlertDescription>
-              </Alert>
-            )}
 
             <div className="space-y-2">
               <Label>Tipo da Fonte *</Label>

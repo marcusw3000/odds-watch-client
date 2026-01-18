@@ -6,6 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface MarketOptionInput {
+  id?: string;
+  label: string;
+  description?: string;
+  imageUrl?: string;
+  probability: number;
+  displayOrder: number;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -224,7 +233,8 @@ Deno.serve(async (req) => {
         settlementType,
         resolution,
         cardStyle,
-        reason,
+        reason: updateReason,
+        options,
       } = body;
 
       // Get current event for comparison
@@ -256,8 +266,8 @@ Deno.serve(async (req) => {
       if (settlementType !== undefined) updateData.settlement_type = settlementType;
       if (resolution !== undefined) updateData.resolution = resolution;
 
-      // Handle price update
-      if (yesPrice !== undefined) {
+      // Handle price update for BINARY markets
+      if (yesPrice !== undefined && currentEvent.market_type === 'BINARY') {
         updateData.current_yes_price = yesPrice;
         updateData.current_no_price = 1 - yesPrice;
       }
@@ -275,6 +285,47 @@ Deno.serve(async (req) => {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+
+      // Handle options update for MULTIPLE markets
+      if (options && currentEvent.market_type === 'MULTIPLE') {
+        const lmsrB = currentEvent.lmsr_b || 100;
+
+        for (const opt of options as MarketOptionInput[]) {
+          const prob = Math.max(0.01, Math.min(0.99, opt.probability / 100));
+          const refProb = 1 / options.length;
+          const shares = lmsrB * Math.log(prob / refProb);
+
+          if (opt.id) {
+            // Update existing option
+            await adminClient
+              .from('market_options')
+              .update({
+                label: opt.label,
+                description: opt.description || null,
+                image_url: opt.imageUrl || null,
+                current_price: opt.probability / 100,
+                shares: shares,
+                display_order: opt.displayOrder,
+              })
+              .eq('id', opt.id);
+          } else {
+            // Insert new option
+            await adminClient
+              .from('market_options')
+              .insert({
+                market_id: eventId,
+                label: opt.label,
+                description: opt.description || null,
+                image_url: opt.imageUrl || null,
+                shares: shares,
+                current_price: opt.probability / 100,
+                display_order: opt.displayOrder,
+              });
+          }
+        }
+
+        logStep(functionName, 'Options updated', { count: options.length });
       }
 
       // Log audit entry with changes
@@ -297,7 +348,7 @@ Deno.serve(async (req) => {
         details: {
           market_title: updatedEvent.title,
           changes,
-          reason: reason || null,
+          reason: updateReason || null,
           admin_name: adminName,
         },
       });
@@ -306,6 +357,82 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, event: updatedEvent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update_options') {
+      // Dedicated action for updating multiple options
+      const { options: optionsToUpdate } = body;
+
+      if (!optionsToUpdate || !Array.isArray(optionsToUpdate)) {
+        return new Response(JSON.stringify({ error: 'Options array is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Get current event
+      const { data: currentEvent, error: fetchError } = await adminClient
+        .from('markets')
+        .select('*')
+        .eq('id', eventId)
+        .single();
+
+      if (fetchError || !currentEvent) {
+        return new Response(JSON.stringify({ error: 'Event not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (currentEvent.market_type !== 'MULTIPLE') {
+        return new Response(JSON.stringify({ error: 'This action is only for multiple-option markets' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const lmsrB = currentEvent.lmsr_b || 100;
+
+      // Update each option
+      for (const opt of optionsToUpdate as MarketOptionInput[]) {
+        const prob = Math.max(0.01, Math.min(0.99, opt.probability / 100));
+        const refProb = 1 / optionsToUpdate.length;
+        const shares = lmsrB * Math.log(prob / refProb);
+
+        if (opt.id) {
+          await adminClient
+            .from('market_options')
+            .update({
+              label: opt.label,
+              description: opt.description || null,
+              image_url: opt.imageUrl || null,
+              current_price: opt.probability / 100,
+              shares: shares,
+              display_order: opt.displayOrder,
+            })
+            .eq('id', opt.id);
+        }
+      }
+
+      // Log audit entry
+      await adminClient.from('admin_audit_logs').insert({
+        admin_id: userId,
+        action: 'market_options_updated',
+        target_type: 'market',
+        target_id: eventId,
+        details: {
+          market_title: currentEvent.title,
+          options_count: optionsToUpdate.length,
+          admin_name: adminName,
+        },
+      });
+
+      logStep(functionName, 'Options updated', { eventId, count: optionsToUpdate.length });
+
+      return new Response(
+        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -350,7 +477,7 @@ Deno.serve(async (req) => {
       // Get current event for validation
       const { data: currentEvent, error: fetchError } = await adminClient
         .from('markets')
-        .select('status, title')
+        .select('status, title, market_type')
         .eq('id', eventId)
         .single();
 
@@ -367,6 +494,14 @@ Deno.serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+
+      // Delete options first if MULTIPLE market
+      if (currentEvent.market_type === 'MULTIPLE') {
+        await adminClient
+          .from('market_options')
+          .delete()
+          .eq('market_id', eventId);
       }
 
       // Delete event

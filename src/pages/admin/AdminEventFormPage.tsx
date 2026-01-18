@@ -452,79 +452,121 @@ export function AdminEventFormPage() {
           </CardContent>
         </Card>
 
-        {/* Block C - Initial Probability */}
+        {/* Block C - Market Type & Probability */}
         <Card>
           <CardHeader>
-            <CardTitle>Probabilidade Inicial</CardTitle>
+            <CardTitle>Tipo de Mercado e Probabilidades</CardTitle>
             <CardDescription>
-              Defina a probabilidade inicial de SIM. O mercado LMSR ajustará automaticamente com base nas negociações.
+              Escolha entre mercado binário (SIM/NÃO) ou múltiplas opções (estilo Kalshi)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!isOddsEditable && (
+            {/* Market Type Toggle - only for new events */}
+            {!isEditing && (
+              <Tabs value={marketType} onValueChange={(v) => setMarketType(v as MarketType)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="BINARY">Binário (SIM/NÃO)</TabsTrigger>
+                  <TabsTrigger value="MULTIPLE">Múltiplas Opções</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
+            {isEditing && (
               <Alert>
-                <AlertCircle className="h-4 w-4" />
+                <Info className="h-4 w-4" />
                 <AlertDescription>
-                  A probabilidade só pode ser alterada enquanto o evento está aberto ou pausado.
+                  Tipo de mercado: <strong>{marketType === 'BINARY' ? 'Binário' : 'Múltiplas Opções'}</strong>
+                  {' '}(não pode ser alterado após criação)
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* Probability Slider */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label>SIM: {oddsYes}%</Label>
-                <Label>NÃO: {oddsNo}%</Label>
-              </div>
-              <Slider
-                value={[oddsYes]}
-                onValueChange={([value]) => setOddsYes(value)}
-                min={1}
-                max={99}
-                step={1}
-                disabled={!isOddsEditable}
-                className="py-4"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1%</span>
-                <span>50%</span>
-                <span>99%</span>
-              </div>
-            </div>
-
-            {errors.oddsYes && <p className="text-xs text-destructive">{errors.oddsYes}</p>}
-
-            {/* Probability Change Reason (only when editing and changed) */}
-            {isEditing && oddsYes !== initialOddsYes && (
-              <div className="space-y-2">
-                <Label htmlFor="oddsChangeReason">Motivo da Alteração *</Label>
-                <Textarea
-                  id="oddsChangeReason"
-                  value={oddsChangeReason}
-                  onChange={(e) => setOddsChangeReason(e.target.value)}
-                  placeholder="Explique o motivo da alteração da probabilidade..."
-                  rows={2}
-                  className={errors.oddsChangeReason ? 'border-destructive' : ''}
-                />
-                {errors.oddsChangeReason && <p className="text-xs text-destructive">{errors.oddsChangeReason}</p>}
-              </div>
+            {!isOddsEditable && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  As probabilidades só podem ser alteradas enquanto o evento está aberto ou pausado.
+                </AlertDescription>
+              </Alert>
             )}
 
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className={`p-3 rounded-lg ${oddsYes >= 50 ? 'bg-success/20' : 'bg-muted'}`}>
-                  <p className="text-2xl font-bold">{oddsYes}%</p>
-                  <p className="text-sm text-muted-foreground">SIM</p>
+            {/* Binary Market Options */}
+            {marketType === 'BINARY' && (
+              <>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>SIM: {oddsYes}%</Label>
+                    <Label>NÃO: {oddsNo}%</Label>
+                  </div>
+                  <Slider
+                    value={[oddsYes]}
+                    onValueChange={([value]) => setOddsYes(value)}
+                    min={1}
+                    max={99}
+                    step={1}
+                    disabled={!isOddsEditable}
+                    className="py-4"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>1%</span>
+                    <span>50%</span>
+                    <span>99%</span>
+                  </div>
                 </div>
-                <div className={`p-3 rounded-lg ${oddsNo >= 50 ? 'bg-destructive/20' : 'bg-muted'}`}>
-                  <p className="text-2xl font-bold">{oddsNo}%</p>
-                  <p className="text-sm text-muted-foreground">NÃO</p>
+
+                {errors.oddsYes && <p className="text-xs text-destructive">{errors.oddsYes}</p>}
+
+                {isEditing && oddsYes !== initialOddsYes && (
+                  <div className="space-y-2">
+                    <Label htmlFor="oddsChangeReason">Motivo da Alteração *</Label>
+                    <Textarea
+                      id="oddsChangeReason"
+                      value={oddsChangeReason}
+                      onChange={(e) => setOddsChangeReason(e.target.value)}
+                      placeholder="Explique o motivo da alteração da probabilidade..."
+                      rows={2}
+                      className={errors.oddsChangeReason ? 'border-destructive' : ''}
+                    />
+                    {errors.oddsChangeReason && <p className="text-xs text-destructive">{errors.oddsChangeReason}</p>}
+                  </div>
+                )}
+
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div className={`p-3 rounded-lg ${oddsYes >= 50 ? 'bg-success/20' : 'bg-muted'}`}>
+                      <p className="text-2xl font-bold">{oddsYes}%</p>
+                      <p className="text-sm text-muted-foreground">SIM</p>
+                    </div>
+                    <div className={`p-3 rounded-lg ${oddsNo >= 50 ? 'bg-destructive/20' : 'bg-muted'}`}>
+                      <p className="text-2xl font-bold">{oddsNo}%</p>
+                      <p className="text-sm text-muted-foreground">NÃO</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground mt-2">
+                    Total: {oddsYes + oddsNo}%
+                  </p>
                 </div>
-              </div>
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                Total: {oddsYes + oddsNo}%
-              </p>
-            </div>
+              </>
+            )}
+
+            {/* Multiple Options Editor */}
+            {marketType === 'MULTIPLE' && (
+              <>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Mercados com múltiplas opções funcionam como a Kalshi: cada opção é um contrato independente 
+                    e a soma de todas as probabilidades sempre será 100%.
+                  </AlertDescription>
+                </Alert>
+                <MultiOptionEditor
+                  options={options}
+                  onChange={setOptions}
+                  disabled={!isOddsEditable}
+                />
+                {errors.options && <p className="text-xs text-destructive">{errors.options}</p>}
+              </>
+            )}
           </CardContent>
         </Card>
 

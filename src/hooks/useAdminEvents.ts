@@ -8,6 +8,7 @@ export interface AdminEvent {
   description: string | null;
   category: string;
   status: MarketStatus;
+  market_type: 'BINARY' | 'MULTIPLE';
   current_yes_price: number;
   current_no_price: number;
   total_volume: number;
@@ -23,6 +24,7 @@ export interface AdminEvent {
   updated_at: string;
   settlement_type: string;
   resolution: Record<string, unknown> | null;
+  options_exclusive: boolean;
 }
 
 export interface AdminAuditLog {
@@ -225,10 +227,18 @@ export interface CreateEventData {
   closeDate: string;
   imageUrl?: string;
   tags?: string[];
-  yesPrice: number;
+  yesPrice?: number;
   settlementType?: string;
   resolution?: Record<string, unknown>;
   cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
+  marketType?: 'BINARY' | 'MULTIPLE';
+  options?: Array<{
+    label: string;
+    description?: string;
+    imageUrl?: string;
+    probability: number;
+    displayOrder: number;
+  }>;
 }
 
 export function useCreateEvent() {

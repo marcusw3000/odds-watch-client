@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminEvent, useCreateEvent, useUpdateEvent, AdminEvent } from '@/hooks/useAdminEvents';
 import { 
   EVENT_CATEGORIES, 
@@ -29,7 +30,9 @@ import {
 import { ImageEditor } from '@/components/admin/ImageEditor';
 import { TagsInput } from '@/components/admin/TagsInput';
 import { CardStyleSelector } from '@/components/admin/CardStyleSelector';
+import { MultiOptionEditor, MarketOption } from '@/components/admin/MultiOptionEditor';
 import { CardStyleType } from '@/types/cardStyles';
+import { MarketType } from '@/types/marketOption';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -56,13 +59,22 @@ export function AdminEventFormPage() {
   const [category, setCategory] = useState<string>('');
   const [expiryAt, setExpiryAt] = useState<Date | undefined>();
   
+  // Market type (Binary vs Multiple)
+  const [marketType, setMarketType] = useState<MarketType>('BINARY');
+  
+  // Multiple options (for MULTIPLE type)
+  const [options, setOptions] = useState<MarketOption[]>([
+    { label: '', probability: 50, displayOrder: 0 },
+    { label: '', probability: 50, displayOrder: 1 },
+  ]);
+  
   // Resolution Source
   const [sourceType, setSourceType] = useState<ResolutionSourceType>('MANUAL');
   const [sourceName, setSourceName] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourceRule, setSourceRule] = useState('');
   
-  // Odds
+  // Odds (for Binary type)
   const [oddsYes, setOddsYes] = useState(50);
   const [initialOddsYes, setInitialOddsYes] = useState(50);
   const [oddsChangeReason, setOddsChangeReason] = useState('');
@@ -91,6 +103,9 @@ export function AdminEventFormPage() {
       setCategory(event.category);
       setExpiryAt(event.close_date ? parseISO(event.close_date) : undefined);
       
+      // Set market type
+      setMarketType((event.market_type as MarketType) || 'BINARY');
+      
       // Map resolution from Supabase
       const resolution = event.resolution as { type?: string; name?: string; url?: string; rule?: string } | null;
       if (resolution) {
@@ -112,6 +127,9 @@ export function AdminEventFormPage() {
         zoom: 1,
         position: { x: 50, y: 50 },
       });
+      
+      // Load options if MULTIPLE type
+      // Note: options would be loaded separately via a different query if needed
     }
   }, [event]);
 
@@ -137,12 +155,29 @@ export function AdminEventFormPage() {
     if (!sourceUrl.trim()) newErrors.sourceUrl = 'URL da fonte é obrigatória';
     if (!sourceRule.trim()) newErrors.sourceRule = 'Regra de resolução é obrigatória';
     
-    if (oddsYes < 1 || oddsYes > 99) newErrors.oddsYes = 'Probabilidade SIM deve estar entre 1% e 99%';
-
-    // If editing and odds changed, require reason
-    if (isEditing && oddsYes !== initialOddsYes) {
-      if (!oddsChangeReason.trim()) {
-        newErrors.oddsChangeReason = 'Motivo da alteração é obrigatório';
+    if (marketType === 'BINARY') {
+      if (oddsYes < 1 || oddsYes > 99) newErrors.oddsYes = 'Probabilidade SIM deve estar entre 1% e 99%';
+      
+      // If editing and odds changed, require reason
+      if (isEditing && oddsYes !== initialOddsYes) {
+        if (!oddsChangeReason.trim()) {
+          newErrors.oddsChangeReason = 'Motivo da alteração é obrigatório';
+        }
+      }
+    } else {
+      // Validate multiple options
+      if (options.length < 2) {
+        newErrors.options = 'Mínimo de 2 opções é obrigatório';
+      }
+      
+      const emptyLabels = options.filter(o => !o.label.trim());
+      if (emptyLabels.length > 0) {
+        newErrors.options = 'Todas as opções devem ter um nome';
+      }
+      
+      const probSum = options.reduce((sum, o) => sum + o.probability, 0);
+      if (probSum < 99 || probSum > 101) {
+        newErrors.options = 'A soma das probabilidades deve ser 100%';
       }
     }
 
@@ -175,7 +210,7 @@ export function AdminEventFormPage() {
           closeDate: expiryAt!.toISOString(),
           imageUrl: imageData.url || undefined,
           tags,
-          yesPrice: oddsYes / 100, // Convert percentage to decimal
+          yesPrice: marketType === 'BINARY' ? oddsYes / 100 : undefined,
           settlementType: sourceType,
           resolution,
           cardStyle,
@@ -191,10 +226,18 @@ export function AdminEventFormPage() {
           closeDate: expiryAt!.toISOString(),
           imageUrl: imageData.url || undefined,
           tags,
-          yesPrice: oddsYes / 100, // Convert percentage to decimal
+          yesPrice: marketType === 'BINARY' ? oddsYes / 100 : undefined,
           settlementType: sourceType,
           resolution,
           cardStyle,
+          marketType,
+          options: marketType === 'MULTIPLE' ? options.map(o => ({
+            label: o.label,
+            description: o.description,
+            imageUrl: o.imageUrl,
+            probability: o.probability,
+            displayOrder: o.displayOrder,
+          })) : undefined,
         });
         toast.success('Evento criado com sucesso');
         navigate(`/admin/events/${result.event.id}`);

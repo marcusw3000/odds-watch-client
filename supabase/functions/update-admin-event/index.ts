@@ -212,6 +212,104 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'update_event') {
+      const {
+        title,
+        description,
+        category,
+        closeDate,
+        imageUrl,
+        tags,
+        yesPrice,
+        settlementType,
+        resolution,
+        cardStyle,
+        reason,
+      } = body;
+
+      // Get current event for comparison
+      const { data: currentEvent, error: fetchError } = await adminClient
+        .from('markets')
+        .select('*')
+        .eq('id', eventId)
+        .single();
+
+      if (fetchError || !currentEvent) {
+        return new Response(JSON.stringify({ error: 'Event not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Build update object
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (category !== undefined) updateData.category = category;
+      if (closeDate !== undefined) updateData.close_date = closeDate;
+      if (imageUrl !== undefined) updateData.image_url = imageUrl;
+      if (tags !== undefined) updateData.tags = tags;
+      if (cardStyle !== undefined) updateData.card_style = cardStyle;
+      if (settlementType !== undefined) updateData.settlement_type = settlementType;
+      if (resolution !== undefined) updateData.resolution = resolution;
+
+      // Handle price update
+      if (yesPrice !== undefined) {
+        updateData.current_yes_price = yesPrice;
+        updateData.current_no_price = 1 - yesPrice;
+      }
+
+      const { data: updatedEvent, error: updateError } = await adminClient
+        .from('markets')
+        .update(updateData)
+        .eq('id', eventId)
+        .select()
+        .single();
+
+      if (updateError) {
+        logError(functionName, 'Event update failed', { error: updateError });
+        return new Response(JSON.stringify({ error: 'Failed to update event' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Log audit entry with changes
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      if (title !== undefined && title !== currentEvent.title) {
+        changes.title = { from: currentEvent.title, to: title };
+      }
+      if (yesPrice !== undefined && yesPrice !== currentEvent.current_yes_price) {
+        changes.yes_price = { from: currentEvent.current_yes_price, to: yesPrice };
+      }
+      if (category !== undefined && category !== currentEvent.category) {
+        changes.category = { from: currentEvent.category, to: category };
+      }
+
+      await adminClient.from('admin_audit_logs').insert({
+        admin_id: userId,
+        action: 'market_updated',
+        target_type: 'market',
+        target_id: eventId,
+        details: {
+          market_title: updatedEvent.title,
+          changes,
+          reason: reason || null,
+          admin_name: adminName,
+        },
+      });
+
+      logStep(functionName, 'Event updated', { eventId, changes: Object.keys(changes) });
+
+      return new Response(
+        JSON.stringify({ success: true, event: updatedEvent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'update_card_style') {
       const { cardStyle } = body;
       

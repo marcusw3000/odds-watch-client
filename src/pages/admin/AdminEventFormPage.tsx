@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Info, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Info, CalendarIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,10 +21,8 @@ import {
 } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AdminRepository } from '@/services/AdminRepository';
+import { useAdminEvent, useCreateEvent, useUpdateEvent, AdminEvent } from '@/hooks/useAdminEvents';
 import { 
-  MarketEvent, 
-  EventFormData, 
   EVENT_CATEGORIES, 
   ResolutionSourceType 
 } from '@/types/admin';
@@ -32,7 +30,7 @@ import { ImageEditor } from '@/components/admin/ImageEditor';
 import { TagsInput } from '@/components/admin/TagsInput';
 import { CardStyleSelector } from '@/components/admin/CardStyleSelector';
 import { CardStyleType } from '@/types/cardStyles';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -42,8 +40,15 @@ export function AdminEventFormPage() {
   const navigate = useNavigate();
   const isEditing = Boolean(id);
 
-  const [event, setEvent] = useState<MarketEvent | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Fetch event data from Supabase when editing
+  const { data: eventData, isLoading: loadingEvent, error: eventError } = useAdminEvent(id);
+  const event = eventData?.event;
+
+  // Mutations
+  const createEventMutation = useCreateEvent();
+  const updateEventMutation = useUpdateEvent();
+
+  const loading = createEventMutation.isPending || updateEventMutation.isPending;
 
   // Form state
   const [title, setTitle] = useState('');
@@ -59,6 +64,7 @@ export function AdminEventFormPage() {
   
   // Odds
   const [oddsYes, setOddsYes] = useState(50);
+  const [initialOddsYes, setInitialOddsYes] = useState(50);
   const [oddsChangeReason, setOddsChangeReason] = useState('');
 
   // Card style
@@ -77,25 +83,45 @@ export function AdminEventFormPage() {
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Populate form when event data loads
   useEffect(() => {
-    if (id) {
-      const eventData = AdminRepository.getEvent(id);
-      if (eventData) {
-        setEvent(eventData);
-        setTitle(eventData.title);
-        setDescription(eventData.description);
-        setCategory(eventData.category);
-        setExpiryAt(eventData.expiryAt);
-        setSourceType(eventData.resolutionSource.type);
-        setSourceName(eventData.resolutionSource.name);
-        setSourceUrl(eventData.resolutionSource.url);
-        setSourceRule(eventData.resolutionSource.rule);
-        setOddsYes(eventData.odds.yes);
-      } else {
-        navigate('/admin/events');
+    if (event) {
+      setTitle(event.title);
+      setDescription(event.description || '');
+      setCategory(event.category);
+      setExpiryAt(event.close_date ? parseISO(event.close_date) : undefined);
+      
+      // Map resolution from Supabase
+      const resolution = event.resolution as { type?: string; name?: string; url?: string; rule?: string } | null;
+      if (resolution) {
+        setSourceType((resolution.type as ResolutionSourceType) || 'MANUAL');
+        setSourceName(resolution.name || '');
+        setSourceUrl(resolution.url || '');
+        setSourceRule(resolution.rule || '');
       }
+      
+      // Convert price (0-1) to percentage (0-100)
+      const yesPercentage = Math.round(event.current_yes_price * 100);
+      setOddsYes(yesPercentage);
+      setInitialOddsYes(yesPercentage);
+      
+      setCardStyle((event.card_style as CardStyleType) || 'default');
+      setTags(event.tags || []);
+      setImageData({
+        url: event.image_url || '',
+        zoom: 1,
+        position: { x: 50, y: 50 },
+      });
     }
-  }, [id, navigate]);
+  }, [event]);
+
+  // Redirect if event not found after loading
+  useEffect(() => {
+    if (isEditing && !loadingEvent && eventError) {
+      toast.error('Evento não encontrado');
+      navigate('/admin/events');
+    }
+  }, [isEditing, loadingEvent, eventError, navigate]);
 
   // Calculate complement automatically
   const oddsNo = 100 - oddsYes;
@@ -110,12 +136,11 @@ export function AdminEventFormPage() {
     if (!sourceName.trim()) newErrors.sourceName = 'Nome da fonte é obrigatório';
     if (!sourceUrl.trim()) newErrors.sourceUrl = 'URL da fonte é obrigatória';
     if (!sourceRule.trim()) newErrors.sourceRule = 'Regra de resolução é obrigatória';
-    if (!imageData.url) newErrors.image = 'Imagem é obrigatória';
     
     if (oddsYes < 1 || oddsYes > 99) newErrors.oddsYes = 'Probabilidade SIM deve estar entre 1% e 99%';
 
     // If editing and odds changed, require reason
-    if (isEditing && event && oddsYes !== event.odds.yes) {
+    if (isEditing && oddsYes !== initialOddsYes) {
       if (!oddsChangeReason.trim()) {
         newErrors.oddsChangeReason = 'Motivo da alteração é obrigatório';
       }
@@ -133,58 +158,64 @@ export function AdminEventFormPage() {
       return;
     }
 
-    setLoading(true);
-
-    const formData: EventFormData = {
-      title,
-      description,
-      category,
-      expiryAt: expiryAt!,
-      resolutionSource: {
-        type: sourceType,
-        name: sourceName,
-        url: sourceUrl,
-        rule: sourceRule,
-      },
-      oddsYes,
-      oddsChangeReason: oddsChangeReason || undefined,
-      cardStyle,
+    const resolution = {
+      type: sourceType,
+      name: sourceName,
+      url: sourceUrl,
+      rule: sourceRule,
     };
 
     try {
       if (isEditing && id) {
-        const result = AdminRepository.updateEvent(id, formData, oddsChangeReason);
-        if (result) {
-          toast.success('Evento atualizado com sucesso');
-          navigate(`/admin/events/${id}`);
-        }
+        await updateEventMutation.mutateAsync({
+          eventId: id,
+          title,
+          description,
+          category,
+          closeDate: expiryAt!.toISOString(),
+          imageUrl: imageData.url || undefined,
+          tags,
+          yesPrice: oddsYes / 100, // Convert percentage to decimal
+          settlementType: sourceType,
+          resolution,
+          cardStyle,
+          reason: oddsChangeReason || undefined,
+        });
+        toast.success('Evento atualizado com sucesso');
+        navigate(`/admin/events/${id}`);
       } else {
-        const result = AdminRepository.createEvent(formData);
+        const result = await createEventMutation.mutateAsync({
+          title,
+          description,
+          category,
+          closeDate: expiryAt!.toISOString(),
+          imageUrl: imageData.url || undefined,
+          tags,
+          yesPrice: oddsYes / 100, // Convert percentage to decimal
+          settlementType: sourceType,
+          resolution,
+          cardStyle,
+        });
         toast.success('Evento criado com sucesso');
-        navigate(`/admin/events/${result.id}`);
+        navigate(`/admin/events/${result.event.id}`);
       }
     } catch (error: unknown) {
-      const err = error as { code?: string; status?: number; message?: string };
-      const errorCode = err?.code;
-      
-      if (errorCode === 'PGRST116') {
-        toast.error('Evento não encontrado ou foi removido');
-      } else if (errorCode === '23505') {
-        toast.error('Já existe um evento com este título');
-      } else if (errorCode === '23503') {
-        toast.error('Referência inválida. Verifique os dados informados.');
-      } else if (err?.status === 429) {
-        toast.error('Muitas tentativas. Aguarde alguns segundos.');
-      } else {
-        toast.error(`Erro ao salvar evento: ${err?.message || 'Erro desconhecido'}`);
-      }
-    } finally {
-      setLoading(false);
+      const err = error as { message?: string };
+      toast.error(`Erro ao salvar evento: ${err?.message || 'Erro desconhecido'}`);
     }
   };
 
   const isSourceEditable = !isEditing || event?.status === 'HALTED';
   const isOddsEditable = !isEditing || event?.status === 'OPEN' || event?.status === 'HALTED';
+
+  // Loading state for edit mode
+  if (isEditing && loadingEvent) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -287,7 +318,7 @@ export function AdminEventFormPage() {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  O evento será criado como <strong>Rascunho</strong>. Você poderá abri-lo para apostas depois.
+                  O evento será criado com status <strong>OPEN</strong> e estará disponível para negociações.
                 </AlertDescription>
               </Alert>
             )}
@@ -428,8 +459,8 @@ export function AdminEventFormPage() {
 
             {errors.oddsYes && <p className="text-xs text-destructive">{errors.oddsYes}</p>}
 
-            {/* Probability Change Reason (only when editing) */}
-            {isEditing && event && oddsYes !== event.odds.yes && (
+            {/* Probability Change Reason (only when editing and changed) */}
+            {isEditing && oddsYes !== initialOddsYes && (
               <div className="space-y-2">
                 <Label htmlFor="oddsChangeReason">Motivo da Alteração *</Label>
                 <Textarea

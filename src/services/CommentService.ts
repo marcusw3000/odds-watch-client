@@ -425,9 +425,10 @@ export const CommentService = {
     }
   },
 
-  // Admin: Get all reports
+  // Admin: Get all reports (from both market comments and suggestion comments)
   async getReports(status?: string, reason?: string): Promise<CommentReport[]> {
-    let query = supabase
+    // Fetch from market comment_reports
+    let marketQuery = supabase
       .from('comment_reports')
       .select(`
         *,
@@ -442,24 +443,61 @@ export const CommentService = {
       .order('created_at', { ascending: false });
 
     if (status) {
-      query = query.eq('status', status);
+      marketQuery = marketQuery.eq('status', status);
     }
-
     if (reason) {
-      query = query.eq('reason', reason);
+      marketQuery = marketQuery.eq('reason', reason);
     }
 
-    const { data, error } = await query;
+    // Fetch from suggestion_comment_reports
+    let suggestionQuery = supabase
+      .from('suggestion_comment_reports')
+      .select(`
+        *,
+        suggestion_comments:comment_id (
+          id,
+          content,
+          user_id,
+          suggestion_id,
+          suggestions:suggestion_id (title)
+        )
+      `)
+      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching reports:', error);
-      return [];
+    if (status) {
+      suggestionQuery = suggestionQuery.eq('status', status);
+    }
+    if (reason) {
+      suggestionQuery = suggestionQuery.eq('reason', reason);
     }
 
-    // Get reporter and author names via Edge Function
-    const reporterIds = [...new Set((data || []).map(r => r.reporter_id))];
-    const authorIds = [...new Set((data || []).map(r => (r.comments as any)?.user_id).filter(Boolean))];
-    const allUserIds = [...new Set([...reporterIds, ...authorIds])];
+    const [marketResult, suggestionResult] = await Promise.all([
+      marketQuery,
+      suggestionQuery
+    ]);
+
+    if (marketResult.error) {
+      console.error('Error fetching market reports:', marketResult.error);
+    }
+    if (suggestionResult.error) {
+      console.error('Error fetching suggestion reports:', suggestionResult.error);
+    }
+
+    const marketData = marketResult.data || [];
+    const suggestionData = suggestionResult.data || [];
+
+    // Collect all unique user IDs for display info
+    const marketReporterIds = marketData.map(r => r.reporter_id);
+    const marketAuthorIds = marketData.map(r => (r.comments as any)?.user_id).filter(Boolean);
+    const suggestionReporterIds = suggestionData.map(r => r.reporter_id);
+    const suggestionAuthorIds = suggestionData.map(r => (r.suggestion_comments as any)?.user_id).filter(Boolean);
+    
+    const allUserIds = [...new Set([
+      ...marketReporterIds, 
+      ...marketAuthorIds, 
+      ...suggestionReporterIds, 
+      ...suggestionAuthorIds
+    ])];
 
     const displayInfoMap = new Map<string, string>();
     
@@ -476,7 +514,8 @@ export const CommentService = {
       return displayInfoMap.get(userId) || 'Usuário';
     };
 
-    return (data || []).map(report => ({
+    // Map market reports
+    const marketReports: CommentReport[] = marketData.map(report => ({
       id: report.id,
       commentId: report.comment_id,
       reporterId: report.reporter_id,
@@ -490,6 +529,7 @@ export const CommentService = {
       reporterName: getName(report.reporter_id),
       commentAuthorName: (report.comments as any)?.user_id ? getName((report.comments as any).user_id) : undefined,
       marketTitle: (report.comments as any)?.markets?.title,
+      source: 'market' as const,
       comment: (report.comments as any) ? {
         id: (report.comments as any).id,
         content: (report.comments as any).content,
@@ -497,13 +537,45 @@ export const CommentService = {
         marketId: (report.comments as any).market_id,
       } as any : undefined,
     }));
+
+    // Map suggestion reports
+    const suggestionReports: CommentReport[] = suggestionData.map(report => ({
+      id: report.id,
+      commentId: report.comment_id,
+      reporterId: report.reporter_id,
+      reason: report.reason as CommentReport['reason'],
+      description: report.description || undefined,
+      status: report.status as CommentReport['status'],
+      reviewedBy: report.reviewed_by || undefined,
+      reviewedAt: report.reviewed_at ? new Date(report.reviewed_at) : undefined,
+      actionTaken: report.action_taken as CommentReport['actionTaken'],
+      createdAt: new Date(report.created_at),
+      reporterName: getName(report.reporter_id),
+      commentAuthorName: (report.suggestion_comments as any)?.user_id ? getName((report.suggestion_comments as any).user_id) : undefined,
+      suggestionTitle: (report.suggestion_comments as any)?.suggestions?.title,
+      suggestionId: (report.suggestion_comments as any)?.suggestion_id,
+      source: 'suggestion' as const,
+      comment: (report.suggestion_comments as any) ? {
+        id: (report.suggestion_comments as any).id,
+        content: (report.suggestion_comments as any).content,
+        userId: (report.suggestion_comments as any).user_id,
+        marketId: undefined,
+      } as any : undefined,
+    }));
+
+    // Combine and sort by created_at desc
+    const allReports = [...marketReports, ...suggestionReports];
+    allReports.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return allReports;
   },
 
   // Admin: Update report status
   async updateReportStatus(
     reportId: string, 
     status: CommentReport['status'],
-    actionTaken?: CommentReport['actionTaken']
+    actionTaken?: CommentReport['actionTaken'],
+    source: 'market' | 'suggestion' = 'market'
   ): Promise<void> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -520,8 +592,11 @@ export const CommentService = {
       updateData.action_taken = actionTaken;
     }
 
+    const tableName = source === 'suggestion' ? 'suggestion_comment_reports' : 'comment_reports';
+    const commentsTable = source === 'suggestion' ? 'suggestion_comments' : 'comments';
+
     const { error } = await supabase
-      .from('comment_reports')
+      .from(tableName)
       .update(updateData)
       .eq('id', reportId);
 
@@ -530,10 +605,10 @@ export const CommentService = {
       throw new Error('Erro ao atualizar denúncia');
     }
 
-    // If action is to hide the comment, update the comment
+    // If action is to hide or delete the comment
     if (actionTaken === 'hidden' || actionTaken === 'deleted') {
       const { data: report } = await supabase
-        .from('comment_reports')
+        .from(tableName)
         .select('comment_id')
         .eq('id', reportId)
         .single();
@@ -541,12 +616,12 @@ export const CommentService = {
       if (report) {
         if (actionTaken === 'hidden') {
           await supabase
-            .from('comments')
+            .from(commentsTable)
             .update({ is_hidden: true })
             .eq('id', report.comment_id);
         } else if (actionTaken === 'deleted') {
           await supabase
-            .from('comments')
+            .from(commentsTable)
             .delete()
             .eq('id', report.comment_id);
         }
@@ -554,18 +629,26 @@ export const CommentService = {
     }
   },
 
-  // Admin: Get pending reports count
+  // Admin: Get pending reports count (from both tables)
   async getPendingReportsCount(): Promise<number> {
-    const { count, error } = await supabase
-      .from('comment_reports')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
+    const [marketCount, suggestionCount] = await Promise.all([
+      supabase
+        .from('comment_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'PENDING'),
+      supabase
+        .from('suggestion_comment_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'PENDING')
+    ]);
 
-    if (error) {
-      console.error('Error fetching pending reports count:', error);
-      return 0;
+    if (marketCount.error) {
+      console.error('Error fetching market pending reports count:', marketCount.error);
+    }
+    if (suggestionCount.error) {
+      console.error('Error fetching suggestion pending reports count:', suggestionCount.error);
     }
 
-    return count || 0;
+    return (marketCount.count || 0) + (suggestionCount.count || 0);
   },
 };

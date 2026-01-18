@@ -147,7 +147,8 @@ export function AdminReportsPage() {
       await CommentService.updateReportStatus(
         selectedReport.id,
         newStatus,
-        selectedAction
+        selectedAction,
+        selectedReport.source
       );
       
       toast({
@@ -363,6 +364,11 @@ export function AdminReportsPage() {
                   <TableRow key={report.id}>
                     <TableCell className="max-w-xs">
                       <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={report.source === 'suggestion' ? 'outline' : 'secondary'} className="text-xs">
+                            {report.source === 'suggestion' ? 'Sugestão' : 'Mercado'}
+                          </Badge>
+                        </div>
                         <p className="text-sm font-medium truncate">
                           {report.comment?.content?.slice(0, 50)}
                           {(report.comment?.content?.length || 0) > 50 ? '...' : ''}
@@ -373,6 +379,12 @@ export function AdminReportsPage() {
                             <>
                               <span>•</span>
                               <span className="truncate max-w-32">{report.marketTitle}</span>
+                            </>
+                          )}
+                          {report.suggestionTitle && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate max-w-32">{report.suggestionTitle}</span>
                             </>
                           )}
                         </div>
@@ -407,11 +419,19 @@ export function AdminReportsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalhes
                           </DropdownMenuItem>
-                          {report.comment?.marketId && (
+                          {report.source === 'market' && report.comment?.marketId && (
                             <DropdownMenuItem asChild>
                               <Link to={`/market/${report.comment.marketId}`} target="_blank">
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 Ver no Mercado
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                          {report.source === 'suggestion' && report.suggestionId && (
+                            <DropdownMenuItem asChild>
+                              <Link to={`/suggestions/${report.suggestionId}`} target="_blank">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Ver na Sugestão
                               </Link>
                             </DropdownMenuItem>
                           )}

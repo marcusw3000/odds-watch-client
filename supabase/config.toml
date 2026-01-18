@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.notify-support-reply]
 verify_jwt = false
+
+[functions.get-admin-support-tickets]
+verify_jwt = false

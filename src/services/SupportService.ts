@@ -71,18 +71,12 @@ export async function getTicketMessages(ticketId: string): Promise<SupportMessag
     userIds.map(async (userId) => {
       try {
         const { data: info } = await supabase.functions.invoke('get-user-display-info', {
-          body: null,
-          headers: {},
+          body: { user_id: userId, context: 'support' },
         });
-        // Use query params approach
-        const response = await supabase.functions.invoke(
-          `get-user-display-info?user_id=${encodeURIComponent(userId)}&context=support`,
-          { method: 'GET' }
-        );
-        if (response.data) {
+        if (info) {
           displayInfoMap.set(userId, {
-            displayName: response.data.display_name || 'Usuário',
-            avatarUrl: response.data.avatar_url,
+            displayName: info.display_name || 'Usuário',
+            avatarUrl: info.avatar_url,
           });
         }
       } catch {

@@ -29,10 +29,21 @@ serve(async (req) => {
       requestingUserId = claimsData?.claims?.sub || null;
     }
 
-    // Get user_id and context from query params
+    // Get user_id and context from query params OR body
     const url = new URL(req.url);
-    const targetUserId = url.searchParams.get("user_id");
-    const context = url.searchParams.get("context"); // "comment" | "profile" | etc
+    let targetUserId = url.searchParams.get("user_id");
+    let context = url.searchParams.get("context"); // "comment" | "profile" | "support"
+
+    // Also check body for POST requests
+    if (!targetUserId && req.method === "POST") {
+      try {
+        const body = await req.json();
+        targetUserId = body.user_id || null;
+        context = body.context || context;
+      } catch {
+        // Ignore JSON parse errors
+      }
+    }
 
     if (!targetUserId) {
       return new Response(

@@ -18,6 +18,7 @@ export interface AdminEvent {
   halt_reason: string | null;
   image_url: string | null;
   tags: string[] | null;
+  card_style: string | null;
   created_at: string;
   updated_at: string;
   settlement_type: string;
@@ -181,6 +182,38 @@ export function useDeleteEvent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+    },
+  });
+}
+
+export function useUpdateCardStyle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      cardStyle,
+    }: {
+      eventId: string;
+      cardStyle: 'default' | 'buttons' | 'simple' | 'minimal';
+    }) => {
+      const { data, error } = await supabase.functions.invoke('update-admin-event', {
+        method: 'POST',
+        body: {
+          action: 'update_card_style',
+          eventId,
+          cardStyle,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-event', variables.eventId] });
     },
   });
 }

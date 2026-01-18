@@ -644,6 +644,7 @@ export type Database = {
       }
       markets: {
         Row: {
+          card_style: string | null
           category: string
           close_date: string | null
           contract_unit_cost: number
@@ -677,6 +678,7 @@ export type Database = {
           yes_shares: number
         }
         Insert: {
+          card_style?: string | null
           category?: string
           close_date?: string | null
           contract_unit_cost?: number
@@ -710,6 +712,7 @@ export type Database = {
           yes_shares?: number
         }
         Update: {
+          card_style?: string | null
           category?: string
           close_date?: string | null
           contract_unit_cost?: number

@@ -62,12 +62,12 @@ export function AdminAppearancePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
           <Palette className="h-6 w-6 text-primary" />
-          Aparência
+          Aparência Padrão
         </h1>
         <p className="text-muted-foreground mt-1">
-          Personalize a aparência dos cards de mercado
+          Estilo padrão para eventos que não têm estilo individual definido
         </p>
       </div>
 
@@ -75,9 +75,10 @@ export function AdminAppearancePage() {
         {/* Card Styles Selection */}
         <Card>
           <CardHeader>
-            <CardTitle>Estilo dos Cards</CardTitle>
+            <CardTitle>Estilo Padrão dos Cards</CardTitle>
             <CardDescription>
-              Escolha como os cards de mercado serão exibidos na página principal
+              Este estilo será usado quando um evento não tiver estilo individual configurado. 
+              Você pode definir estilos individuais na tela de edição de cada evento.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

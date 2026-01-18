@@ -317,6 +317,363 @@ export type Database = {
           },
         ]
       }
+      copied_trades: {
+        Row: {
+          commission_processed: boolean
+          copied_amount: number
+          copied_price: number | null
+          copied_transaction_id: string | null
+          created_at: string
+          executed_at: string | null
+          failure_reason: string | null
+          id: string
+          is_settled: boolean
+          market_id: string
+          original_amount: number
+          original_price: number
+          original_transaction_id: string
+          outcome: string
+          profit_amount: number | null
+          settled_at: string | null
+          skip_reason: string | null
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          commission_processed?: boolean
+          copied_amount: number
+          copied_price?: number | null
+          copied_transaction_id?: string | null
+          created_at?: string
+          executed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          is_settled?: boolean
+          market_id: string
+          original_amount: number
+          original_price: number
+          original_transaction_id: string
+          outcome: string
+          profit_amount?: number | null
+          settled_at?: string | null
+          skip_reason?: string | null
+          status?: string
+          subscription_id: string
+        }
+        Update: {
+          commission_processed?: boolean
+          copied_amount?: number
+          copied_price?: number | null
+          copied_transaction_id?: string | null
+          created_at?: string
+          executed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          is_settled?: boolean
+          market_id?: string
+          original_amount?: number
+          original_price?: number
+          original_transaction_id?: string
+          outcome?: string
+          profit_amount?: number | null
+          settled_at?: string | null
+          skip_reason?: string | null
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copied_trades_copied_transaction_id_fkey"
+            columns: ["copied_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copied_trades_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copied_trades_original_transaction_id_fkey"
+            columns: ["original_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copied_trades_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "copy_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_subscriptions: {
+        Row: {
+          auto_copy: boolean
+          cancelled_at: string | null
+          copy_percentage: number | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          follower_id: string
+          id: string
+          max_trade_amount: number | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          total_commission_paid: number
+          total_profit: number
+          total_trades_copied: number
+          trader_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_copy?: boolean
+          cancelled_at?: string | null
+          copy_percentage?: number | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          follower_id: string
+          id?: string
+          max_trade_amount?: number | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          total_commission_paid?: number
+          total_profit?: number
+          total_trades_copied?: number
+          trader_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_copy?: boolean
+          cancelled_at?: string | null
+          copy_percentage?: number | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          follower_id?: string
+          id?: string
+          max_trade_amount?: number | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          total_commission_paid?: number
+          total_profit?: number
+          total_trades_copied?: number
+          trader_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_subscriptions_trader_id_fkey"
+            columns: ["trader_id"]
+            isOneToOne: false
+            referencedRelation: "copy_traders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_trade_commissions: {
+        Row: {
+          commission_total: number
+          copied_trade_id: string
+          created_at: string
+          follower_id: string
+          id: string
+          platform_ledger_id: string | null
+          platform_share: number
+          platform_split_percent: number
+          profit_amount: number
+          profit_share_percent: number
+          trader_id: string
+          trader_ledger_id: string | null
+          trader_share: number
+          trader_split_percent: number
+        }
+        Insert: {
+          commission_total: number
+          copied_trade_id: string
+          created_at?: string
+          follower_id: string
+          id?: string
+          platform_ledger_id?: string | null
+          platform_share: number
+          platform_split_percent: number
+          profit_amount: number
+          profit_share_percent: number
+          trader_id: string
+          trader_ledger_id?: string | null
+          trader_share: number
+          trader_split_percent: number
+        }
+        Update: {
+          commission_total?: number
+          copied_trade_id?: string
+          created_at?: string
+          follower_id?: string
+          id?: string
+          platform_ledger_id?: string | null
+          platform_share?: number
+          platform_split_percent?: number
+          profit_amount?: number
+          profit_share_percent?: number
+          trader_id?: string
+          trader_ledger_id?: string | null
+          trader_share?: number
+          trader_split_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_trade_commissions_copied_trade_id_fkey"
+            columns: ["copied_trade_id"]
+            isOneToOne: false
+            referencedRelation: "copied_trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_trade_commissions_platform_ledger_id_fkey"
+            columns: ["platform_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_trade_commissions_trader_id_fkey"
+            columns: ["trader_id"]
+            isOneToOne: false
+            referencedRelation: "copy_traders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_trade_commissions_trader_ledger_id_fkey"
+            columns: ["trader_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_trade_settings: {
+        Row: {
+          created_at: string | null
+          default_monthly_fee: number
+          default_platform_split: number
+          default_profit_share_percent: number
+          default_trader_split: number
+          id: string
+          max_trader_split: number
+          min_trader_split: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_monthly_fee?: number
+          default_platform_split?: number
+          default_profit_share_percent?: number
+          default_trader_split?: number
+          id?: string
+          max_trader_split?: number
+          min_trader_split?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_monthly_fee?: number
+          default_platform_split?: number
+          default_profit_share_percent?: number
+          default_trader_split?: number
+          id?: string
+          max_trader_split?: number
+          min_trader_split?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      copy_traders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          custom_platform_split: number | null
+          custom_trader_split: number | null
+          display_name: string
+          id: string
+          monthly_fee: number | null
+          profit_share_percent: number | null
+          rejection_reason: string | null
+          status: string
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          suspended_at: string | null
+          total_earnings: number
+          total_followers: number
+          total_trades_copied: number
+          updated_at: string
+          user_id: string
+          win_rate: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          custom_platform_split?: number | null
+          custom_trader_split?: number | null
+          display_name: string
+          id?: string
+          monthly_fee?: number | null
+          profit_share_percent?: number | null
+          rejection_reason?: string | null
+          status?: string
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          suspended_at?: string | null
+          total_earnings?: number
+          total_followers?: number
+          total_trades_copied?: number
+          updated_at?: string
+          user_id: string
+          win_rate?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          custom_platform_split?: number | null
+          custom_trader_split?: number | null
+          display_name?: string
+          id?: string
+          monthly_fee?: number | null
+          profit_share_percent?: number | null
+          rejection_reason?: string | null
+          status?: string
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          suspended_at?: string | null
+          total_earnings?: number
+          total_followers?: number
+          total_trades_copied?: number
+          updated_at?: string
+          user_id?: string
+          win_rate?: number | null
+        }
+        Relationships: []
+      }
       fee_policy_snapshots: {
         Row: {
           applied_flat: number | null
@@ -957,6 +1314,7 @@ export type Database = {
           best_suggestion_score: number | null
           best_trade_profit: number
           bio: string | null
+          copy_trader_id: string | null
           created_at: string
           current_streak: number
           display_name: string | null
@@ -967,6 +1325,7 @@ export type Database = {
           has_night_trade: boolean | null
           has_speed_trade: boolean | null
           id: string
+          is_copy_trader: boolean | null
           is_public: boolean
           markets_won_streak: number | null
           roi_percent: number
@@ -994,6 +1353,7 @@ export type Database = {
           best_suggestion_score?: number | null
           best_trade_profit?: number
           bio?: string | null
+          copy_trader_id?: string | null
           created_at?: string
           current_streak?: number
           display_name?: string | null
@@ -1004,6 +1364,7 @@ export type Database = {
           has_night_trade?: boolean | null
           has_speed_trade?: boolean | null
           id: string
+          is_copy_trader?: boolean | null
           is_public?: boolean
           markets_won_streak?: number | null
           roi_percent?: number
@@ -1031,6 +1392,7 @@ export type Database = {
           best_suggestion_score?: number | null
           best_trade_profit?: number
           bio?: string | null
+          copy_trader_id?: string | null
           created_at?: string
           current_streak?: number
           display_name?: string | null
@@ -1041,6 +1403,7 @@ export type Database = {
           has_night_trade?: boolean | null
           has_speed_trade?: boolean | null
           id?: string
+          is_copy_trader?: boolean | null
           is_public?: boolean
           markets_won_streak?: number | null
           roi_percent?: number
@@ -1060,7 +1423,15 @@ export type Database = {
           weekend_trades?: number | null
           winning_trades?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_copy_trader_id_fkey"
+            columns: ["copy_trader_id"]
+            isOneToOne: false
+            referencedRelation: "copy_traders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_commissions: {
         Row: {

@@ -141,7 +141,7 @@ export function SuggestionCommentThread({
   };
 
   return (
-    <div className={cn('relative', depth > 0 && 'border-l-2 border-muted pl-4 ml-4')}>
+    <div className={cn('relative pb-4', depth > 0 && 'border-l-2 border-muted pl-4 ml-4')}>
       {/* Comment content */}
       <div className="flex gap-3">
         <Avatar className="h-8 w-8">

@@ -168,9 +168,9 @@ export function useUserDisplayInfo(userId: string | null) {
     queryFn: async (): Promise<UserDisplayInfo | null> => {
       if (!userId) return null;
       
-      const { data, error } = await supabase.functions.invoke('get-user-display-info', {
-        body: { user_id: userId },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        `get-user-display-info?user_id=${encodeURIComponent(userId)}`
+      );
       
       if (error) {
         console.error('Error fetching user display info:', error);

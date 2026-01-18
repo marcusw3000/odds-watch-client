@@ -1927,6 +1927,9 @@ export type Database = {
         | "PRICE_ALERT"
         | "SUGGESTION_COMMENT_MENTION"
         | "SUGGESTION_COMMENT_REPLY"
+        | "ADMIN_NEW_TICKET"
+        | "ADMIN_NEW_REPORT"
+        | "ADMIN_NEW_CONTESTATION"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -2108,6 +2111,9 @@ export const Constants = {
         "PRICE_ALERT",
         "SUGGESTION_COMMENT_MENTION",
         "SUGGESTION_COMMENT_REPLY",
+        "ADMIN_NEW_TICKET",
+        "ADMIN_NEW_REPORT",
+        "ADMIN_NEW_CONTESTATION",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

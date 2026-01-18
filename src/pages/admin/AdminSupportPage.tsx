@@ -52,8 +52,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/hooks/useAuth';
 import { useDebounce } from '@/hooks/useDebounce';
+import { usePagination } from '@/hooks/usePagination';
 import {
   getAllTickets,
   getTicketMessages,
@@ -63,6 +65,7 @@ import {
   updateTicketPriority,
   sendStaffMessage,
   type TicketFilters,
+  type TicketsResponse,
 } from '@/services/SupportService';
 import {
   CATEGORY_LABELS,
@@ -153,12 +156,25 @@ export default function AdminSupportPage() {
     refetchInterval: 30000,
   });
 
-  // Tickets query
-  const { data: tickets = [], isLoading: ticketsLoading } = useQuery({
-    queryKey: ['admin-support-tickets', filters],
-    queryFn: () => getAllTickets(filters),
+  // Pagination
+  const pagination = usePagination({
+    initialPageSize: 25,
+  });
+
+  // Tickets query with pagination
+  const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
+    queryKey: ['admin-support-tickets', filters, pagination.page, pagination.pageSize],
+    queryFn: () => getAllTickets({
+      ...filters,
+      limit: pagination.pageSize,
+      offset: pagination.offset,
+    }),
     refetchInterval: 15000,
   });
+
+  // Update pagination total when data changes
+  const totalCount = ticketsData?.totalCount || 0;
+  const tickets = ticketsData?.tickets || [];
 
   // Messages query for selected ticket
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
@@ -252,6 +268,11 @@ export default function AdminSupportPage() {
 
     return result;
   }, [tickets, dateFilter]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    pagination.resetPage();
+  }, [filters, dateFilter]);
 
   return (
     <div className="space-y-6">
@@ -549,7 +570,7 @@ export default function AdminSupportPage() {
         <CardHeader>
           <CardTitle>Tickets</CardTitle>
           <CardDescription>
-            {filteredTickets.length} ticket(s) encontrado(s)
+            {filteredTickets.length} ticket(s) na página • {totalCount} total
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -568,77 +589,94 @@ export default function AdminSupportPage() {
               )}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Assunto</TableHead>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Prioridade</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Atribuído</TableHead>
-                  <TableHead>Criado</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTickets.map((ticket) => (
-                  <TableRow key={ticket.id}>
-                    <TableCell className="font-medium max-w-[200px] truncate">
-                      {ticket.subject}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm">{ticket.user_display_name || 'Sem nome'}</span>
-                        <span className="text-xs text-muted-foreground">{ticket.user_email}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{CATEGORY_LABELS[ticket.category]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={PRIORITY_VARIANTS[ticket.priority]}>
-                        {PRIORITY_LABELS[ticket.priority]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANTS[ticket.status]}>
-                        {STATUS_LABELS[ticket.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {ticket.assigned_name || (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(ticket.created_at), "dd/MM HH:mm", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {!ticket.assigned_to && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAssignToMe(ticket)}
-                            disabled={assignMutation.isPending}
-                          >
-                            Assumir
-                          </Button>
-                        )}
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => setSelectedTicket(ticket)}
-                        >
-                          Ver
-                        </Button>
-                      </div>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Assunto</TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Atribuído</TableHead>
+                    <TableHead>Criado</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredTickets.map((ticket) => (
+                    <TableRow key={ticket.id}>
+                      <TableCell className="font-medium max-w-[200px] truncate">
+                        {ticket.subject}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-sm">{ticket.user_display_name || 'Sem nome'}</span>
+                          <span className="text-xs text-muted-foreground">{ticket.user_email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{CATEGORY_LABELS[ticket.category]}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={PRIORITY_VARIANTS[ticket.priority]}>
+                          {PRIORITY_LABELS[ticket.priority]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_VARIANTS[ticket.status]}>
+                          {STATUS_LABELS[ticket.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {ticket.assigned_name || (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(ticket.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {!ticket.assigned_to && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAssignToMe(ticket)}
+                              disabled={assignMutation.isPending}
+                            >
+                              Assumir
+                            </Button>
+                          )}
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setSelectedTicket(ticket)}
+                          >
+                            Ver
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              <TablePagination
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                totalItems={totalCount}
+                totalPages={Math.ceil(totalCount / pagination.pageSize) || 1}
+                pageNumbers={pagination.pageNumbers}
+                canPrevPage={pagination.canPrevPage}
+                canNextPage={pagination.canNextPage}
+                startItem={pagination.startItem}
+                endItem={Math.min(pagination.endItem, totalCount)}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>

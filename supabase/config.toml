@@ -71,3 +71,33 @@ verify_jwt = false
 
 [functions.create-admin-event]
 verify_jwt = false
+
+[functions.create-payment-intent]
+verify_jwt = false
+
+[functions.confirm-payment]
+verify_jwt = false
+
+[functions.charge-saved-card]
+verify_jwt = false
+
+[functions.get-saved-cards]
+verify_jwt = false
+
+[functions.check-pix-status]
+verify_jwt = false
+
+[functions.process-withdrawal]
+verify_jwt = false
+
+[functions.bcb-data-fetcher]
+verify_jwt = false
+
+[functions.check-economic-events]
+verify_jwt = false
+
+[functions.subscribe-copy-trader]
+verify_jwt = false
+
+[functions.verify-copy-subscription]
+verify_jwt = false

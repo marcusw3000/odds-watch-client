@@ -26,9 +26,7 @@ import {
   MarketEvent, 
   EventFormData, 
   EVENT_CATEGORIES, 
-  ResolutionSourceType,
-  OddsMode,
-  SpreadPolicy 
+  ResolutionSourceType 
 } from '@/types/admin';
 import { ImageEditor } from '@/components/admin/ImageEditor';
 import { TagsInput } from '@/components/admin/TagsInput';
@@ -60,10 +58,7 @@ export function AdminEventFormPage() {
   const [sourceRule, setSourceRule] = useState('');
   
   // Odds
-  const [oddsMode, setOddsMode] = useState<OddsMode>('MANUAL_PROBABILITY');
-  const [spreadPolicy, setSpreadPolicy] = useState<SpreadPolicy>('AUTO_COMPLEMENT');
   const [oddsYes, setOddsYes] = useState(50);
-  const [oddsNo, setOddsNo] = useState(50);
   const [oddsChangeReason, setOddsChangeReason] = useState('');
 
   // Card style
@@ -95,22 +90,15 @@ export function AdminEventFormPage() {
         setSourceName(eventData.resolutionSource.name);
         setSourceUrl(eventData.resolutionSource.url);
         setSourceRule(eventData.resolutionSource.rule);
-        setOddsMode(eventData.oddsConfig.mode);
-        setSpreadPolicy(eventData.oddsConfig.spreadPolicy);
         setOddsYes(eventData.odds.yes);
-        setOddsNo(eventData.odds.no);
       } else {
         navigate('/admin/events');
       }
     }
   }, [id, navigate]);
 
-  // Auto-calculate complement
-  useEffect(() => {
-    if (spreadPolicy === 'AUTO_COMPLEMENT') {
-      setOddsNo(100 - oddsYes);
-    }
-  }, [oddsYes, spreadPolicy]);
+  // Calculate complement automatically
+  const oddsNo = 100 - oddsYes;
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -124,16 +112,10 @@ export function AdminEventFormPage() {
     if (!sourceRule.trim()) newErrors.sourceRule = 'Regra de resolução é obrigatória';
     if (!imageData.url) newErrors.image = 'Imagem é obrigatória';
     
-    if (oddsYes < 1 || oddsYes > 99) newErrors.oddsYes = 'Odds SIM deve estar entre 1 e 99';
-    if (oddsNo < 1 || oddsNo > 99) newErrors.oddsNo = 'Odds NÃO deve estar entre 1 e 99';
-    
-    const total = oddsYes + oddsNo;
-    if (total < 98 || total > 102) {
-      newErrors.oddsTotal = 'A soma das odds deve ser aproximadamente 100';
-    }
+    if (oddsYes < 1 || oddsYes > 99) newErrors.oddsYes = 'Probabilidade SIM deve estar entre 1% e 99%';
 
     // If editing and odds changed, require reason
-    if (isEditing && event && (oddsYes !== event.odds.yes || oddsNo !== event.odds.no)) {
+    if (isEditing && event && oddsYes !== event.odds.yes) {
       if (!oddsChangeReason.trim()) {
         newErrors.oddsChangeReason = 'Motivo da alteração é obrigatório';
       }
@@ -164,12 +146,7 @@ export function AdminEventFormPage() {
         url: sourceUrl,
         rule: sourceRule,
       },
-      oddsConfig: {
-        mode: oddsMode,
-        spreadPolicy,
-      },
       oddsYes,
-      oddsNo,
       oddsChangeReason: oddsChangeReason || undefined,
       cardStyle,
     };
@@ -409,12 +386,12 @@ export function AdminEventFormPage() {
           </CardContent>
         </Card>
 
-        {/* Block C - Odds Configuration */}
+        {/* Block C - Initial Probability */}
         <Card>
           <CardHeader>
-            <CardTitle>Configuração de Odds</CardTitle>
+            <CardTitle>Probabilidade Inicial</CardTitle>
             <CardDescription>
-              Defina as probabilidades iniciais do evento
+              Defina a probabilidade inicial de SIM. O mercado LMSR ajustará automaticamente com base nas negociações.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -422,52 +399,16 @@ export function AdminEventFormPage() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  As odds só podem ser alteradas enquanto o evento está aberto.
+                  A probabilidade só pode ser alterada enquanto o evento está aberto ou pausado.
                 </AlertDescription>
               </Alert>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Modo de Odds</Label>
-                <Select 
-                  value={oddsMode} 
-                  onValueChange={(v) => setOddsMode(v as OddsMode)}
-                  disabled={!isOddsEditable}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MANUAL_PROBABILITY">Probabilidade Manual</SelectItem>
-                    <SelectItem value="MANUAL_PRICE">Preço Manual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Política de Spread</Label>
-                <Select 
-                  value={spreadPolicy} 
-                  onValueChange={(v) => setSpreadPolicy(v as SpreadPolicy)}
-                  disabled={!isOddsEditable}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AUTO_COMPLEMENT">Complemento Automático</SelectItem>
-                    <SelectItem value="MANUAL_BOTH">Manual Ambos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Odds Slider */}
+            {/* Probability Slider */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label>Preço SIM: {oddsYes}%</Label>
-                <Label>Preço NÃO: {oddsNo}%</Label>
+                <Label>SIM: {oddsYes}%</Label>
+                <Label>NÃO: {oddsNo}%</Label>
               </div>
               <Slider
                 value={[oddsYes]}
@@ -485,33 +426,17 @@ export function AdminEventFormPage() {
               </div>
             </div>
 
-            {spreadPolicy === 'MANUAL_BOTH' && (
-              <div className="space-y-2">
-                <Label>Preço NÃO (Manual)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={oddsNo}
-                  onChange={(e) => setOddsNo(Number(e.target.value))}
-                  disabled={!isOddsEditable}
-                />
-              </div>
-            )}
-
             {errors.oddsYes && <p className="text-xs text-destructive">{errors.oddsYes}</p>}
-            {errors.oddsNo && <p className="text-xs text-destructive">{errors.oddsNo}</p>}
-            {errors.oddsTotal && <p className="text-xs text-destructive">{errors.oddsTotal}</p>}
 
-            {/* Odds Change Reason (only when editing) */}
-            {isEditing && event && (oddsYes !== event.odds.yes || oddsNo !== event.odds.no) && (
+            {/* Probability Change Reason (only when editing) */}
+            {isEditing && event && oddsYes !== event.odds.yes && (
               <div className="space-y-2">
                 <Label htmlFor="oddsChangeReason">Motivo da Alteração *</Label>
                 <Textarea
                   id="oddsChangeReason"
                   value={oddsChangeReason}
                   onChange={(e) => setOddsChangeReason(e.target.value)}
-                  placeholder="Explique o motivo da alteração das odds..."
+                  placeholder="Explique o motivo da alteração da probabilidade..."
                   rows={2}
                   className={errors.oddsChangeReason ? 'border-destructive' : ''}
                 />

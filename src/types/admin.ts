@@ -5,10 +5,6 @@ import { MarketStatus } from './market';
 // Re-export MarketStatus for backwards compatibility
 export type EventStatus = MarketStatus;
 
-// Odds Configuration
-export type OddsMode = 'MANUAL_PRICE' | 'MANUAL_PROBABILITY';
-export type SpreadPolicy = 'AUTO_COMPLEMENT' | 'MANUAL_BOTH';
-
 // Resolution Source Types
 export type ResolutionSourceType = 'API' | 'DATASET' | 'MANUAL';
 
@@ -18,12 +14,6 @@ export interface ResolutionSource {
   name: string;
   url: string;
   rule: string;
-}
-
-// Odds Configuration
-export interface OddsConfig {
-  mode: OddsMode;
-  spreadPolicy: SpreadPolicy;
 }
 
 // Odds
@@ -54,7 +44,6 @@ export interface MarketEvent {
   expiryAt: Date;
 
   odds: Odds;
-  oddsConfig: OddsConfig;
 
   resolutionSource: ResolutionSource;
 
@@ -77,9 +66,7 @@ export interface EventFormData {
   
   resolutionSource: ResolutionSource;
   
-  oddsConfig: OddsConfig;
   oddsYes: number;
-  oddsNo: number;
   
   oddsChangeReason?: string;
   

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, AlertCircle, Mail, Gift, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Gift, KeyRound, Eye, EyeOff, User, Lock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,20 +12,26 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ReferralService } from '@/services/ReferralService';
 import { useToast } from '@/hooks/use-toast';
+
 const loginSchema = z.object({
   email: z.string().trim().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  rememberMe: z.boolean().optional(),
 });
 
 const signupSchema = z.object({
   fullName: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome deve ter menos de 100 caracteres'),
   email: z.string().trim().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: 'Você deve aceitar os termos para continuar',
+  }),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -65,6 +71,7 @@ export function AuthPage() {
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: true,
     },
   });
 
@@ -74,6 +81,7 @@ export function AuthPage() {
       fullName: '',
       email: '',
       password: '',
+      acceptTerms: false,
     },
   });
 
@@ -262,11 +270,17 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Bem-vindo</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 p-4">
+      <Card className="w-full max-w-md border-border/50 shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+        <CardHeader className="text-center space-y-3">
+          {/* Logo/Brand */}
+          <div className="flex justify-center mb-2">
+            <div className="p-3 rounded-xl bg-primary/10 ring-1 ring-primary/20">
+              <TrendingUp className="h-8 w-8 text-primary" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold">Bem-vindo ao OddsWatch</CardTitle>
+          <CardDescription className="text-base">
             {referralCode 
               ? 'Você foi indicado! Crie sua conta e ganhe desconto nas taxas.'
               : 'Entre na sua conta ou crie uma nova'
@@ -276,7 +290,7 @@ export function AuthPage() {
         <CardContent className="space-y-4">
           {/* Referral Code Badge */}
           {referralCode && (
-            <Alert className="bg-primary/10 border-primary/30">
+            <Alert className="bg-primary/10 border-primary/30 animate-in fade-in-0 duration-300">
               <Gift className="h-4 w-4 text-primary" />
               <AlertDescription className="text-primary">
                 Código de indicação: <strong>{referralCode}</strong> - Você ganhará desconto nas taxas!
@@ -287,14 +301,14 @@ export function AuthPage() {
           {/* Google Sign In Button */}
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full h-11 transition-all duration-200 hover:bg-muted/50 hover:scale-[1.01] active:scale-[0.99]"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
           >
             {isGoogleLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -326,14 +340,14 @@ export function AuthPage() {
           </div>
 
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {successMessage && (
-            <Alert>
+            <Alert className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
               <Mail className="h-4 w-4" />
               <AlertDescription>{successMessage}</AlertDescription>
             </Alert>
@@ -341,11 +355,11 @@ export function AuthPage() {
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'login' | 'signup')}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar Conta</TabsTrigger>
+              <TabsTrigger value="login" className="transition-all duration-200">Entrar</TabsTrigger>
+              <TabsTrigger value="signup" className="transition-all duration-200">Criar Conta</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="login" className="mt-4">
+            <TabsContent value="login" className="mt-4 animate-in fade-in-0 slide-in-from-left-2 duration-300">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                   <FormField
@@ -355,12 +369,16 @@ export function AuthPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="seu@email.com"
-                            autoComplete="email"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="email"
+                              placeholder="seu@email.com"
+                              autoComplete="email"
+                              className="pl-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                              {...field}
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -375,11 +393,12 @@ export function AuthPage() {
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
                           <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               type={showLoginPassword ? "text" : "password"}
                               placeholder="••••••••"
                               autoComplete="current-password"
-                              className="pr-10"
+                              className="pl-10 pr-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                               {...field}
                             />
                             <Button
@@ -391,9 +410,9 @@ export function AuthPage() {
                               tabIndex={-1}
                             >
                               {showLoginPassword ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <EyeOff className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground" />
                               ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Eye className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground" />
                               )}
                               <span className="sr-only">
                                 {showLoginPassword ? "Ocultar senha" : "Mostrar senha"}
@@ -406,7 +425,30 @@ export function AuthPage() {
                     )}
                   />
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  {/* Remember Me Checkbox */}
+                  <FormField
+                    control={loginForm.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
+                          Lembrar-me neste dispositivo
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]" 
+                    disabled={isLoading}
+                  >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -427,7 +469,7 @@ export function AuthPage() {
                     }
                   }}>
                     <DialogTrigger asChild>
-                      <Button variant="link" type="button" className="w-full text-sm text-muted-foreground">
+                      <Button variant="link" type="button" className="w-full text-sm text-muted-foreground hover:text-primary transition-colors">
                         <KeyRound className="mr-2 h-4 w-4" />
                         Esqueceu sua senha?
                       </Button>
@@ -449,13 +491,17 @@ export function AuthPage() {
                         </Alert>
                       ) : (
                         <div className="space-y-4">
-                          <Input
-                            type="email"
-                            placeholder="seu@email.com"
-                            value={recoveryEmail}
-                            onChange={(e) => setRecoveryEmail(e.target.value)}
-                            disabled={isRecoveryLoading}
-                          />
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="email"
+                              placeholder="seu@email.com"
+                              value={recoveryEmail}
+                              onChange={(e) => setRecoveryEmail(e.target.value)}
+                              disabled={isRecoveryLoading}
+                              className="pl-10"
+                            />
+                          </div>
                           <Button 
                             onClick={handlePasswordRecovery} 
                             className="w-full"
@@ -478,7 +524,7 @@ export function AuthPage() {
               </Form>
             </TabsContent>
 
-            <TabsContent value="signup" className="mt-4">
+            <TabsContent value="signup" className="mt-4 animate-in fade-in-0 slide-in-from-right-2 duration-300">
               <Form {...signupForm}>
                 <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
                   <FormField
@@ -488,12 +534,16 @@ export function AuthPage() {
                       <FormItem>
                         <FormLabel>Nome Completo</FormLabel>
                         <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="Seu nome completo"
-                            autoComplete="name"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="text"
+                              placeholder="Seu nome completo"
+                              autoComplete="name"
+                              className="pl-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                              {...field}
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -507,12 +557,16 @@ export function AuthPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="seu@email.com"
-                            autoComplete="email"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="email"
+                              placeholder="seu@email.com"
+                              autoComplete="email"
+                              className="pl-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                              {...field}
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -527,11 +581,12 @@ export function AuthPage() {
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
                           <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               type={showSignupPassword ? "text" : "password"}
                               placeholder="••••••••"
                               autoComplete="new-password"
-                              className="pr-10"
+                              className="pl-10 pr-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                               {...field}
                             />
                             <Button
@@ -543,9 +598,9 @@ export function AuthPage() {
                               tabIndex={-1}
                             >
                               {showSignupPassword ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <EyeOff className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground" />
                               ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Eye className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground" />
                               )}
                               <span className="sr-only">
                                 {showSignupPassword ? "Ocultar senha" : "Mostrar senha"}
@@ -559,7 +614,49 @@ export function AuthPage() {
                     )}
                   />
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  {/* Terms Acceptance Checkbox */}
+                  <FormField
+                    control={signupForm.control}
+                    name="acceptTerms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            className="mt-1"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            Li e aceito os{' '}
+                            <Link 
+                              to="/termos" 
+                              target="_blank" 
+                              className="text-primary hover:underline font-medium"
+                            >
+                              Termos de Uso
+                            </Link>{' '}
+                            e a{' '}
+                            <Link 
+                              to="/privacidade" 
+                              target="_blank" 
+                              className="text-primary hover:underline font-medium"
+                            >
+                              Política de Privacidade
+                            </Link>
+                          </FormLabel>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]" 
+                    disabled={isLoading}
+                  >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

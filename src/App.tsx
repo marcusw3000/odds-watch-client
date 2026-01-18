@@ -19,6 +19,10 @@ import { ReferralPage } from "./pages/ReferralPage";
 import ProfilePage from "./pages/ProfilePage";
 import { SuggestionsPage } from "./pages/SuggestionsPage";
 import { SuggestionDetailPage } from "./pages/SuggestionDetailPage";
+import { TermosPage } from "./pages/TermosPage";
+import { PrivacidadePage } from "./pages/PrivacidadePage";
+import { LGPDPage } from "./pages/LGPDPage";
+import { FAQPage } from "./pages/FAQPage";
 import { Loader2 } from "lucide-react";
 
 // Lazy load admin pages for bundle optimization
@@ -168,6 +172,10 @@ const App = () => (
               <Route path="/profile/:userId" element={<ProfilePage />} />
               <Route path="/suggestions" element={<SuggestionsPage />} />
               <Route path="/suggestions/:id" element={<SuggestionDetailPage />} />
+              <Route path="/termos" element={<TermosPage />} />
+              <Route path="/privacidade" element={<PrivacidadePage />} />
+              <Route path="/lgpd" element={<LGPDPage />} />
+              <Route path="/faq" element={<FAQPage />} />
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}

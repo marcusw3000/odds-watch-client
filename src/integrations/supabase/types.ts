@@ -2276,6 +2276,10 @@ export type Database = {
         Args: { p_comment_id: string }
         Returns: undefined
       }
+      increment_trader_followers: {
+        Args: { trader_id: string }
+        Returns: undefined
+      }
       mask_ip_address: { Args: { ip_address: string }; Returns: string }
       notify_admins: {
         Args: {

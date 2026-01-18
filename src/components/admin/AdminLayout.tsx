@@ -20,7 +20,8 @@ import {
   Palette,
   Loader2,
   Flag,
-  Lightbulb
+  Lightbulb,
+  Headphones
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ const navItems = [
   { section: 'Moderação' },
   { path: '/admin/suggestions', label: 'Sugestões', icon: Lightbulb },
   { path: '/admin/reports', label: 'Denúncias', icon: Flag },
+  { path: '/admin/support', label: 'Suporte', icon: Headphones },
   { section: 'Sistema' },
   { path: '/admin/audit-logs', label: 'Logs de Auditoria', icon: ClipboardList },
   { path: '/admin/users', label: 'Usuários', icon: Users },

@@ -242,6 +242,13 @@ export function useManageCopyTrader() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
 
+      // First get the trader info for the email
+      const { data: traderInfo } = await supabase
+        .from('copy_traders')
+        .select('user_id, display_name')
+        .eq('id', trader_id)
+        .single();
+
       let updateData: Record<string, unknown> = {};
 
       switch (action) {
@@ -286,6 +293,34 @@ export function useManageCopyTrader() {
         .single();
 
       if (error) throw error;
+
+      // Send email notification (fire and forget)
+      if (traderInfo?.user_id) {
+        const emailType = 
+          action === 'approve' ? 'COPY_TRADER_APPROVED' :
+          action === 'reject' ? 'COPY_TRADER_REJECTED' :
+          action === 'suspend' ? 'COPY_TRADER_SUSPENDED' : null;
+
+        if (emailType) {
+          supabase.functions.invoke('send-notification-email', {
+            body: {
+              user_id: traderInfo.user_id,
+              type: emailType,
+              title: action === 'approve' ? 'Candidatura Aprovada!' :
+                     action === 'reject' ? 'Candidatura Não Aprovada' :
+                     'Conta Suspensa',
+              message: '',
+              data: {
+                display_name: traderInfo.display_name,
+                rejection_reason: rejection_reason,
+                monthly_fee,
+                profit_share_percent,
+              },
+            },
+          }).catch(console.error);
+        }
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {

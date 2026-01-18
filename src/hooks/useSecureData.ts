@@ -201,21 +201,20 @@ export function useAdminLedger(filters?: {
   return useQuery({
     queryKey: ['admin-ledger', filters],
     queryFn: async (): Promise<LedgerEntrySecure[]> => {
-      const searchParams = new URLSearchParams();
-      if (filters?.userId) searchParams.set('userId', filters.userId);
-      if (filters?.refType && filters.refType !== 'all') searchParams.set('refType', filters.refType);
-      if (filters?.status && filters.status !== 'all') searchParams.set('status', filters.status);
-      if (filters?.startDate) searchParams.set('startDate', filters.startDate);
-      if (filters?.endDate) searchParams.set('endDate', filters.endDate);
-      if (filters?.minAmount !== undefined) searchParams.set('minAmount', filters.minAmount.toString());
-      if (filters?.maxAmount !== undefined) searchParams.set('maxAmount', filters.maxAmount.toString());
-      if (filters?.limit) searchParams.set('limit', filters.limit.toString());
-      if (filters?.offset !== undefined) searchParams.set('offset', filters.offset.toString());
-      
-      const queryString = searchParams.toString();
-      const { data, error } = await supabase.functions.invoke(
-        queryString ? `get-admin-ledger?${queryString}` : 'get-admin-ledger'
-      );
+      const { data, error } = await supabase.functions.invoke('get-admin-ledger', {
+        method: 'POST',
+        body: {
+          userId: filters?.userId || undefined,
+          refType: filters?.refType && filters.refType !== 'all' ? filters.refType : undefined,
+          status: filters?.status && filters.status !== 'all' ? filters.status : undefined,
+          startDate: filters?.startDate || undefined,
+          endDate: filters?.endDate || undefined,
+          minAmount: filters?.minAmount,
+          maxAmount: filters?.maxAmount,
+          limit: filters?.limit || 100,
+          offset: filters?.offset || 0,
+        },
+      });
       
       if (error) {
         console.error('Error fetching admin ledger:', error);

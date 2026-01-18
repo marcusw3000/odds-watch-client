@@ -59,19 +59,41 @@ serve(async (req) => {
       });
     }
 
-    // Parse query parameters
-    const url = new URL(req.url);
-    const filters = {
-      userId: url.searchParams.get('userId') || undefined,
-      refType: url.searchParams.get('refType') || undefined,
-      status: url.searchParams.get('status') || undefined,
-      startDate: url.searchParams.get('startDate') || undefined,
-      endDate: url.searchParams.get('endDate') || undefined,
-      minAmount: url.searchParams.get('minAmount') ? parseFloat(url.searchParams.get('minAmount')!) : undefined,
-      maxAmount: url.searchParams.get('maxAmount') ? parseFloat(url.searchParams.get('maxAmount')!) : undefined,
-      limit: url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 100,
-      offset: url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : 0,
-    };
+    // Parse filters from body or query parameters
+    let filters: {
+      userId?: string;
+      refType?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      minAmount?: number;
+      maxAmount?: number;
+      limit?: number;
+      offset?: number;
+    } = {};
+
+    // Try to get from body first (preferred), then fallback to query params
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        filters = body;
+      } catch {
+        // If body parsing fails, continue with empty filters
+      }
+    } else {
+      const url = new URL(req.url);
+      filters = {
+        userId: url.searchParams.get('userId') || undefined,
+        refType: url.searchParams.get('refType') || undefined,
+        status: url.searchParams.get('status') || undefined,
+        startDate: url.searchParams.get('startDate') || undefined,
+        endDate: url.searchParams.get('endDate') || undefined,
+        minAmount: url.searchParams.get('minAmount') ? parseFloat(url.searchParams.get('minAmount')!) : undefined,
+        maxAmount: url.searchParams.get('maxAmount') ? parseFloat(url.searchParams.get('maxAmount')!) : undefined,
+        limit: url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : 100,
+        offset: url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : 0,
+      };
+    }
 
     // Build query
     let query = adminClient

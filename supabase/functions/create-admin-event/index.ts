@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface MarketOptionInput {
+  label: string;
+  description?: string;
+  imageUrl?: string;
+  probability: number;
+  displayOrder: number;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -78,9 +86,11 @@ Deno.serve(async (req) => {
       settlementType,
       resolution,
       cardStyle,
+      marketType = 'BINARY',
+      options,
     } = body;
 
-    logStep(functionName, 'Creating event', { title, category });
+    logStep(functionName, 'Creating event', { title, category, marketType });
 
     // Validate required fields
     if (!title || !description || !category || !closeDate) {
@@ -90,15 +100,46 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Calculate initial prices
-    const initialYesPrice = yesPrice ?? 0.5;
-    const initialNoPrice = 1 - initialYesPrice;
+    // Validate options for MULTIPLE type
+    if (marketType === 'MULTIPLE') {
+      if (!options || !Array.isArray(options) || options.length < 2) {
+        return new Response(JSON.stringify({ error: 'Multiple markets require at least 2 options' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    // Calculate initial LMSR shares based on b parameter
-    const lmsrB = 100; // Default liquidity parameter
-    const initialShares = lmsrB * Math.log(2); // Equal shares for 50/50
+      // Validate probability sum
+      const probSum = options.reduce((sum: number, opt: MarketOptionInput) => sum + opt.probability, 0);
+      if (probSum < 99 || probSum > 101) {
+        return new Response(JSON.stringify({ error: 'Option probabilities must sum to 100%' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
-    // Insert event
+    // Default liquidity parameter
+    const lmsrB = 100;
+
+    // For BINARY markets
+    let initialYesPrice = 0.5;
+    let initialNoPrice = 0.5;
+    let yesShares = lmsrB * Math.log(2);
+    let noShares = lmsrB * Math.log(2);
+
+    if (marketType === 'BINARY' && yesPrice !== undefined) {
+      initialYesPrice = yesPrice;
+      initialNoPrice = 1 - yesPrice;
+      // Calculate shares based on initial price
+      // P(YES) = e^(qYes/b) / (e^(qYes/b) + e^(qNo/b))
+      // For simplicity, we set qNo = 0 and calculate qYes
+      const prob = Math.max(0.01, Math.min(0.99, initialYesPrice));
+      yesShares = lmsrB * Math.log(prob / (1 - prob));
+      noShares = 0;
+    }
+
+    // Insert market
     const { data: newEvent, error: insertError } = await adminClient
       .from('markets')
       .insert({
@@ -109,16 +150,18 @@ Deno.serve(async (req) => {
         close_date: closeDate,
         image_url: imageUrl || null,
         tags: tags || [],
-        current_yes_price: initialYesPrice,
-        current_no_price: initialNoPrice,
+        current_yes_price: marketType === 'BINARY' ? initialYesPrice : 0,
+        current_no_price: marketType === 'BINARY' ? initialNoPrice : 0,
         settlement_type: settlementType || 'MANUAL',
         resolution: resolution || null,
         card_style: cardStyle || 'default',
         lmsr_b: lmsrB,
-        yes_shares: initialShares,
-        no_shares: initialShares,
+        yes_shares: marketType === 'BINARY' ? yesShares : 0,
+        no_shares: marketType === 'BINARY' ? noShares : 0,
         total_volume: 0,
         created_by: userId,
+        market_type: marketType,
+        options_exclusive: true, // All options are mutually exclusive by default
       })
       .select()
       .single();
@@ -129,6 +172,43 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // If MULTIPLE type, create options
+    if (marketType === 'MULTIPLE' && options && options.length > 0) {
+      const optionsToInsert = options.map((opt: MarketOptionInput, index: number) => {
+        // Calculate initial shares for this option
+        // Using LMSR formula: qi = b * ln(Pi / P0) where P0 is reference probability
+        const prob = Math.max(0.01, Math.min(0.99, opt.probability / 100));
+        const refProb = 1 / options.length; // Reference probability (equal distribution)
+        const shares = lmsrB * Math.log(prob / refProb);
+
+        return {
+          market_id: newEvent.id,
+          label: opt.label,
+          description: opt.description || null,
+          image_url: opt.imageUrl || null,
+          shares: shares,
+          current_price: opt.probability / 100, // Store as decimal
+          display_order: opt.displayOrder ?? index,
+        };
+      });
+
+      const { error: optionsError } = await adminClient
+        .from('market_options')
+        .insert(optionsToInsert);
+
+      if (optionsError) {
+        logError(functionName, 'Failed to create options', { error: optionsError });
+        // Rollback: delete the market
+        await adminClient.from('markets').delete().eq('id', newEvent.id);
+        return new Response(JSON.stringify({ error: 'Failed to create market options' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      logStep(functionName, 'Options created', { count: options.length });
     }
 
     // Fetch admin profile for audit log
@@ -149,12 +229,14 @@ Deno.serve(async (req) => {
       details: {
         market_title: title,
         category,
-        initial_yes_price: initialYesPrice,
+        market_type: marketType,
+        options_count: marketType === 'MULTIPLE' ? options?.length : 2,
+        initial_yes_price: marketType === 'BINARY' ? initialYesPrice : null,
         admin_name: adminName,
       },
     });
 
-    logStep(functionName, 'Event created', { eventId: newEvent.id });
+    logStep(functionName, 'Event created', { eventId: newEvent.id, marketType });
 
     return new Response(
       JSON.stringify({ success: true, event: newEvent }),

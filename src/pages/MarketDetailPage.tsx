@@ -16,11 +16,13 @@ import {
   AlertTriangle,
   Scale
 } from 'lucide-react';
-import { MarketEvent, OddsHistoryPoint } from '@/types/market';
+import { MarketEvent, OddsHistoryPoint, MarketOption } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
 import { CommentSection } from '@/components/market/CommentSection';
 import { PurchaseModal } from '@/components/market/PurchaseModal';
+import { MultiOptionPurchaseModal } from '@/components/market/MultiOptionPurchaseModal';
+import { MultiOptionTradingPanel } from '@/components/market/MultiOptionTradingPanel';
 import { OddsChart } from '@/components/market/OddsChart';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { TradingHaltBanner } from '@/components/market/TradingHaltBanner';
@@ -53,6 +55,7 @@ export function MarketDetailPage() {
   const [loadError, setLoadError] = useState<Error | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<MarketOption | null>(null);
   
   const statusInfo = useMarketStatus(event);
 
@@ -408,76 +411,93 @@ export function MarketDetailPage() {
               <CardTitle>Negociar</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Current Odds */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-yes-muted/30 border border-yes/20">
-                  <div>
-                    <p className="text-sm text-muted-foreground">SIM</p>
-                    <OddsBadge 
-                      type="YES" 
-                      price={event.outcomes.YES.price} 
-                      probability={event.outcomes.YES.probability}
-                      size="md"
-                    />
+              {/* Render different UI based on market type */}
+              {event.marketType === 'MULTIPLE' && event.options ? (
+                <MultiOptionTradingPanel
+                  event={event}
+                  canTrade={statusInfo.canTrade}
+                  onBuyOption={(option) => {
+                    if (!user) {
+                      navigate('/auth', { state: { returnTo: `/market/${id}` } });
+                      return;
+                    }
+                    setSelectedOption(option);
+                  }}
+                />
+              ) : (
+                <>
+                  {/* Binary market - Current Odds */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-yes-muted/30 border border-yes/20">
+                      <div>
+                        <p className="text-sm text-muted-foreground">SIM</p>
+                        <OddsBadge 
+                          type="YES" 
+                          price={event.outcomes.YES.price} 
+                          probability={event.outcomes.YES.probability}
+                          size="md"
+                        />
+                      </div>
+                      <Button 
+                        variant="yes" 
+                        onClick={() => {
+                          if (!user) {
+                            navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=YES` } });
+                            return;
+                          }
+                          setSelectedOutcome('YES');
+                        }}
+                        disabled={!statusInfo.canTrade}
+                      >
+                        Comprar SIM
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-no-muted/30 border border-no/20">
+                      <div>
+                        <p className="text-sm text-muted-foreground">NÃO</p>
+                        <OddsBadge 
+                          type="NO" 
+                          price={event.outcomes.NO.price} 
+                          probability={event.outcomes.NO.probability}
+                          size="md"
+                        />
+                      </div>
+                      <Button 
+                        variant="no" 
+                        onClick={() => {
+                          if (!user) {
+                            navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=NO` } });
+                            return;
+                          }
+                          setSelectedOutcome('NO');
+                        }}
+                        disabled={!statusInfo.canTrade}
+                      >
+                        Comprar NÃO
+                      </Button>
+                    </div>
                   </div>
-                  <Button 
-                    variant="yes" 
-                    onClick={() => {
-                      if (!user) {
-                        navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=YES` } });
-                        return;
-                      }
-                      setSelectedOutcome('YES');
-                    }}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Comprar SIM
-                  </Button>
-                </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-no-muted/30 border border-no/20">
-                  <div>
-                    <p className="text-sm text-muted-foreground">NÃO</p>
-                    <OddsBadge 
-                      type="NO" 
-                      price={event.outcomes.NO.price} 
-                      probability={event.outcomes.NO.probability}
-                      size="md"
-                    />
+                  {/* Bid-Ask Spread Info */}
+                  <BidAskSpread 
+                    eventId={event.id} 
+                    quantity={10}
+                    yesShares={event.lmsr.qYes}
+                    noShares={event.lmsr.qNo}
+                  />
+
+                  {/* Info Box */}
+                  <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">
+                    <p className="font-medium">Como funciona?</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• Contrato vencedor paga <span className="font-semibold text-foreground">R${event.contractUnitCost.toFixed(2)}</span></li>
+                      <li>• Contrato perdedor paga R$0,00</li>
+                      <li>• Lucro = R${event.contractUnitCost.toFixed(2)} - preço de compra</li>
+                    </ul>
                   </div>
-                  <Button 
-                    variant="no" 
-                    onClick={() => {
-                      if (!user) {
-                        navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=NO` } });
-                        return;
-                      }
-                      setSelectedOutcome('NO');
-                    }}
-                    disabled={!statusInfo.canTrade}
-                  >
-                    Comprar NÃO
-                  </Button>
-                </div>
-              </div>
-
-              {/* Bid-Ask Spread Info */}
-              <BidAskSpread 
-                eventId={event.id} 
-                quantity={10}
-                yesShares={event.lmsr.qYes}
-                noShares={event.lmsr.qNo}
-              />
-
-              {/* Info Box */}
-              <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">
-                <p className="font-medium">Como funciona?</p>
-                <ul className="space-y-1 text-muted-foreground text-xs">
-                  <li>• Contrato vencedor paga <span className="font-semibold text-foreground">R${event.contractUnitCost.toFixed(2)}</span></li>
-                  <li>• Contrato perdedor paga R$0,00</li>
-                  <li>• Lucro = R${event.contractUnitCost.toFixed(2)} - preço de compra</li>
-                </ul>
-              </div>
+                </>
+              )}
 
               {/* Balance */}
               <div className="pt-4 border-t border-border text-center">
@@ -489,14 +509,30 @@ export function MarketDetailPage() {
         </div>
       </div>
 
-      {/* Purchase Modal */}
-      {selectedOutcome && event && (
+      {/* Purchase Modal - Binary */}
+      {selectedOutcome && event && event.marketType === 'BINARY' && (
         <PurchaseModal
           event={event}
           selectedOutcome={selectedOutcome}
           userBalance={userBalance}
           onClose={() => setSelectedOutcome(null)}
           onConfirm={handleConfirmPurchase}
+          onRefreshPrice={handleRefreshPrice}
+        />
+      )}
+
+      {/* Purchase Modal - Multi-Option */}
+      {selectedOption && event && event.marketType === 'MULTIPLE' && (
+        <MultiOptionPurchaseModal
+          event={event}
+          selectedOption={selectedOption}
+          userBalance={userBalance}
+          onClose={() => setSelectedOption(null)}
+          onConfirm={async (optionId, shares, maxCost) => {
+            // TODO: Implement multi-option purchase via edge function
+            console.log('Multi-option purchase:', { optionId, shares, maxCost });
+            throw new Error('Multi-option trading coming soon');
+          }}
           onRefreshPrice={handleRefreshPrice}
         />
       )}

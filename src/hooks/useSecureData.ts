@@ -194,6 +194,7 @@ export function useAdminLedger(filters?: {
   minAmount?: number;
   maxAmount?: number;
   limit?: number;
+  offset?: number;
 }) {
   const { isAdmin } = useAuth();
 
@@ -209,6 +210,7 @@ export function useAdminLedger(filters?: {
       if (filters?.minAmount !== undefined) searchParams.set('minAmount', filters.minAmount.toString());
       if (filters?.maxAmount !== undefined) searchParams.set('maxAmount', filters.maxAmount.toString());
       if (filters?.limit) searchParams.set('limit', filters.limit.toString());
+      if (filters?.offset !== undefined) searchParams.set('offset', filters.offset.toString());
       
       const queryString = searchParams.toString();
       const { data, error } = await supabase.functions.invoke(

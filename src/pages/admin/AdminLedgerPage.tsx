@@ -63,6 +63,7 @@ export function AdminLedgerPage() {
     minAmount: activeFilters.minAmount ? parseFloat(activeFilters.minAmount) : undefined,
     maxAmount: activeFilters.maxAmount ? parseFloat(activeFilters.maxAmount) : undefined,
     limit: pagination.pageSize,
+    offset: pagination.offset,
   });
 
   const entries = entriesData || [];

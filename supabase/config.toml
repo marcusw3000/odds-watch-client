@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.manage-user-roles]
 verify_jwt = false
+
+[functions.admin-warn-user]
+verify_jwt = false

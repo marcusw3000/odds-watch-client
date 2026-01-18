@@ -59,3 +59,12 @@ verify_jwt = false
 
 [functions.get-admin-support-tickets]
 verify_jwt = false
+
+[functions.get-admin-events]
+verify_jwt = false
+
+[functions.get-admin-event]
+verify_jwt = false
+
+[functions.update-admin-event]
+verify_jwt = false

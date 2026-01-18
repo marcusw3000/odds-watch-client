@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -10,7 +10,8 @@ import {
   Scale,
   Trash2,
   MoreHorizontal,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,26 +48,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AdminRepository } from '@/services/AdminRepository';
-import { MarketEvent, EVENT_CATEGORIES } from '@/types/admin';
+import { TablePagination } from '@/components/ui/table-pagination';
+import { useAdminEvents, useUpdateEventStatus, useDeleteEvent, AdminEvent } from '@/hooks/useAdminEvents';
+import { usePagination } from '@/hooks/usePagination';
+import { EVENT_CATEGORIES } from '@/types/admin';
 import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/types/market';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export function AdminEventsPage() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<MarketEvent[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; event: MarketEvent | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; event: AdminEvent | null }>({
     open: false,
     event: null,
   });
   const [statusDialog, setStatusDialog] = useState<{ 
     open: boolean; 
-    event: MarketEvent | null; 
+    event: AdminEvent | null; 
     action: 'pause' | 'resume' | 'close' | null 
   }>({
     open: false,
@@ -74,27 +77,33 @@ export function AdminEventsPage() {
     action: null,
   });
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
+  const debouncedSearch = useDebounce(search, 300);
 
-  const loadEvents = () => {
-    setEvents(AdminRepository.getEvents());
-  };
-
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch = event.title.toLowerCase().includes(search.toLowerCase()) ||
-      event.category.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+  const pagination = usePagination({
+    initialPage: 1,
+    initialPageSize: 25,
+    totalItems: 0,
   });
 
-  const handleStatusChange = (event: MarketEvent, action: 'pause' | 'resume' | 'close') => {
+  const { data, isLoading, error, refetch } = useAdminEvents({
+    search: debouncedSearch || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    category: categoryFilter !== 'all' ? categoryFilter : undefined,
+    limit: pagination.pageSize,
+    offset: pagination.offset,
+  });
+
+  const updateStatusMutation = useUpdateEventStatus();
+  const deleteMutation = useDeleteEvent();
+
+  const events = data?.events || [];
+  const totalCount = data?.totalCount || 0;
+
+  const handleStatusChange = (event: AdminEvent, action: 'pause' | 'resume' | 'close') => {
     setStatusDialog({ open: true, event, action });
   };
 
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     if (!statusDialog.event || !statusDialog.action) return;
 
     const statusMap: Record<string, MarketStatus> = {
@@ -103,31 +112,30 @@ export function AdminEventsPage() {
       close: 'PENDING',
     };
 
-    const result = AdminRepository.updateStatus(
-      statusDialog.event.id,
-      statusMap[statusDialog.action]
-    );
-
-    if (result) {
+    try {
+      await updateStatusMutation.mutateAsync({
+        eventId: statusDialog.event.id,
+        status: statusMap[statusDialog.action],
+      });
       toast.success(`Evento ${statusDialog.action === 'pause' ? 'pausado' : statusDialog.action === 'resume' ? 'reativado' : 'fechado'} com sucesso`);
-      loadEvents();
+    } catch (err) {
+      toast.error('Erro ao atualizar status');
     }
 
     setStatusDialog({ open: false, event: null, action: null });
   };
 
-  const handleDelete = (event: MarketEvent) => {
+  const handleDelete = (event: AdminEvent) => {
     setDeleteDialog({ open: true, event });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteDialog.event) return;
 
-    const success = AdminRepository.deleteEvent(deleteDialog.event.id);
-    if (success) {
+    try {
+      await deleteMutation.mutateAsync(deleteDialog.event.id);
       toast.success('Evento excluído com sucesso');
-      loadEvents();
-    } else {
+    } catch (err) {
       toast.error('Erro ao excluir evento');
     }
 
@@ -138,7 +146,8 @@ export function AdminEventsPage() {
     return <Badge variant={MARKET_STATUS_VARIANTS[status]}>{MARKET_STATUS_LABELS[status]}</Badge>;
   };
 
-  const getSourceTypeBadge = (type: string) => {
+  const getSourceTypeBadge = (resolution: Record<string, unknown> | null) => {
+    const type = resolution?.type as string || 'MANUAL';
     const colors: Record<string, string> = {
       API: 'bg-blue-500/10 text-blue-500',
       DATASET: 'bg-purple-500/10 text-purple-500',
@@ -150,6 +159,11 @@ export function AdminEventsPage() {
       </span>
     );
   };
+
+  // Calculate pagination values based on total count
+  const totalPages = Math.ceil(totalCount / pagination.pageSize);
+  const startItem = totalCount === 0 ? 0 : pagination.offset + 1;
+  const endItem = Math.min(pagination.offset + pagination.pageSize, totalCount);
 
   return (
     <div className="space-y-6">
@@ -176,11 +190,14 @@ export function AdminEventsPage() {
           <Input
             placeholder="Buscar eventos..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              pagination.resetPage();
+            }}
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -193,7 +210,7 @@ export function AdminEventsPage() {
             <SelectItem value="SETTLED">Encerrado</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); pagination.resetPage(); }}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
@@ -205,6 +222,13 @@ export function AdminEventsPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-8 text-destructive">
+          Erro ao carregar eventos. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="border border-border rounded-lg overflow-hidden">
@@ -222,14 +246,20 @@ export function AdminEventsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredEvents.length === 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                </TableCell>
+              </TableRow>
+            ) : events.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Nenhum evento encontrado
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEvents.map((event) => (
+              events.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell>
                     <Link 
@@ -247,20 +277,20 @@ export function AdminEventsPage() {
                   </TableCell>
                   <TableCell>
                     <span className="text-sm font-mono">
-                      {event.odds.yes}% / {event.odds.no}%
+                      {Math.round(event.current_yes_price * 100)}% / {Math.round(event.current_no_price * 100)}%
                     </span>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm">
-                      {format(event.expiryAt, "dd/MM/yyyy", { locale: ptBR })}
+                      {event.close_date ? format(new Date(event.close_date), "dd/MM/yyyy", { locale: ptBR }) : '-'}
                     </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {getSourceTypeBadge(event.resolutionSource.type)}
-                      {event.resolutionSource.url && (
+                      {getSourceTypeBadge(event.resolution)}
+                      {event.resolution?.url && (
                         <a
-                          href={event.resolutionSource.url}
+                          href={event.resolution.url as string}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-muted-foreground hover:text-foreground"
@@ -272,7 +302,7 @@ export function AdminEventsPage() {
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-muted-foreground">
-                      {format(event.updatedAt, "dd/MM HH:mm", { locale: ptBR })}
+                      {format(new Date(event.updated_at), "dd/MM HH:mm", { locale: ptBR })}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -351,6 +381,24 @@ export function AdminEventsPage() {
         </Table>
       </div>
 
+      {/* Pagination */}
+      <TablePagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalItems={totalCount}
+        totalPages={totalPages}
+        pageNumbers={pagination.pageNumbers}
+        canPrevPage={pagination.canPrevPage}
+        canNextPage={pagination.canNextPage}
+        startItem={startItem}
+        endItem={endItem}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={(size) => {
+          pagination.setPageSize(size);
+          pagination.resetPage();
+        }}
+      />
+
       {/* Status Change Dialog */}
       <AlertDialog open={statusDialog.open} onOpenChange={(open) => !open && setStatusDialog({ open: false, event: null, action: null })}>
         <AlertDialogContent>
@@ -368,7 +416,8 @@ export function AdminEventsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange}>
+            <AlertDialogAction onClick={confirmStatusChange} disabled={updateStatusMutation.isPending}>
+              {updateStatusMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -386,7 +435,8 @@ export function AdminEventsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

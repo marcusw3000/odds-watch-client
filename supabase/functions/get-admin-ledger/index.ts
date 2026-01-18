@@ -14,12 +14,14 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const token = authHeader.replace('Bearer ', '').trim();
 
     // Verify user with their token
     const userClient = createClient(
@@ -28,8 +30,9 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: claims, error: claimsError } = await userClient.auth.getClaims();
+    const { data: claims, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claims?.claims?.sub) {
+      console.error('[get-admin-ledger] getClaims failed:', claimsError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

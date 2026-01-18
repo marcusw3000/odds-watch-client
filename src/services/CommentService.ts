@@ -627,6 +627,34 @@ export const CommentService = {
         }
       }
     }
+
+    // If action is to warn the user, send a notification
+    if (actionTaken === 'user_warned') {
+      const { data: report } = await supabase
+        .from(tableName)
+        .select('comment_id, reason')
+        .eq('id', reportId)
+        .single();
+
+      if (report) {
+        const { data: comment } = await supabase
+          .from(commentsTable)
+          .select('user_id, content')
+          .eq('id', report.comment_id)
+          .single();
+
+        if (comment) {
+          // Dynamic import to avoid circular dependencies
+          const { notifyUserWarning } = await import('@/services/NotificationService');
+          await notifyUserWarning(
+            comment.user_id,
+            report.reason,
+            comment.content.slice(0, 50),
+            source
+          );
+        }
+      }
+    }
   },
 
   // Admin: Get pending reports count (from both tables)

@@ -296,3 +296,35 @@ export async function notifySuggestionCommentReply(
     sendEmail: false,
   });
 }
+
+// User warning notification
+const reasonLabels: Record<string, string> = {
+  spam: 'spam',
+  offensive: 'conteúdo ofensivo',
+  misinformation: 'desinformação',
+  other: 'violação das diretrizes',
+};
+
+export async function notifyUserWarning(
+  userId: string,
+  reason: string,
+  commentPreview: string,
+  context: 'market' | 'suggestion'
+) {
+  const reasonLabel = reasonLabels[reason] || 'violação das diretrizes';
+  const contextLabel = context === 'market' ? 'um mercado' : 'uma sugestão';
+  
+  return createNotification({
+    userId,
+    type: 'USER_WARNING',
+    title: 'Advertência Recebida ⚠️',
+    message: `Seu comentário em ${contextLabel} foi reportado por ${reasonLabel}. Por favor, revise as diretrizes da comunidade.`,
+    data: { 
+      reason, 
+      reason_label: reasonLabel,
+      context,
+      comment_preview: commentPreview,
+    },
+    sendEmail: true,
+  });
+}

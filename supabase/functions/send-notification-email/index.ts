@@ -171,6 +171,45 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     `,
   }),
 
+  USER_WARNING: (data) => ({
+    subject: `⚠️ Advertência: Seu comentário foi reportado`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>⚠️ Advertência Recebida</h2>
+        <p style="color: #666;">Seu comentário foi reportado pela comunidade e revisado pela nossa equipe de moderação.</p>
+        
+        <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #92400e; margin: 0;"><strong>Motivo:</strong> ${data.reason_label || 'Violação das diretrizes da comunidade'}</p>
+          ${data.comment_preview ? `<p style="color: #78716c; margin-top: 12px; font-style: italic;">"${data.comment_preview}..."</p>` : ''}
+        </div>
+
+        <p style="color: #666;">
+          <strong>O que isso significa:</strong><br>
+          Esta é uma advertência formal. Múltiplas advertências podem resultar em restrições na sua conta.
+        </p>
+
+        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+          <strong>Diretrizes da Comunidade:</strong>
+          <ul style="color: #64748b; margin: 8px 0; padding-left: 20px;">
+            <li>Mantenha o respeito com outros usuários</li>
+            <li>Evite spam ou conteúdo repetitivo</li>
+            <li>Não compartilhe informações falsas</li>
+            <li>Contribua de forma construtiva para as discussões</li>
+          </ul>
+        </div>
+
+        <a href="https://predictmarket.com/settings" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver minhas configurações
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Se você acredita que esta advertência foi um erro, entre em contato com nosso suporte.
+        </p>
+      </div>
+    `,
+  }),
+
   DEFAULT: (data) => ({
     subject: data.title || 'Notificação do PredictMarket',
     html: `

@@ -1930,6 +1930,7 @@ export type Database = {
         | "ADMIN_NEW_TICKET"
         | "ADMIN_NEW_REPORT"
         | "ADMIN_NEW_CONTESTATION"
+        | "USER_WARNING"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -2114,6 +2115,7 @@ export const Constants = {
         "ADMIN_NEW_TICKET",
         "ADMIN_NEW_REPORT",
         "ADMIN_NEW_CONTESTATION",
+        "USER_WARNING",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

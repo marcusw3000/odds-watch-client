@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Link } from 'react-router-dom';
 import { Heart, Reply, Trash2, Loader2, ChevronDown, ChevronUp, MessageSquare, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -144,16 +145,23 @@ export function SuggestionCommentThread({
     <div className={cn('relative pb-4', depth > 0 && 'border-l-2 border-muted pl-4 ml-4')}>
       {/* Comment content */}
       <div className="flex gap-3">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={comment.author_avatar} />
-          <AvatarFallback>
-            {comment.author_name?.charAt(0).toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
+        <Link to={`/profile/${comment.user_id}`} className="flex-shrink-0">
+          <Avatar className="h-8 w-8 hover:ring-2 hover:ring-primary/50 transition-all">
+            <AvatarImage src={comment.author_avatar} />
+            <AvatarFallback>
+              {comment.author_name?.charAt(0).toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-sm">{comment.author_name}</span>
+            <Link 
+              to={`/profile/${comment.user_id}`}
+              className="font-medium text-sm hover:text-primary hover:underline transition-colors"
+            >
+              {comment.author_name}
+            </Link>
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(comment.created_at), {
                 addSuffix: true,
@@ -307,16 +315,23 @@ export function SuggestionCommentThread({
           {replies.map((reply) => (
             <div key={reply.id} className="border-l-2 border-muted pl-4 ml-4">
               <div className="flex gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={reply.author_avatar} />
-                  <AvatarFallback>
-                    {reply.author_name?.charAt(0).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
+                <Link to={`/profile/${reply.user_id}`} className="flex-shrink-0">
+                  <Avatar className="h-8 w-8 hover:ring-2 hover:ring-primary/50 transition-all">
+                    <AvatarImage src={reply.author_avatar} />
+                    <AvatarFallback>
+                      {reply.author_name?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
 
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">{reply.author_name}</span>
+                    <Link 
+                      to={`/profile/${reply.user_id}`}
+                      className="font-medium text-sm hover:text-primary hover:underline transition-colors"
+                    >
+                      {reply.author_name}
+                    </Link>
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(reply.created_at), {
                         addSuffix: true,

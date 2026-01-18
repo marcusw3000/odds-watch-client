@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Link } from 'react-router-dom';
 import { Heart, Reply, MoreHorizontal, Flag, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -51,16 +51,24 @@ export function CommentItem({
 
   return (
     <div className="flex gap-3 py-3">
-      <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={comment.authorAvatar} />
-        <AvatarFallback className="text-xs">
-          {comment.authorName[0]?.toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+      <Link to={`/profile/${comment.userId}`} className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <Avatar className="h-8 w-8 hover:ring-2 hover:ring-primary/50 transition-all">
+          <AvatarImage src={comment.authorAvatar} />
+          <AvatarFallback className="text-xs">
+            {comment.authorName[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      </Link>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm">{comment.authorName}</span>
+          <Link 
+            to={`/profile/${comment.userId}`} 
+            className="font-medium text-sm hover:text-primary hover:underline transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {comment.authorName}
+          </Link>
           <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: ptBR })}
           </span>

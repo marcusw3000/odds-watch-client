@@ -275,15 +275,20 @@ export function SuggestionDetailPage() {
 
               {/* Meta info */}
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-4">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
+                <Link 
+                  to={`/profile/${suggestion.user_id}`}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
+                  <Avatar className="h-6 w-6 hover:ring-2 hover:ring-primary/50 transition-all">
                     <AvatarImage src={suggestion.author_avatar} />
                     <AvatarFallback className="text-xs">
                       {suggestion.author_name?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <span>{suggestion.author_name}</span>
-                </div>
+                  <span className="hover:text-primary hover:underline transition-colors">
+                    {suggestion.author_name}
+                  </span>
+                </Link>
 
                 <span>•</span>
 

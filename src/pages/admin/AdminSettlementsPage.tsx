@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Scale, 
   AlertTriangle, 
   ExternalLink, 
   CheckCircle2,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AdminRepository } from '@/services/AdminRepository';
-import { MarketEvent } from '@/types/admin';
+import { usePendingSettlements, useSettleEvent, AdminEvent } from '@/hooks/useAdminEvents';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -35,24 +35,23 @@ export function AdminSettlementsPage() {
   const navigate = useNavigate();
   const eventId = searchParams.get('event');
 
-  const [closedEvents, setClosedEvents] = useState<MarketEvent[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
+  const { data: closedEvents = [], isLoading } = usePendingSettlements();
+  const settleEventMutation = useSettleEvent();
+
+  const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
   const [result, setResult] = useState<'YES' | 'NO' | null>(null);
   const [evidence, setEvidence] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(false);
 
+  // Select event from URL param
   useEffect(() => {
-    // Events that are PENDING or CONTESTED can be settled
-    const events = AdminRepository.getEvents().filter(e => e.status === 'PENDING' || e.status === 'CONTESTED');
-    setClosedEvents(events);
-
-    if (eventId) {
-      const event = AdminRepository.getEvent(eventId);
-      if (event && (event.status === 'PENDING' || event.status === 'CONTESTED')) {
+    if (eventId && closedEvents.length > 0) {
+      const event = closedEvents.find(e => e.id === eventId);
+      if (event) {
         setSelectedEvent(event);
       }
     }
-  }, [eventId]);
+  }, [eventId, closedEvents]);
 
   const handleSettle = () => {
     if (!selectedEvent || !result || !evidence.trim()) {
@@ -62,26 +61,44 @@ export function AdminSettlementsPage() {
     setConfirmDialog(true);
   };
 
-  const confirmSettlement = () => {
+  const confirmSettlement = async () => {
     if (!selectedEvent || !result || !evidence.trim()) return;
 
-    const settled = AdminRepository.settleEvent(selectedEvent.id, result, evidence);
-    
-    if (settled) {
+    try {
+      await settleEventMutation.mutateAsync({
+        eventId: selectedEvent.id,
+        result,
+        evidence,
+      });
+
       toast.success('Evento liquidado com sucesso!');
       setSelectedEvent(null);
       setResult(null);
       setEvidence('');
-      setClosedEvents(AdminRepository.getEvents().filter(e => e.status === 'PENDING' || e.status === 'CONTESTED'));
       navigate('/admin/settlements');
-    } else {
+    } catch (error) {
       toast.error('Erro ao liquidar evento');
     }
 
     setConfirmDialog(false);
   };
 
+  // Parse resolution from event
+  const getResolutionSource = (event: AdminEvent) => {
+    if (event.resolution && typeof event.resolution === 'object') {
+      return event.resolution as { 
+        type?: string; 
+        name?: string; 
+        url?: string; 
+        rule?: string; 
+      };
+    }
+    return { type: 'MANUAL', name: '', url: '', rule: '' };
+  };
+
   if (selectedEvent) {
+    const resolutionSource = getResolutionSource(selectedEvent);
+
     return (
       <div className="space-y-6 max-w-3xl">
         {/* Header */}
@@ -110,7 +127,7 @@ export function AdminSettlementsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Expirou em</p>
                 <p className="font-medium">
-                  {format(selectedEvent.expiryAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  {selectedEvent.close_date && format(new Date(selectedEvent.close_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
               </div>
             </div>
@@ -122,32 +139,36 @@ export function AdminSettlementsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Fonte Oficial
-              <Badge variant="outline">{selectedEvent.resolutionSource.type}</Badge>
+              <Badge variant="outline">{resolutionSource.type || selectedEvent.settlement_type}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
               <p className="text-sm text-muted-foreground">Nome</p>
-              <p className="font-medium">{selectedEvent.resolutionSource.name}</p>
+              <p className="font-medium">{resolutionSource.name || '-'}</p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">URL</p>
-              <a
-                href={selectedEvent.resolutionSource.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline flex items-center gap-1"
-              >
-                {selectedEvent.resolutionSource.url}
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Regra de Resolução</p>
-              <p className="font-medium bg-muted/50 p-3 rounded-lg border">
-                {selectedEvent.resolutionSource.rule}
-              </p>
-            </div>
+            {resolutionSource.url && (
+              <div>
+                <p className="text-sm text-muted-foreground">URL</p>
+                <a
+                  href={resolutionSource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline flex items-center gap-1"
+                >
+                  {resolutionSource.url}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            )}
+            {resolutionSource.rule && (
+              <div>
+                <p className="text-sm text-muted-foreground">Regra de Resolução</p>
+                <p className="font-medium bg-muted/50 p-3 rounded-lg border">
+                  {resolutionSource.rule}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -223,9 +244,13 @@ export function AdminSettlementsPage() {
               onClick={handleSettle} 
               className="w-full" 
               size="lg"
-              disabled={!result || !evidence.trim()}
+              disabled={!result || !evidence.trim() || settleEventMutation.isPending}
             >
-              <Scale className="h-4 w-4 mr-2" />
+              {settleEventMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Scale className="h-4 w-4 mr-2" />
+              )}
               Liquidar Evento
             </Button>
           </CardContent>
@@ -278,7 +303,11 @@ export function AdminSettlementsPage() {
       </div>
 
       {/* Events List */}
-      {closedEvents.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : closedEvents.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Scale className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -302,10 +331,10 @@ export function AdminSettlementsPage() {
                     <p className="text-sm text-muted-foreground mt-1">{event.category}</p>
                     <div className="flex items-center gap-4 mt-3 text-sm">
                       <span className="text-muted-foreground">
-                        Expirou em {format(event.expiryAt, "dd/MM/yyyy", { locale: ptBR })}
+                        Expirou em {event.close_date && format(new Date(event.close_date), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
                       <span className="text-muted-foreground">
-                        Odds: {event.odds.yes}% / {event.odds.no}%
+                        SIM: {Math.round(event.current_yes_price * 100)}% / NÃO: {Math.round(event.current_no_price * 100)}%
                       </span>
                     </div>
                   </div>

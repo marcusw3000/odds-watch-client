@@ -111,6 +111,7 @@ export interface AdminAuditLog {
   after_data: Record<string, unknown> | null;
   ip_address: string | null;
   created_at: string;
+  profiles?: { display_name: string | null } | null;
 }
 
 // Fee Calculation Result

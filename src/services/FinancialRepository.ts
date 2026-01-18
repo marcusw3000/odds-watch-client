@@ -393,7 +393,7 @@ export class FinancialRepository {
   }): Promise<AdminAuditLog[]> {
     let query = supabase
       .from('admin_audit_logs')
-      .select('*')
+      .select('*, profiles:actor_user_id(display_name)')
       .order('created_at', { ascending: false });
 
     if (filters?.actorUserId) {

@@ -229,8 +229,15 @@ export function AdminAuditLogsPage() {
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {log.entity_id ? log.entity_id.substring(0, 8) + '...' : '-'}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {log.actor_user_id.substring(0, 8)}...
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {log.profiles?.display_name || 'Sem nome'}
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {log.actor_user_id.substring(0, 8)}...
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -274,8 +281,9 @@ export function AdminAuditLogsPage() {
                   <p>{format(new Date(selectedLog.created_at), 'dd/MM/yyyy HH:mm:ss')}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Ator (User ID)</Label>
-                  <p className="font-mono text-sm">{selectedLog.actor_user_id}</p>
+                  <Label className="text-muted-foreground">Ator</Label>
+                  <p className="font-medium">{selectedLog.profiles?.display_name || 'Sem nome'}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{selectedLog.actor_user_id}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">IP</Label>

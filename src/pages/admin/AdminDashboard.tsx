@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Calendar, 
@@ -8,26 +7,25 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AdminRepository } from '@/services/AdminRepository';
-import { AdminMetrics, MarketEvent } from '@/types/admin';
+import { 
+  useAdminMetrics, 
+  useExpiringEvents, 
+  useRecentEvents,
+  AdminEvent 
+} from '@/hooks/useAdminEvents';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function AdminDashboard() {
-  const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
-  const [expiringEvents, setExpiringEvents] = useState<MarketEvent[]>([]);
-  const [recentEvents, setRecentEvents] = useState<MarketEvent[]>([]);
-
-  useEffect(() => {
-    setMetrics(AdminRepository.getMetrics());
-    setExpiringEvents(AdminRepository.getExpiringEvents(7));
-    setRecentEvents(AdminRepository.getRecentlyUpdatedEvents(5));
-  }, []);
+  const { data: metrics, isLoading: metricsLoading } = useAdminMetrics();
+  const { data: expiringEvents = [], isLoading: expiringLoading } = useExpiringEvents(7);
+  const { data: recentEvents = [], isLoading: recentLoading } = useRecentEvents(5);
 
   const metricCards = [
     { 
@@ -71,8 +69,8 @@ export function AdminDashboard() {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
       DRAFT: { variant: 'outline', label: 'Rascunho' },
       OPEN: { variant: 'default', label: 'Aberto' },
-      PAUSED: { variant: 'secondary', label: 'Pausado' },
-      CLOSED: { variant: 'destructive', label: 'Fechado' },
+      HALTED: { variant: 'secondary', label: 'Pausado' },
+      PENDING: { variant: 'destructive', label: 'Fechado' },
       SETTLED: { variant: 'outline', label: 'Liquidado' },
     };
     const { variant, label } = variants[status] || { variant: 'outline', label: status };
@@ -99,7 +97,11 @@ export function AdminDashboard() {
                   <card.icon className={`h-5 w-5 ${card.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  {metricsLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <p className="text-2xl font-bold">{card.value}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">{card.label}</p>
                 </div>
               </div>
@@ -123,13 +125,17 @@ export function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {expiringEvents.length === 0 ? (
+            {expiringLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : expiringEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Nenhum evento próximo da expiração
               </p>
             ) : (
               <div className="space-y-3">
-                {expiringEvents.map((event) => (
+                {expiringEvents.map((event: AdminEvent) => (
                   <Link
                     key={event.id}
                     to={`/admin/events/${event.id}`}
@@ -139,7 +145,7 @@ export function AdminDashboard() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{event.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Expira em {format(event.expiryAt, "dd 'de' MMMM", { locale: ptBR })}
+                          Expira em {event.close_date && format(new Date(event.close_date), "dd 'de' MMMM", { locale: ptBR })}
                         </p>
                       </div>
                       {getStatusBadge(event.status)}
@@ -165,13 +171,17 @@ export function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {recentEvents.length === 0 ? (
+            {recentLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : recentEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Nenhum evento recente
               </p>
             ) : (
               <div className="space-y-3">
-                {recentEvents.map((event) => (
+                {recentEvents.map((event: AdminEvent) => (
                   <Link
                     key={event.id}
                     to={`/admin/events/${event.id}`}
@@ -182,7 +192,7 @@ export function AdminDashboard() {
                         <p className="font-medium text-sm truncate">{event.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-muted-foreground">
-                            SIM: {event.odds.yes}% / NÃO: {event.odds.no}%
+                            SIM: {Math.round(event.current_yes_price * 100)}% / NÃO: {Math.round(event.current_no_price * 100)}%
                           </span>
                         </div>
                       </div>

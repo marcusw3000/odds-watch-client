@@ -22,17 +22,7 @@ export interface Odds {
   no: number;
 }
 
-// Audit Log Entry
-export interface AuditLog {
-  id: string;
-  eventId: string;
-  action: 'CREATED' | 'ODDS_CHANGED' | 'STATUS_CHANGED' | 'PAUSED' | 'RESUMED' | 'CLOSED' | 'SETTLED' | 'EDITED';
-  previousValue: string | null;
-  newValue: string;
-  admin: string;
-  reason?: string;
-  timestamp: Date;
-}
+// NOTE: AuditLog is now handled by useAdminAuditLogs hook using admin_audit_logs table
 
 // Market Event (Admin Model)
 export interface MarketEvent {
@@ -97,9 +87,4 @@ export const EVENT_CATEGORIES = [
 
 export type EventCategory = typeof EVENT_CATEGORIES[number];
 
-// Mock Admin User
-export const MOCK_ADMIN = {
-  id: 'admin-001',
-  name: 'Administrador',
-  email: 'admin@predictionmarket.br',
-};
+// NOTE: MOCK_ADMIN removed - now using real auth from Supabase

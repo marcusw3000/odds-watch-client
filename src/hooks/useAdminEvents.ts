@@ -292,3 +292,134 @@ export function useUpdateEvent() {
     },
   });
 }
+
+// === Dashboard Metrics ===
+
+export interface AdminMetrics {
+  totalEvents: number;
+  openEvents: number;
+  pausedEvents: number;
+  closedEvents: number;
+  awaitingSettlement: number;
+  settledEvents: number;
+}
+
+export function useAdminMetrics() {
+  return useQuery<AdminMetrics>({
+    queryKey: ['admin-metrics'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('markets')
+        .select('status, close_date');
+
+      if (error) throw new Error(error.message);
+
+      const now = new Date();
+      const metrics: AdminMetrics = {
+        totalEvents: data.length,
+        openEvents: data.filter(e => e.status === 'OPEN').length,
+        pausedEvents: data.filter(e => e.status === 'HALTED').length,
+        closedEvents: data.filter(e => e.status === 'PENDING').length,
+        awaitingSettlement: data.filter(e => 
+          e.status === 'PENDING' && e.close_date && new Date(e.close_date) < now
+        ).length,
+        settledEvents: data.filter(e => e.status === 'SETTLED').length,
+      };
+
+      return metrics;
+    },
+  });
+}
+
+export function useExpiringEvents(days: number = 7) {
+  return useQuery<AdminEvent[]>({
+    queryKey: ['admin-expiring-events', days],
+    queryFn: async () => {
+      const now = new Date();
+      const threshold = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+      const { data, error } = await supabase
+        .from('markets')
+        .select('*')
+        .eq('status', 'OPEN')
+        .gt('close_date', now.toISOString())
+        .lte('close_date', threshold.toISOString())
+        .order('close_date', { ascending: true });
+
+      if (error) throw new Error(error.message);
+
+      return data as AdminEvent[];
+    },
+  });
+}
+
+export function useRecentEvents(limit: number = 5) {
+  return useQuery<AdminEvent[]>({
+    queryKey: ['admin-recent-events', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('markets')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw new Error(error.message);
+
+      return data as AdminEvent[];
+    },
+  });
+}
+
+export function usePendingSettlements() {
+  return useQuery<AdminEvent[]>({
+    queryKey: ['admin-pending-settlements'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('markets')
+        .select('*')
+        .in('status', ['PENDING', 'CONTESTED'])
+        .order('close_date', { ascending: true });
+
+      if (error) throw new Error(error.message);
+
+      return data as AdminEvent[];
+    },
+  });
+}
+
+// === Audit Logs ===
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  actor_user_id: string;
+  entity: string;
+  entity_id: string | null;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
+export function useAdminAuditLogs(actionFilter?: string) {
+  return useQuery<AuditLogEntry[]>({
+    queryKey: ['admin-audit-logs', actionFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from('admin_audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (actionFilter && actionFilter !== 'all') {
+        query = query.eq('action', actionFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw new Error(error.message);
+
+      return data as AuditLogEntry[];
+    },
+  });
+}

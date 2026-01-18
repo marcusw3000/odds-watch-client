@@ -133,63 +133,21 @@ export interface TicketFilters {
 }
 
 export async function getAllTickets(filters?: TicketFilters): Promise<SupportTicket[]> {
-  let query = supabase
-    .from('support_tickets')
-    .select(`
-      *,
-      user_profile:user_id(display_name, email),
-      assigned_profile:assigned_to(display_name)
-    `)
-    .order('updated_at', { ascending: false });
+  const { data, error } = await supabase.functions.invoke('get-admin-support-tickets', {
+    body: filters || {},
+  });
 
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
-  }
-  if (filters?.category) {
-    query = query.eq('category', filters.category);
-  }
-  if (filters?.priority) {
-    query = query.eq('priority', filters.priority);
-  }
-  if (filters?.assignedTo === 'unassigned') {
-    query = query.is('assigned_to', null);
-  } else if (filters?.assignedTo) {
-    query = query.eq('assigned_to', filters.assignedTo);
-  }
-  if (filters?.search) {
-    query = query.ilike('subject', `%${filters.search}%`);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
-
-  return (data || []).map((ticket: any) => ({
-    ...ticket,
-    user_display_name: ticket.user_profile?.display_name,
-    user_email: ticket.user_profile?.email,
-    assigned_name: ticket.assigned_profile?.display_name,
-  }));
+  return data || [];
 }
 
 export async function getTicketById(ticketId: string): Promise<SupportTicket | null> {
-  const { data, error } = await supabase
-    .from('support_tickets')
-    .select(`
-      *,
-      user_profile:user_id(display_name, email),
-      assigned_profile:assigned_to(display_name)
-    `)
-    .eq('id', ticketId)
-    .single();
+  const { data, error } = await supabase.functions.invoke('get-admin-support-tickets', {
+    body: { ticketId },
+  });
 
   if (error) throw error;
-
-  return {
-    ...data,
-    user_display_name: (data as any).user_profile?.display_name,
-    user_email: (data as any).user_profile?.email,
-    assigned_name: (data as any).assigned_profile?.display_name,
-  } as SupportTicket;
+  return data?.[0] || null;
 }
 
 export async function assignTicket(ticketId: string, userId: string | null): Promise<void> {

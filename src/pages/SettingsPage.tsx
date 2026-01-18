@@ -6,11 +6,13 @@ import { ExportDataButton } from '@/components/settings/ExportDataButton';
 import { SupportTicketsList } from '@/components/support/SupportTicketsList';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function SettingsPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'notifications';
 
   if (!user) {
     return (
@@ -42,7 +44,7 @@ export function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="notifications" className="space-y-6">
+      <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />

@@ -68,13 +68,13 @@ serve(async (req) => {
       );
     }
 
-    // Check visibility - own profile, public profiles, or comment context
+    // Check visibility - own profile, public profiles, or allowed contexts
     const isOwnProfile = requestingUserId === targetUserId;
     const isPublic = profile.is_public;
-    // For comments, always show display name and avatar (user agreed to be identified when commenting publicly)
-    const isCommentContext = context === "comment";
+    // For comments and support, always show display name and avatar
+    const isAllowedContext = context === "comment" || context === "support";
 
-    if (!isOwnProfile && !isPublic && !isCommentContext) {
+    if (!isOwnProfile && !isPublic && !isAllowedContext) {
       // Return minimal info for private profiles
       return new Response(
         JSON.stringify({

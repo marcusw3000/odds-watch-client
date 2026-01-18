@@ -56,19 +56,48 @@ export async function getMyTickets(): Promise<SupportTicket[]> {
 export async function getTicketMessages(ticketId: string): Promise<SupportMessage[]> {
   const { data, error } = await supabase
     .from('support_messages')
-    .select(`
-      *,
-      profiles:sender_id(display_name, avatar_url)
-    `)
+    .select('*')
     .eq('ticket_id', ticketId)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
 
-  return (data || []).map((msg: any) => ({
+  // Fetch display info via Edge Function for each unique sender
+  const messages = data || [];
+  const userIds = [...new Set(messages.map((m: any) => m.sender_id))];
+  const displayInfoMap = new Map<string, { displayName: string; avatarUrl: string | null }>();
+
+  await Promise.all(
+    userIds.map(async (userId) => {
+      try {
+        const { data: info } = await supabase.functions.invoke('get-user-display-info', {
+          body: null,
+          headers: {},
+        });
+        // Use query params approach
+        const response = await supabase.functions.invoke(
+          `get-user-display-info?user_id=${encodeURIComponent(userId)}&context=support`,
+          { method: 'GET' }
+        );
+        if (response.data) {
+          displayInfoMap.set(userId, {
+            displayName: response.data.display_name || 'Usuário',
+            avatarUrl: response.data.avatar_url,
+          });
+        }
+      } catch {
+        // Fallback if edge function fails
+        displayInfoMap.set(userId, { displayName: 'Usuário', avatarUrl: null });
+      }
+    })
+  );
+
+  return messages.map((msg: any) => ({
     ...msg,
-    sender_name: msg.profiles?.display_name || 'Usuário',
-    sender_avatar: msg.profiles?.avatar_url,
+    sender_name: msg.is_staff 
+      ? 'Equipe de Suporte' 
+      : (displayInfoMap.get(msg.sender_id)?.displayName || 'Usuário'),
+    sender_avatar: displayInfoMap.get(msg.sender_id)?.avatarUrl,
   }));
 }
 

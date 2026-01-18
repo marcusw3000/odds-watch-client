@@ -29,9 +29,10 @@ serve(async (req) => {
       requestingUserId = claimsData?.claims?.sub || null;
     }
 
-    // Get user_id from query params
+    // Get user_id and context from query params
     const url = new URL(req.url);
     const targetUserId = url.searchParams.get("user_id");
+    const context = url.searchParams.get("context"); // "comment" | "profile" | etc
 
     if (!targetUserId) {
       return new Response(
@@ -67,11 +68,13 @@ serve(async (req) => {
       );
     }
 
-    // Check visibility - own profile or public profiles only
+    // Check visibility - own profile, public profiles, or comment context
     const isOwnProfile = requestingUserId === targetUserId;
     const isPublic = profile.is_public;
+    // For comments, always show display name and avatar (user agreed to be identified when commenting publicly)
+    const isCommentContext = context === "comment";
 
-    if (!isOwnProfile && !isPublic) {
+    if (!isOwnProfile && !isPublic && !isCommentContext) {
       // Return minimal info for private profiles
       return new Response(
         JSON.stringify({

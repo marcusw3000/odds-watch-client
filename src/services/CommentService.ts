@@ -34,10 +34,10 @@ export const CommentService = {
   },
 
   // Get display info for a user via Edge Function
-  async getUserDisplayInfo(userId: string): Promise<{ displayName: string; avatarUrl?: string } | null> {
+  async getUserDisplayInfo(userId: string, context: 'comment' | 'profile' = 'profile'): Promise<{ displayName: string; avatarUrl?: string } | null> {
     try {
       const { data, error } = await supabase.functions.invoke(
-        `get-user-display-info?user_id=${encodeURIComponent(userId)}`
+        `get-user-display-info?user_id=${encodeURIComponent(userId)}&context=${context}`
       );
 
       if (error || !data) {
@@ -86,10 +86,10 @@ export const CommentService = {
     const userIds = [...new Set((data || []).map(c => c.user_id))];
     const displayInfoMap = new Map<string, { displayName: string; avatarUrl?: string }>();
     
-    // Fetch display info for all unique users
+    // Fetch display info for all unique users (with comment context to always show name/avatar)
     await Promise.all(
       userIds.map(async (userId) => {
-        const info = await this.getUserDisplayInfo(userId);
+        const info = await this.getUserDisplayInfo(userId, 'comment');
         if (info) {
           displayInfoMap.set(userId, info);
         }
@@ -152,9 +152,10 @@ export const CommentService = {
     
     const displayInfoMap = new Map<string, { displayName: string; avatarUrl?: string }>();
     
+    // Fetch display info with comment context to always show name/avatar
     await Promise.all(
       allUserIds.map(async (userId) => {
-        const info = await this.getUserDisplayInfo(userId);
+        const info = await this.getUserDisplayInfo(userId, 'comment');
         if (info) {
           displayInfoMap.set(userId, info);
         }

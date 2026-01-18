@@ -410,6 +410,141 @@ export function useMyCommissions() {
   });
 }
 
+// Subscribe to a copy trader
+export function useSubscribeCopyTrader() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      trader_id: string;
+      payment_method: 'STRIPE' | 'WALLET';
+      auto_copy?: boolean;
+      max_trade_amount?: number;
+      copy_percentage?: number;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('subscribe-copy-trader', {
+        body: params,
+      });
+
+      if (error) throw new Error(error.message);
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      if (data.payment_method === 'WALLET') {
+        queryClient.invalidateQueries({ queryKey: ['my-copy-subscriptions'] });
+        queryClient.invalidateQueries({ queryKey: ['copy-traders'] });
+        queryClient.invalidateQueries({ queryKey: ['user-balance'] });
+        toast.success('Assinatura ativada com sucesso!');
+      } else if (data.checkout_url) {
+        // Redirect to Stripe checkout
+        window.open(data.checkout_url, '_blank');
+      }
+    },
+    onError: (error) => {
+      toast.error('Erro ao assinar: ' + error.message);
+    },
+  });
+}
+
+// Verify Stripe subscription after checkout
+export function useVerifyCopySubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { data, error } = await supabase.functions.invoke('verify-copy-subscription', {
+        body: { session_id: sessionId },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-copy-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['copy-traders'] });
+      toast.success('Assinatura verificada com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao verificar assinatura: ' + error.message);
+    },
+  });
+}
+
+// Cancel a copy subscription
+export function useCancelCopySubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { data, error } = await supabase
+        .from('copy_subscriptions')
+        .update({
+          status: 'CANCELLED',
+          cancelled_at: new Date().toISOString(),
+        })
+        .eq('id', subscriptionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-copy-subscriptions'] });
+      toast.success('Assinatura cancelada');
+    },
+    onError: (error) => {
+      toast.error('Erro ao cancelar: ' + error.message);
+    },
+  });
+}
+
+// Update subscription settings
+export function useUpdateCopySubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      subscription_id,
+      auto_copy,
+      max_trade_amount,
+      copy_percentage,
+    }: {
+      subscription_id: string;
+      auto_copy?: boolean;
+      max_trade_amount?: number | null;
+      copy_percentage?: number;
+    }) => {
+      const { data, error } = await supabase
+        .from('copy_subscriptions')
+        .update({
+          auto_copy,
+          max_trade_amount,
+          copy_percentage,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscription_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['my-copy-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['copied-trades', variables.subscription_id] });
+      toast.success('Configurações atualizadas');
+    },
+    onError: (error) => {
+      toast.error('Erro: ' + error.message);
+    },
+  });
+}
+
 // Admin stats
 export function useCopyTradeStats() {
   return useQuery({

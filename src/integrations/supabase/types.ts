@@ -422,7 +422,10 @@ export type Database = {
           current_period_start: string | null
           follower_id: string
           id: string
+          last_payment_at: string | null
           max_trade_amount: number | null
+          monthly_fee_paid: number | null
+          payment_method: string | null
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -441,7 +444,10 @@ export type Database = {
           current_period_start?: string | null
           follower_id: string
           id?: string
+          last_payment_at?: string | null
           max_trade_amount?: number | null
+          monthly_fee_paid?: number | null
+          payment_method?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -460,7 +466,10 @@ export type Database = {
           current_period_start?: string | null
           follower_id?: string
           id?: string
+          last_payment_at?: string | null
           max_trade_amount?: number | null
+          monthly_fee_paid?: number | null
+          payment_method?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -2191,6 +2200,17 @@ export type Database = {
           p_outcome: string
           p_shares: number
           p_user_id: string
+        }
+        Returns: Json
+      }
+      atomic_subscribe_copy_trader: {
+        Args: {
+          p_amount: number
+          p_auto_copy?: boolean
+          p_copy_percentage?: number
+          p_follower_id: string
+          p_max_trade_amount?: number
+          p_trader_id: string
         }
         Returns: Json
       }

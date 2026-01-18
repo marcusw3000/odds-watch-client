@@ -167,7 +167,7 @@ export function SuggestionComments({ suggestionId, suggestionTitle = '' }: Sugge
           Nenhum comentário ainda. Seja o primeiro!
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {comments.map((comment) => (
             <SuggestionCommentThread
               key={comment.id}

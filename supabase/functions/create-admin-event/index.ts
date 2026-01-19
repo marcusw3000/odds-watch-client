@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
         category,
         status: 'OPEN',
         close_date: closeDate,
+        settlement_date: closeDate, // Use close_date as default settlement date
         image_url: imageUrl || null,
         tags: tags || [],
         current_yes_price: marketType === 'BINARY' ? initialYesPrice : 0,

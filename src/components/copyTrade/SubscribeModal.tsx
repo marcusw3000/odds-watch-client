@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CopyTrader } from "@/types/copyTrade";
 import { formatCurrency } from "@/lib/formatters";
-import { CreditCard, Wallet, AlertCircle, Loader2 } from "lucide-react";
+import { Wallet, AlertCircle, Loader2 } from "lucide-react";
 import { useSubscribeCopyTrader } from "@/hooks/useCopyTrade";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +27,6 @@ interface SubscribeModalProps {
 }
 
 export function SubscribeModal({ trader, isOpen, onClose, userBalance = 0 }: SubscribeModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'WALLET'>('WALLET');
   const [autoCopy, setAutoCopy] = useState(true);
   const [maxTradeAmount, setMaxTradeAmount] = useState('100');
   const [copyPercentage, setCopyPercentage] = useState('100');
@@ -51,16 +49,12 @@ export function SubscribeModal({ trader, isOpen, onClose, userBalance = 0 }: Sub
     try {
       await subscribeMutation.mutateAsync({
         trader_id: trader.id,
-        payment_method: paymentMethod,
         auto_copy: autoCopy,
         max_trade_amount: parseFloat(maxTradeAmount) || undefined,
         copy_percentage: parseFloat(copyPercentage) || undefined,
       });
       
-      if (paymentMethod === 'WALLET') {
-        onClose();
-      }
-      // Stripe will redirect automatically
+      onClose();
     } catch {
       // Error handled by mutation
     }
@@ -145,54 +139,20 @@ export function SubscribeModal({ trader, isOpen, onClose, userBalance = 0 }: Sub
             </div>
           </div>
           
-          {/* Payment Method */}
+          {/* Wallet Balance Info */}
           {monthlyFee > 0 && (
-            <div className="space-y-3">
-              <Label>Forma de Pagamento</Label>
-              <RadioGroup 
-                value={paymentMethod} 
-                onValueChange={(v) => setPaymentMethod(v as 'STRIPE' | 'WALLET')}
-                className="grid grid-cols-2 gap-3"
-              >
-                <Label
-                  htmlFor="wallet"
-                  className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                    paymentMethod === 'WALLET' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  } ${!canPayWithWallet ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <RadioGroupItem value="WALLET" id="wallet" disabled={!canPayWithWallet} />
-                  <Wallet className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <span className="font-medium text-sm">Saldo</span>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(userBalance)}
-                    </p>
-                  </div>
-                </Label>
-                
-                <Label
-                  htmlFor="stripe"
-                  className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                    paymentMethod === 'STRIPE' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  <RadioGroupItem value="STRIPE" id="stripe" />
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <span className="font-medium text-sm">Cartão</span>
-                    <p className="text-xs text-muted-foreground">Stripe</p>
-                  </div>
-                </Label>
-              </RadioGroup>
-              
-              {!canPayWithWallet && paymentMethod === 'WALLET' && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
+            <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Wallet className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">Saldo Disponível</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(userBalance)}</p>
+              </div>
+              {!canPayWithWallet && (
+                <div className="flex items-center gap-1 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <span>Saldo insuficiente para esta assinatura</span>
+                  <span>Insuficiente</span>
                 </div>
               )}
             </div>
@@ -216,7 +176,7 @@ export function SubscribeModal({ trader, isOpen, onClose, userBalance = 0 }: Sub
           <Button 
             onClick={handleSubmit} 
             className="w-full sm:w-auto"
-            disabled={subscribeMutation.isPending || (monthlyFee > 0 && paymentMethod === 'WALLET' && !canPayWithWallet)}
+            disabled={subscribeMutation.isPending || (monthlyFee > 0 && !canPayWithWallet)}
           >
             {subscribeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {monthlyFee > 0 ? `Assinar por ${formatCurrency(monthlyFee)}/mês` : 'Seguir Gratuitamente'}

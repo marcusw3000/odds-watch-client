@@ -152,7 +152,7 @@ export function LeaderboardTable({
                 <TableCell>
                   {entry.show_volume ? (
                     <span className="font-mono text-muted-foreground">
-                      R${entry.total_volume.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                      R${entry.total_volume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   ) : (
                     <span className="text-muted-foreground flex items-center gap-1">

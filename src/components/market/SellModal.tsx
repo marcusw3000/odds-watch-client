@@ -81,7 +81,7 @@ export function SellModal({
   const saleValue = quote?.cost ?? (currentMarketPrice / 100) * contract.quantity;
   const displayValue = lockedPrice ?? saleValue;
   const profitLoss = displayValue - purchaseCost;
-  const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(1) : '0.0';
+  const profitLossPercent = purchaseCost > 0 ? ((profitLoss / purchaseCost) * 100).toFixed(2) : '0.00';
 
   // Timer countdown for price validity
   useEffect(() => {
@@ -366,7 +366,7 @@ export function SellModal({
                 )}>
                   <Zap className="h-3.5 w-3.5" />
                   <span className="text-xs">
-                    Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(1)}%
+                    Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(2)}%
                   </span>
                 </div>
               )}

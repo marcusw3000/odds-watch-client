@@ -124,8 +124,8 @@ export function AdminRevenuePage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {totalRevenue > 0 
-                ? `${(((revenueByType['DEPOSIT'] || 0) / totalRevenue) * 100).toFixed(1)}% do total`
-                : '0% do total'
+                ? `${(((revenueByType['DEPOSIT'] || 0) / totalRevenue) * 100).toFixed(2)}% do total`
+                : '0.00% do total'
               }
             </p>
           </CardContent>
@@ -142,8 +142,8 @@ export function AdminRevenuePage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {totalRevenue > 0 
-                ? `${(((revenueByType['WITHDRAW'] || 0) / totalRevenue) * 100).toFixed(1)}% do total`
-                : '0% do total'
+                ? `${(((revenueByType['WITHDRAW'] || 0) / totalRevenue) * 100).toFixed(2)}% do total`
+                : '0.00% do total'
               }
             </p>
           </CardContent>
@@ -160,8 +160,8 @@ export function AdminRevenuePage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {totalRevenue > 0 
-                ? `${(((revenueByType['TRADE'] || 0) / totalRevenue) * 100).toFixed(1)}% do total`
-                : '0% do total'
+                ? `${(((revenueByType['TRADE'] || 0) / totalRevenue) * 100).toFixed(2)}% do total`
+                : '0.00% do total'
               }
             </p>
           </CardContent>

@@ -380,7 +380,7 @@ export function PurchaseModal({
                   Retorno se {selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} vencer
                 </span>
                 <span className="font-mono">
-                  R${potentialReturn.toFixed(2)} (+{roi.toFixed(0)}%)
+                  R${potentialReturn.toFixed(2)} (+{roi.toFixed(2)}%)
                 </span>
               </div>
 
@@ -394,7 +394,7 @@ export function PurchaseModal({
                 )}>
                   <Zap className="h-3.5 w-3.5" />
                   <span className="text-xs">
-                    Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(1)}%
+                    Impacto no preço: {quote.priceImpact > 0 ? '+' : ''}{quote.priceImpact.toFixed(2)}%
                   </span>
                 </div>
               )}

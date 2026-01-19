@@ -28,10 +28,10 @@ export const formatCurrencyWithSign = (value: number): string => {
  * Format volume in compact notation (1k, 1.5M, etc.)
  */
 export const formatVolume = (volume?: number): string => {
-  if (!volume) return 'R$0';
-  if (volume >= 1000000) return `R$${(volume / 1000000).toFixed(1)}M`;
-  if (volume >= 1000) return `R$${(volume / 1000).toFixed(0)}k`;
-  return `R$${volume.toLocaleString('pt-BR')}`;
+  if (!volume) return 'R$0,00';
+  if (volume >= 1000000) return `R$${(volume / 1000000).toFixed(2)}M`;
+  if (volume >= 1000) return `R$${(volume / 1000).toFixed(2)}k`;
+  return `R$${volume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 /**
@@ -39,7 +39,7 @@ export const formatVolume = (volume?: number): string => {
  */
 export const formatPercent = (value: number): string => {
   const prefix = value >= 0 ? '+' : '';
-  return `${prefix}${value.toFixed(1)}%`;
+  return `${prefix}${value.toFixed(2)}%`;
 };
 
 /**

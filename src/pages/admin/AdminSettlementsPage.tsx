@@ -71,11 +71,9 @@ export function AdminSettlementsPage() {
         evidence,
       });
 
-      toast.success('Evento liquidado com sucesso!');
-      setSelectedEvent(null);
-      setResult(null);
-      setEvidence('');
-      navigate('/admin/settlements');
+      toast.success('Evento liquidado com sucesso! Pagamentos e comissões processados.');
+      // Redirecionar para a página de detalhes do evento liquidado
+      navigate(`/admin/events/${selectedEvent.id}`);
     } catch (error) {
       toast.error('Erro ao liquidar evento');
     }

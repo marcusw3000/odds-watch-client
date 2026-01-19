@@ -139,6 +139,7 @@ export function CopyTradersPage() {
               trader={trader}
               onSubscribe={setSelectedTrader}
               isSubscribed={subscribedTraderIds.has(trader.id)}
+              currentUserId={user?.id}
             />
           ))}
         </div>

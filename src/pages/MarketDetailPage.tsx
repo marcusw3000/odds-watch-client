@@ -341,7 +341,7 @@ export function MarketDetailPage() {
           </Card>
 
           {/* Tabs */}
-          <Tabs defaultValue="rules" className="w-full">
+          <Tabs defaultValue="comments" className="w-full">
             <TabsList className="w-full justify-start border-b border-border rounded-none bg-transparent p-0 h-auto">
               <TabsTrigger
                 value="rules"

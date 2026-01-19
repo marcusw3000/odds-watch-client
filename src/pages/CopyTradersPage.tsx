@@ -149,7 +149,7 @@ export function CopyTradersPage() {
         trader={selectedTrader}
         isOpen={!!selectedTrader}
         onClose={() => setSelectedTrader(null)}
-        userBalance={balanceData?.balance || 0}
+        userBalance={balanceData?.balance_available || 0}
       />
     </div>
   );

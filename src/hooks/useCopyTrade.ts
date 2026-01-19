@@ -505,14 +505,13 @@ export function useMyCommissions() {
   });
 }
 
-// Subscribe to a copy trader
+// Subscribe to a copy trader (wallet only)
 export function useSubscribeCopyTrader() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (params: {
       trader_id: string;
-      payment_method: 'STRIPE' | 'WALLET';
       auto_copy?: boolean;
       max_trade_amount?: number;
       copy_percentage?: number;
@@ -526,16 +525,11 @@ export function useSubscribeCopyTrader() {
       
       return data;
     },
-    onSuccess: (data, variables) => {
-      if (data.payment_method === 'WALLET') {
-        queryClient.invalidateQueries({ queryKey: ['my-copy-subscriptions'] });
-        queryClient.invalidateQueries({ queryKey: ['copy-traders'] });
-        queryClient.invalidateQueries({ queryKey: ['user-balance'] });
-        toast.success('Assinatura ativada com sucesso!');
-      } else if (data.checkout_url) {
-        // Redirect to Stripe checkout
-        window.open(data.checkout_url, '_blank');
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-copy-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['copy-traders'] });
+      queryClient.invalidateQueries({ queryKey: ['user-balance'] });
+      toast.success('Assinatura ativada com sucesso!');
     },
     onError: (error) => {
       toast.error('Erro ao assinar: ' + error.message);

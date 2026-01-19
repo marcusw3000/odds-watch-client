@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
       description,
       category,
       closeDate,
+      settlementDate,
       imageUrl,
       tags,
       yesPrice,
@@ -93,8 +94,16 @@ Deno.serve(async (req) => {
     logStep(functionName, 'Creating event', { title, category, marketType });
 
     // Validate required fields
-    if (!title || !description || !category || !closeDate) {
+    if (!title || !description || !category || !closeDate || !settlementDate) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate that closeDate (trading halt) is before or equal to settlementDate (event date)
+    if (new Date(closeDate) > new Date(settlementDate)) {
+      return new Response(JSON.stringify({ error: 'Data de halt de trading deve ser anterior ou igual à data do evento' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -148,7 +157,7 @@ Deno.serve(async (req) => {
         category,
         status: 'OPEN',
         close_date: closeDate,
-        settlement_date: closeDate, // Use close_date as default settlement date
+        settlement_date: settlementDate,
         image_url: imageUrl || null,
         tags: tags || [],
         current_yes_price: marketType === 'BINARY' ? initialYesPrice : 0,

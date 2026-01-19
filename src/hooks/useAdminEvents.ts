@@ -225,6 +225,7 @@ export interface CreateEventData {
   description: string;
   category: string;
   closeDate: string;
+  settlementDate: string;
   imageUrl?: string;
   tags?: string[];
   yesPrice?: number;
@@ -268,6 +269,7 @@ export interface UpdateEventData {
   description?: string;
   category?: string;
   closeDate?: string;
+  settlementDate?: string;
   imageUrl?: string;
   tags?: string[];
   yesPrice?: number;

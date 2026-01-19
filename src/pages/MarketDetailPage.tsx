@@ -28,6 +28,7 @@ import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { TradingHaltBanner } from '@/components/market/TradingHaltBanner';
 import { ContestationPanel } from '@/components/market/ContestationPanel';
 import { BidAskSpread } from '@/components/market/BidAskSpread';
+import { MarketResultsPanel } from '@/components/market/MarketResultsPanel';
 import { ShareButton } from '@/components/social/ShareButton';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { MarketDetailSkeleton } from '@/components/market/MarketDetailSkeleton';
@@ -405,106 +406,114 @@ export function MarketDetailPage() {
           </Tabs>
         </div>
 
-        {/* Right: Trading Panel */}
+        {/* Right: Trading Panel or Results Panel */}
         <div className="space-y-4">
           <Card className="sticky top-24">
             <CardHeader>
-              <CardTitle>Negociar</CardTitle>
+              <CardTitle>
+                {statusInfo.status === 'SETTLED' ? 'Resultado Final' : 'Negociar'}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Render different UI based on market type */}
-              {event.marketType === 'MULTIPLE' && event.options ? (
-                <MultiOptionTradingPanel
-                  event={event}
-                  canTrade={statusInfo.canTrade}
-                  onBuyOption={(option) => {
-                    if (!user) {
-                      navigate('/auth', { state: { returnTo: `/market/${id}` } });
-                      return;
-                    }
-                    setSelectedOption(option);
-                  }}
-                />
+              {statusInfo.status === 'SETTLED' ? (
+                <MarketResultsPanel event={event} />
               ) : (
                 <>
-                  {/* Binary market - Current Odds */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-yes-muted/30 border border-yes/20">
-                      <div>
-                        <p className="text-sm text-muted-foreground">SIM</p>
-                        <OddsBadge 
-                          type="YES" 
-                          price={event.outcomes.YES.price} 
-                          probability={event.outcomes.YES.probability}
-                          size="md"
-                        />
+                  {/* Render different UI based on market type */}
+                  {event.marketType === 'MULTIPLE' && event.options ? (
+                    <MultiOptionTradingPanel
+                      event={event}
+                      canTrade={statusInfo.canTrade}
+                      onBuyOption={(option) => {
+                        if (!user) {
+                          navigate('/auth', { state: { returnTo: `/market/${id}` } });
+                          return;
+                        }
+                        setSelectedOption(option);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {/* Binary market - Current Odds */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-yes-muted/30 border border-yes/20">
+                          <div>
+                            <p className="text-sm text-muted-foreground">SIM</p>
+                            <OddsBadge 
+                              type="YES" 
+                              price={event.outcomes.YES.price} 
+                              probability={event.outcomes.YES.probability}
+                              size="md"
+                            />
+                          </div>
+                          <Button 
+                            variant="yes" 
+                            onClick={() => {
+                              if (!user) {
+                                navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=YES` } });
+                                return;
+                              }
+                              setSelectedOutcome('YES');
+                            }}
+                            disabled={!statusInfo.canTrade}
+                          >
+                            Comprar SIM
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-no-muted/30 border border-no/20">
+                          <div>
+                            <p className="text-sm text-muted-foreground">NÃO</p>
+                            <OddsBadge 
+                              type="NO" 
+                              price={event.outcomes.NO.price} 
+                              probability={event.outcomes.NO.probability}
+                              size="md"
+                            />
+                          </div>
+                          <Button 
+                            variant="no" 
+                            onClick={() => {
+                              if (!user) {
+                                navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=NO` } });
+                                return;
+                              }
+                              setSelectedOutcome('NO');
+                            }}
+                            disabled={!statusInfo.canTrade}
+                          >
+                            Comprar NÃO
+                          </Button>
+                        </div>
                       </div>
-                      <Button 
-                        variant="yes" 
-                        onClick={() => {
-                          if (!user) {
-                            navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=YES` } });
-                            return;
-                          }
-                          setSelectedOutcome('YES');
-                        }}
-                        disabled={!statusInfo.canTrade}
-                      >
-                        Comprar SIM
-                      </Button>
-                    </div>
 
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-no-muted/30 border border-no/20">
-                      <div>
-                        <p className="text-sm text-muted-foreground">NÃO</p>
-                        <OddsBadge 
-                          type="NO" 
-                          price={event.outcomes.NO.price} 
-                          probability={event.outcomes.NO.probability}
-                          size="md"
-                        />
+                      {/* Bid-Ask Spread Info */}
+                      <BidAskSpread 
+                        eventId={event.id} 
+                        quantity={10}
+                        yesShares={event.lmsr.qYes}
+                        noShares={event.lmsr.qNo}
+                      />
+
+                      {/* Info Box */}
+                      <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">
+                        <p className="font-medium">Como funciona?</p>
+                        <ul className="space-y-1 text-muted-foreground text-xs">
+                          <li>• Contrato vencedor paga <span className="font-semibold text-foreground">R${event.contractUnitCost.toFixed(2)}</span></li>
+                          <li>• Contrato perdedor paga R$0,00</li>
+                          <li>• Lucro = R${event.contractUnitCost.toFixed(2)} - preço de compra</li>
+                        </ul>
                       </div>
-                      <Button 
-                        variant="no" 
-                        onClick={() => {
-                          if (!user) {
-                            navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=NO` } });
-                            return;
-                          }
-                          setSelectedOutcome('NO');
-                        }}
-                        disabled={!statusInfo.canTrade}
-                      >
-                        Comprar NÃO
-                      </Button>
-                    </div>
-                  </div>
+                    </>
+                  )}
 
-                  {/* Bid-Ask Spread Info */}
-                  <BidAskSpread 
-                    eventId={event.id} 
-                    quantity={10}
-                    yesShares={event.lmsr.qYes}
-                    noShares={event.lmsr.qNo}
-                  />
-
-                  {/* Info Box */}
-                  <div className="p-4 rounded-lg bg-secondary text-sm space-y-2">
-                    <p className="font-medium">Como funciona?</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• Contrato vencedor paga <span className="font-semibold text-foreground">R${event.contractUnitCost.toFixed(2)}</span></li>
-                      <li>• Contrato perdedor paga R$0,00</li>
-                      <li>• Lucro = R${event.contractUnitCost.toFixed(2)} - preço de compra</li>
-                    </ul>
+                  {/* Balance */}
+                  <div className="pt-4 border-t border-border text-center">
+                    <p className="text-xs text-muted-foreground">Seu saldo</p>
+                    <p className="font-mono font-bold text-lg">R${userBalance.toFixed(2)}</p>
                   </div>
                 </>
               )}
-
-              {/* Balance */}
-              <div className="pt-4 border-t border-border text-center">
-                <p className="text-xs text-muted-foreground">Seu saldo</p>
-                <p className="font-mono font-bold text-lg">R${userBalance.toFixed(2)}</p>
-              </div>
             </CardContent>
           </Card>
         </div>

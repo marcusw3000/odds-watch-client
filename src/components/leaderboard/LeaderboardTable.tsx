@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Trophy, TrendingUp, BarChart3, Activity, EyeOff } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrencyWithSign, formatPercent } from '@/lib/formatters';
 import type { LeaderboardEntry, LeaderboardSortBy } from '@/types/leaderboard';
@@ -114,6 +114,7 @@ export function LeaderboardTable({
                     className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                   >
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={entry.avatar_url || undefined} alt={entry.display_name} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
                         {getInitials(entry.display_name)}
                       </AvatarFallback>

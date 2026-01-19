@@ -58,6 +58,7 @@ export interface LeaderboardEntry {
   rank: number;
   user_id: string;
   display_name: string;
+  avatar_url: string | null;
   total_profit: number;
   roi_percent: number;
   total_volume: number;

@@ -116,6 +116,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
           result={event.result}
+          options={event.options}
           size="sm"
         />
       </div>

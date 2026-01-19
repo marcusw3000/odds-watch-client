@@ -126,6 +126,7 @@ export const MultiOptionCard = memo(function MultiOptionCard({
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
           result={event.result}
+          options={event.options}
           size="sm"
         />
       </div>

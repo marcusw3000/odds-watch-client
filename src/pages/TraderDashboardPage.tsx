@@ -14,6 +14,9 @@ import {
   XCircle,
   AlertCircle,
   BarChart3,
+  Pencil,
+  X,
+  Save,
 } from "lucide-react";
 import {
   LineChart,
@@ -42,7 +45,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useMyTraderStatus, useMyFollowers, useMyCommissions } from "@/hooks/useCopyTrade";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useMyTraderStatus, useMyFollowers, useMyCommissions, useUpdateMyTraderProfile } from "@/hooks/useCopyTrade";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +58,33 @@ export function TraderDashboardPage() {
   const { data: traderStatus, isLoading: traderLoading } = useMyTraderStatus();
   const { data: followers, isLoading: followersLoading } = useMyFollowers();
   const { data: commissions, isLoading: commissionsLoading } = useMyCommissions();
+  const updateProfile = useUpdateMyTraderProfile();
+
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [editedBio, setEditedBio] = useState("");
+
+  const handleEditProfile = () => {
+    setEditedName(traderStatus?.display_name || "");
+    setEditedBio(traderStatus?.bio || "");
+    setIsEditingProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editedName.trim()) return;
+    await updateProfile.mutateAsync({ 
+      display_name: editedName.trim(), 
+      bio: editedBio.trim() 
+    });
+    setIsEditingProfile(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingProfile(false);
+    setEditedName("");
+    setEditedBio("");
+  };
 
   // Fetch copied trades for this trader
   const { data: copiedTrades, isLoading: tradesLoading } = useQuery({
@@ -209,6 +242,70 @@ export function TraderDashboardPage() {
           Acompanhe seus seguidores, trades copiados e comissões.
         </p>
       </div>
+
+      {/* Profile Card */}
+      <Card className="mb-8 bg-gradient-card border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">Seu Perfil de Trader</CardTitle>
+          {!isEditingProfile && (
+            <Button variant="outline" size="sm" onClick={handleEditProfile}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isEditingProfile ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Nome de exibição</label>
+                <Input 
+                  value={editedName} 
+                  onChange={(e) => setEditedName(e.target.value)} 
+                  placeholder="Seu nome de trader"
+                  maxLength={50}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Bio</label>
+                <Textarea 
+                  value={editedBio} 
+                  onChange={(e) => setEditedBio(e.target.value)} 
+                  placeholder="Conte sobre sua estratégia de trading..."
+                  maxLength={200}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground text-right">{editedBio.length}/200</p>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={handleCancelEdit} disabled={updateProfile.isPending}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveProfile} disabled={!editedName.trim() || updateProfile.isPending}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateProfile.isPending ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-4">
+              <Avatar className="h-16 w-16 border-2 border-primary/20">
+                <AvatarImage src={traderStatus?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
+                  {traderStatus?.display_name?.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl font-semibold">{traderStatus?.display_name}</h3>
+                <p className="text-muted-foreground mt-1">
+                  {traderStatus?.bio || <span className="italic">Sem bio - clique em Editar para adicionar</span>}
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4 mb-8">

@@ -226,27 +226,40 @@ export function MarketDetailPage() {
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-              {event.category}
-            </span>
-            <MarketStatusBadge
-              status={statusInfo.status}
-              timeToHalt={statusInfo.timeToHalt}
-              timeToEvent={statusInfo.timeToEvent}
-              contestTimeRemaining={statusInfo.contestTimeRemaining}
-              result={event.result}
-              options={event.options}
-              isUrgent={statusInfo.isUrgent}
-            />
+        <div className="flex gap-4 flex-1">
+          {/* Market Image */}
+          {event.imageUrl && (
+            <div className="flex-shrink-0">
+              <img
+                src={event.imageUrl}
+                alt={event.title}
+                className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover border border-border"
+              />
+            </div>
+          )}
+          
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
+                {event.category}
+              </span>
+              <MarketStatusBadge
+                status={statusInfo.status}
+                timeToHalt={statusInfo.timeToHalt}
+                timeToEvent={statusInfo.timeToEvent}
+                contestTimeRemaining={statusInfo.contestTimeRemaining}
+                result={event.result}
+                options={event.options}
+                isUrgent={statusInfo.isUrgent}
+              />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold leading-tight">
+              {event.title}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {event.description}
+            </p>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold leading-tight">
-            {event.title}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {event.description}
-          </p>
         </div>
         <div className="flex gap-2">
           <FavoriteButton marketId={event.id} showLabel />

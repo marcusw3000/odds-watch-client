@@ -37,12 +37,12 @@ serve(async (req) => {
       });
     }
 
-    // Filter to only public profiles and map to leaderboard entries
+    // Filter to only public profiles with display_name set
     const entries = (profiles || [])
-      .filter(p => p.is_public)
+      .filter(p => p.is_public && p.display_name && p.display_name.trim() !== '')
       .map(profile => ({
         user_id: profile.id,
-        display_name: profile.display_name || 'Trader Anônimo',
+        display_name: profile.display_name,
         // Only include stats if user chose to show them
         total_profit: profile.show_profit ? (profile.total_profit || 0) : null,
         roi_percent: profile.show_roi ? (profile.roi_percent || 0) : null,

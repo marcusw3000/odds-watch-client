@@ -158,7 +158,15 @@ export function ProfilePrivacySettings({ profile, onUpdate }: ProfilePrivacySett
           <Switch
             id="public-profile"
             checked={isPublic}
-            onCheckedChange={setIsPublic}
+            onCheckedChange={(checked) => {
+              if (checked && !displayName.trim()) {
+                toast.error('Nome de exibição obrigatório', {
+                  description: 'Você precisa definir um nome de exibição antes de tornar seu perfil público.',
+                });
+                return;
+              }
+              setIsPublic(checked);
+            }}
           />
         </div>
 

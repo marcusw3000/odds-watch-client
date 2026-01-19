@@ -650,6 +650,42 @@ export function useUpdateCopySubscription() {
   });
 }
 
+// Update trader's own profile (display_name, bio)
+export function useUpdateMyTraderProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ display_name, bio }: { display_name: string; bio: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      const { data, error } = await supabase
+        .from('copy_traders')
+        .update({ 
+          display_name, 
+          bio, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('user_id', user.id)
+        .eq('status', 'APPROVED')
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-trader-status'] });
+      queryClient.invalidateQueries({ queryKey: ['copy-traders', 'approved'] });
+      queryClient.invalidateQueries({ queryKey: ['copy-traders'] });
+      toast.success('Perfil atualizado com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar perfil: ' + error.message);
+    },
+  });
+}
+
 // Admin stats
 export function useCopyTradeStats() {
   return useQuery({

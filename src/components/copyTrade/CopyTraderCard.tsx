@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { CopyTrader } from "@/types/copyTrade";
-import { TrendingUp, Users, Target, Wallet } from "lucide-react";
+import { TrendingUp, Users, Target, Wallet, LayoutDashboard } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 
 interface CopyTraderCardProps {
@@ -114,9 +114,12 @@ export function CopyTraderCard({ trader, onSubscribe, isSubscribed, currentUserI
       
       <CardFooter className="pt-0 relative">
         {isOwnProfile ? (
-          <Badge variant="secondary" className="w-full justify-center py-2">
-            Seu Perfil de Trader
-          </Badge>
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/trader/dashboard">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Ver Seu Dashboard
+            </Link>
+          </Button>
         ) : (
           <Button 
             className="w-full" 

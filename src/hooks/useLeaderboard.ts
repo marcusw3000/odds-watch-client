@@ -49,11 +49,13 @@ export function useLeaderboard(sortBy: LeaderboardSortBy = 'profit', limit: numb
       if (error) throw error;
       if (!profiles || profiles.length === 0) return [];
 
-      // Map to leaderboard entries
-      const entries: LeaderboardEntry[] = profiles.map((profile) => ({
+      // Filter out profiles without display_name and map to leaderboard entries
+      const entries: LeaderboardEntry[] = profiles
+        .filter((profile) => profile.display_name && profile.display_name.trim() !== '')
+        .map((profile) => ({
         rank: 0,
         user_id: profile.id,
-        display_name: profile.display_name || 'Trader Anônimo',
+        display_name: profile.display_name!,
         total_profit: profile.total_profit || 0,
         roi_percent: profile.roi_percent || 0,
         total_volume: profile.total_volume || 0,

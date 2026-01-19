@@ -41,7 +41,7 @@ export function useLeaderboard(sortBy: LeaderboardSortBy = 'profit', limit: numb
       // Fetch public profiles using the secure profiles_public view (excludes PII like email/full_name)
       const result = await supabase
         .from('profiles_public')
-        .select('id, display_name, is_public, show_profit, show_roi, show_volume, show_trades, total_profit, roi_percent, total_volume, total_trades, winning_trades');
+        .select('id, display_name, avatar_url, is_public, show_profit, show_roi, show_volume, show_trades, total_profit, roi_percent, total_volume, total_trades, winning_trades');
       
       const profiles = (result.data || []) as ProfileData[];
       const error = result.error;
@@ -56,6 +56,7 @@ export function useLeaderboard(sortBy: LeaderboardSortBy = 'profit', limit: numb
         rank: 0,
         user_id: profile.id,
         display_name: profile.display_name!,
+        avatar_url: profile.avatar_url || null,
         total_profit: profile.total_profit || 0,
         roi_percent: profile.roi_percent || 0,
         total_volume: profile.total_volume || 0,

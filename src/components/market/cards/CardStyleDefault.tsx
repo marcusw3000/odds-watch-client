@@ -142,7 +142,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                     className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
                     onClick={() => onBuy(event.id, 'YES')}
                   >
-                    Yes
+                    Sim
                   </Button>
                   <Button
                     size="sm"
@@ -150,7 +150,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                     className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
                     onClick={() => onBuy(event.id, 'NO')}
                   >
-                    No
+                    Não
                   </Button>
                 </>
               ) : (
@@ -186,7 +186,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                     className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
                     onClick={() => onBuy(event.id, 'YES')}
                   >
-                    Yes
+                    Sim
                   </Button>
                   <Button
                     size="sm"
@@ -194,7 +194,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                     className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
                     onClick={() => onBuy(event.id, 'NO')}
                   >
-                    No
+                    Não
                   </Button>
                 </>
               ) : (

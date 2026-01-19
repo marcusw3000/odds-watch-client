@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   ArrowLeft, 
@@ -299,7 +299,13 @@ export function MarketDetailPage() {
               Halt de Trading
             </div>
             <p className="font-semibold">
-              {formatDistanceToNow(event.tradingHaltAt, { locale: ptBR, addSuffix: true })}
+              {(() => {
+                const days = differenceInDays(event.tradingHaltAt, new Date());
+                if (days < 0) return 'Encerrado';
+                if (days === 0) return 'Hoje';
+                if (days === 1) return 'Amanhã';
+                return `em ${days} dias`;
+              })()}
             </p>
           </CardContent>
         </Card>
@@ -310,7 +316,13 @@ export function MarketDetailPage() {
               Evento
             </div>
             <p className="font-semibold">
-              {formatDistanceToNow(event.eventAt, { locale: ptBR, addSuffix: true })}
+              {(() => {
+                const days = differenceInDays(event.eventAt, new Date());
+                if (days < 0) return 'Encerrado';
+                if (days === 0) return 'Hoje';
+                if (days === 1) return 'Amanhã';
+                return `em ${days} dias`;
+              })()}
             </p>
           </CardContent>
         </Card>

@@ -180,7 +180,7 @@ export function useUserDisplayInfo(userId: string | null) {
       return data as UserDisplayInfo;
     },
     enabled: !!userId,
-    staleTime: 300000,
+    staleTime: 60000, // 1 minuto - mais responsivo a atualizações de perfil
   });
 }
 

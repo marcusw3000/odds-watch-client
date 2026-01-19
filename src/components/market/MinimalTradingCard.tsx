@@ -3,6 +3,7 @@ import { X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { MarketEvent, UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { TradeQuote } from '@/services/LMSRCalculator';
@@ -58,6 +59,7 @@ export function MinimalTradingCard({
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [sliderValue, setSliderValue] = useState<number[]>([0]);
 
   const isMobile = useIsMobile();
 
@@ -129,7 +131,35 @@ export function MinimalTradingCard({
     setAmount('');
     setError(null);
     setQuote(null);
+    setSliderValue([0]);
   }, [mode, activeOutcome]);
+
+  // Calculate max value for slider
+  const maxValue = mode === 'buy' ? userBalance : currentQuantity;
+
+  // Slider change handler
+  const handleSliderChange = useCallback((value: number[]) => {
+    setSliderValue(value);
+    const percentage = value[0] / 100;
+    if (mode === 'buy') {
+      const newAmount = (percentage * userBalance).toFixed(2);
+      setAmount(newAmount === '0.00' ? '' : newAmount);
+    } else {
+      const newAmount = Math.floor(percentage * currentQuantity);
+      setAmount(newAmount === 0 ? '' : newAmount.toString());
+    }
+    setError(null);
+  }, [mode, userBalance, currentQuantity]);
+
+  // Sync slider when input changes
+  useEffect(() => {
+    if (maxValue <= 0) {
+      setSliderValue([0]);
+      return;
+    }
+    const percentage = (amountNum / maxValue) * 100;
+    setSliderValue([Math.min(Math.max(percentage, 0), 100)]);
+  }, [amountNum, maxValue]);
 
   const handleConfirm = useCallback(async () => {
     if (!quote || sharesFromAmount <= 0) {
@@ -315,6 +345,25 @@ export function MinimalTradingCard({
                 mode === 'buy' && "pl-12"
               )}
             />
+          </div>
+          
+          {/* Slider for quick selection */}
+          <div className="pt-3 pb-1">
+            <Slider
+              value={sliderValue}
+              onValueChange={handleSliderChange}
+              max={100}
+              step={1}
+              className="w-full"
+              disabled={maxValue <= 0}
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5 px-0.5">
+              <span>0%</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
           </div>
         </div>
 

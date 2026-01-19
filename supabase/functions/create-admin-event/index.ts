@@ -159,7 +159,6 @@ Deno.serve(async (req) => {
         yes_shares: marketType === 'BINARY' ? yesShares : 0,
         no_shares: marketType === 'BINARY' ? noShares : 0,
         total_volume: 0,
-        created_by: userId,
         market_type: marketType,
         options_exclusive: true, // All options are mutually exclusive by default
       })

@@ -14,9 +14,9 @@ export function MarketResultsPanel({ event }: MarketResultsPanelProps) {
   const result = event.result;
 
   const formatVolume = (volume?: number) => {
-    if (!volume) return 'R$0';
-    if (volume >= 1000000) return `R$${(volume / 1000000).toFixed(1)}M`;
-    if (volume >= 1000) return `R$${(volume / 1000).toFixed(1)}K`;
+    if (!volume) return 'R$0,00';
+    if (volume >= 1000000) return `R$${(volume / 1000000).toFixed(2)}M`;
+    if (volume >= 1000) return `R$${(volume / 1000).toFixed(2)}K`;
     return formatCurrency(volume);
   };
 

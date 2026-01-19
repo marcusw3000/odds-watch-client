@@ -16,7 +16,7 @@ interface CopyTraderCardProps {
 
 export function CopyTraderCard({ trader, onSubscribe, isSubscribed, currentUserId }: CopyTraderCardProps) {
   const isOwnProfile = currentUserId === trader.user_id;
-  const winRatePercent = trader.win_rate != null ? (trader.win_rate * 100).toFixed(0) : null;
+  const winRatePercent = trader.win_rate != null ? (trader.win_rate * 100).toFixed(2) : null;
   
   return (
     <Card className="group relative overflow-hidden border-border/50 bg-gradient-card hover:border-primary/30 transition-all duration-300 hover:shadow-elevated">

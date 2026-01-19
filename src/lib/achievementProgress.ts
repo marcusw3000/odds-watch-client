@@ -174,10 +174,10 @@ export function getAchievementProgress(
 
 export function formatProgressValue(value: number, metricLabel: string): string {
   if (metricLabel.includes('lucro') || metricLabel.includes('volume')) {
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    return `R$ ${(Math.round(value * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
   if (metricLabel.includes('ROI')) {
-    return `${value.toFixed(1)}%`;
+    return `${value.toFixed(2)}%`;
   }
   return value.toLocaleString('pt-BR');
 }

@@ -207,10 +207,10 @@ export function MarketDetailPage() {
   }
 
   const formatVolume = (volume?: number) => {
-    if (!volume) return 'R$0';
-    if (volume >= 1000000) return `R$${(volume / 1000000).toFixed(1)}M`;
-    if (volume >= 1000) return `R$${(volume / 1000).toFixed(0)}K`;
-    return `R$${volume}`;
+    if (!volume) return 'R$0,00';
+    if (volume >= 1000000) return `R$${(volume / 1000000).toFixed(2)}M`;
+    if (volume >= 1000) return `R$${(volume / 1000).toFixed(2)}K`;
+    return `R$${volume.toFixed(2)}`;
   };
 
   return (

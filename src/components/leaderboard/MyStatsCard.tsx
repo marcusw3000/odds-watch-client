@@ -54,7 +54,7 @@ export function MyStatsCard() {
     {
       icon: Activity,
       label: 'Volume Total',
-      value: `R$${(stats?.total_volume || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`,
+      value: `R$${(Math.round((stats?.total_volume || 0) * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       color: 'text-foreground',
     },
     {

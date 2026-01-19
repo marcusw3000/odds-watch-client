@@ -60,6 +60,7 @@ export function MinimalTradingCard({
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [sliderValue, setSliderValue] = useState<number[]>([0]);
+  const [isSliderDragging, setIsSliderDragging] = useState(false);
 
   const isMobile = useIsMobile();
 
@@ -100,7 +101,7 @@ export function MinimalTradingCard({
     return 0;
   }, [mode, sharesFromAmount]);
 
-  // Fetch quote
+  // Fetch quote with longer debounce for performance
   useEffect(() => {
     if (sharesFromAmount <= 0) {
       setQuote(null);
@@ -122,7 +123,7 @@ export function MinimalTradingCard({
       }
     };
 
-    const timer = setTimeout(fetchQuote, 300);
+    const timer = setTimeout(fetchQuote, 500);
     return () => clearTimeout(timer);
   }, [sharesFromAmount, event.id, activeOutcome, mode, onSellConfirm]);
 
@@ -151,15 +152,19 @@ export function MinimalTradingCard({
     setError(null);
   }, [mode, userBalance, currentQuantity]);
 
-  // Sync slider when input changes
-  useEffect(() => {
-    if (maxValue <= 0) {
-      setSliderValue([0]);
-      return;
+  // Handle input change - sync slider only if not dragging
+  const handleAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAmount(value);
+    setError(null);
+    
+    // Only sync slider if not currently dragging
+    if (!isSliderDragging && maxValue > 0) {
+      const num = parseFloat(value) || 0;
+      const pct = Math.min((num / maxValue) * 100, 100);
+      setSliderValue([Math.max(pct, 0)]);
     }
-    const percentage = (amountNum / maxValue) * 100;
-    setSliderValue([Math.min(Math.max(percentage, 0), 100)]);
-  }, [amountNum, maxValue]);
+  }, [isSliderDragging, maxValue]);
 
   const handleConfirm = useCallback(async () => {
     if (!quote || sharesFromAmount <= 0) {
@@ -335,10 +340,7 @@ export function MinimalTradingCard({
             <Input
               type="number"
               value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setError(null);
-              }}
+              onChange={handleAmountChange}
               placeholder="0"
               className={cn(
                 "h-14 text-2xl font-mono font-bold text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
@@ -361,12 +363,16 @@ export function MinimalTradingCard({
             <Slider
               value={sliderValue}
               onValueChange={handleSliderChange}
+              onPointerDown={() => setIsSliderDragging(true)}
+              onPointerUp={() => setIsSliderDragging(false)}
+              onPointerLeave={() => setIsSliderDragging(false)}
               max={100}
               step={1}
               className={cn(
                 "w-full",
                 activeOutcome === 'YES' && "[&_[data-slider-range]]:bg-yes [&_[data-slider-thumb]]:border-yes",
-                activeOutcome === 'NO' && "[&_[data-slider-range]]:bg-no [&_[data-slider-thumb]]:border-no"
+                activeOutcome === 'NO' && "[&_[data-slider-range]]:bg-no [&_[data-slider-thumb]]:border-no",
+                isSliderDragging && "[&_[data-slider-range]]:transition-none"
               )}
               disabled={maxValue <= 0}
             />

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -16,12 +17,16 @@ interface OddsChartProps {
 }
 
 export function OddsChart({ data }: OddsChartProps) {
-  const chartData = data.map((point) => ({
-    date: format(point.timestamp, 'dd/MM', { locale: ptBR }),
-    fullDate: format(point.timestamp, "dd MMM yyyy", { locale: ptBR }),
-    yes: point.yesPrice,
-    no: point.noPrice,
-  }));
+  // Memoize chart data transformation to prevent unnecessary recalculations
+  const chartData = useMemo(() => 
+    data.map((point) => ({
+      date: format(point.timestamp, 'dd/MM', { locale: ptBR }),
+      fullDate: format(point.timestamp, "dd MMM yyyy", { locale: ptBR }),
+      yes: point.yesPrice,
+      no: point.noPrice,
+    })),
+    [data]
+  );
 
   return (
     <div className="h-[300px] w-full">
@@ -81,6 +86,7 @@ export function OddsChart({ data }: OddsChartProps) {
             strokeWidth={2}
             fill="url(#yesGradient)"
             name="SIM"
+            isAnimationActive={false}
           />
           <Area
             type="monotone"
@@ -89,6 +95,7 @@ export function OddsChart({ data }: OddsChartProps) {
             strokeWidth={2}
             fill="url(#noGradient)"
             name="NÃO"
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

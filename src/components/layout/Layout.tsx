@@ -25,8 +25,8 @@ export function Layout() {
   useEffect(() => {
     fetchBalance();
 
-    // Atualiza balance periodicamente
-    const interval = setInterval(() => fetchBalance(false), 5000);
+    // Atualiza balance periodicamente (15s é suficiente para boa UX)
+    const interval = setInterval(() => fetchBalance(false), 15000);
     return () => clearInterval(interval);
   }, [fetchBalance]);
 

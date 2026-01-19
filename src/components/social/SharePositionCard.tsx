@@ -38,7 +38,7 @@ export function SharePositionCard({ position, trigger }: SharePositionCardProps)
   const isProfit = position.profitPercent >= 0;
 
   const shareUrl = `${window.location.origin}/markets`;
-  const shareText = `📊 Minha posição: ${position.eventTitle}\n\n${position.outcome === 'YES' ? '✅' : '❌'} ${position.outcome} × ${position.quantity} contratos\n💰 ${isProfit ? '+' : ''}${position.profitPercent.toFixed(1)}% ${isProfit ? '📈' : '📉'}`;
+  const shareText = `📊 Minha posição: ${position.eventTitle}\n\n${position.outcome === 'YES' ? '✅' : '❌'} ${position.outcome} × ${position.quantity} contratos\n💰 ${isProfit ? '+' : ''}${position.profitPercent.toFixed(2)}% ${isProfit ? '📈' : '📉'}`;
 
   const handleCopy = async () => {
     try {
@@ -142,7 +142,7 @@ export function SharePositionCard({ position, trigger }: SharePositionCardProps)
                       "font-bold text-xl",
                       isProfit ? "text-green-400" : "text-red-400"
                     )}>
-                      {isProfit ? '+' : ''}{position.profitPercent.toFixed(0)}%
+                      {isProfit ? '+' : ''}{position.profitPercent.toFixed(2)}%
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-wider">Retorno</p>

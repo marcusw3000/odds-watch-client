@@ -88,7 +88,7 @@ export function ProfileStats({ profile, isOwnProfile }: ProfileStatsProps) {
     },
     {
       label: 'Volume Total',
-      value: `R$${profile.total_volume.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      value: `R$${(Math.round(profile.total_volume * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: Activity,
       hidden: !canSeeVolume,
     },

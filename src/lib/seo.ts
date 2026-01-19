@@ -91,7 +91,7 @@ export function generatePositionShareText(
   const profitEmoji = profitPercent >= 0 ? '📈' : '📉';
   const sign = profitPercent >= 0 ? '+' : '';
   
-  return `📊 ${eventTitle}\n\n${emoji} ${outcome} × ${quantity} contratos\n💰 ${sign}${profitPercent.toFixed(1)}% ${profitEmoji}`;
+  return `📊 ${eventTitle}\n\n${emoji} ${outcome} × ${quantity} contratos\n💰 ${sign}${profitPercent.toFixed(2)}% ${profitEmoji}`;
 }
 
 /**

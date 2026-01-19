@@ -16,11 +16,11 @@ import {
   AlertTriangle,
   Scale
 } from 'lucide-react';
-import { MarketEvent, OddsHistoryPoint, MarketOption } from '@/types/market';
+import { MarketEvent, OddsHistoryPoint, MarketOption, UserContract } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
 import { CommentSection } from '@/components/market/CommentSection';
-import { PurchaseModal } from '@/components/market/PurchaseModal';
+import { TradingModal } from '@/components/market/TradingModal';
 import { MultiOptionPurchaseModal } from '@/components/market/MultiOptionPurchaseModal';
 import { MultiOptionTradingPanel } from '@/components/market/MultiOptionTradingPanel';
 import { OddsChart } from '@/components/market/OddsChart';
@@ -57,6 +57,8 @@ export function MarketDetailPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
   const [selectedOption, setSelectedOption] = useState<MarketOption | null>(null);
+  const [userContracts, setUserContracts] = useState<UserContract[]>([]);
+  const [tradingMode, setTradingMode] = useState<'buy' | 'sell'>('buy');
   
   const statusInfo = useMarketStatus(event);
 
@@ -79,6 +81,8 @@ export function MarketDetailPage() {
       setEvent(eventData);
       setOddsHistory(historyData);
       setUserBalance(portfolio.balance);
+      // Filter contracts for this market
+      setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
     } catch (error) {
       console.error('Error fetching market details:', error);
       toast({
@@ -141,12 +145,12 @@ export function MarketDetailPage() {
     return updatedEvent;
   };
 
-  const handleConfirmPurchase = async (shares: number, maxCost: number) => {
-    if (!event || !selectedOutcome) return;
+  const handleConfirmPurchase = async (outcome: 'YES' | 'NO', shares: number, maxCost: number) => {
+    if (!event) return;
 
     const result = await MarketDataProvider.purchaseContract(
       event.id,
-      selectedOutcome,
+      outcome,
       shares,
       maxCost
     );
@@ -154,15 +158,16 @@ export function MarketDetailPage() {
     if (result.success) {
       toast({
         title: 'Compra realizada!',
-        description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
+        description: `Você comprou ${shares} contratos ${outcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
       });
       setSelectedOutcome(null);
-      // Refresh balance and event
+      // Refresh balance, event and contracts
       const [portfolio, updatedEvent] = await Promise.all([
         MarketDataProvider.getUserPortfolio(),
         MarketDataProvider.getEventById(id!),
       ]);
       setUserBalance(portfolio.balance);
+      setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
       if (updatedEvent) setEvent(updatedEvent);
       // Trigger portfolio refresh for other open tabs/components
       triggerPortfolioRefresh();
@@ -170,6 +175,34 @@ export function MarketDetailPage() {
       throw new Error(result.message);
     }
   };
+
+  const handleConfirmSell = async (contractId: string, minValue: number) => {
+    if (!event) return;
+
+    const result = await MarketDataProvider.sellContract(contractId, minValue);
+
+    if (result.success) {
+      toast({
+        title: 'Venda realizada!',
+        description: `Você vendeu contratos por R$${result.saleValue?.toFixed(2)}.`,
+      });
+      setSelectedOutcome(null);
+      // Refresh data
+      const [portfolio, updatedEvent] = await Promise.all([
+        MarketDataProvider.getUserPortfolio(),
+        MarketDataProvider.getEventById(id!),
+      ]);
+      setUserBalance(portfolio.balance);
+      setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
+      if (updatedEvent) setEvent(updatedEvent);
+      triggerPortfolioRefresh();
+    } else {
+      throw new Error(result.message);
+    }
+  };
+
+  // Check if user has any position in this market
+  const userHasPosition = userContracts.length > 0;
 
   if (isLoading) {
     return <MarketDetailSkeleton />;
@@ -478,6 +511,7 @@ export function MarketDetailPage() {
                                 navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=YES` } });
                                 return;
                               }
+                              setTradingMode('buy');
                               setSelectedOutcome('YES');
                             }}
                             disabled={!statusInfo.canTrade}
@@ -503,6 +537,7 @@ export function MarketDetailPage() {
                                 navigate('/auth', { state: { returnTo: `/market/${id}?action=buy&outcome=NO` } });
                                 return;
                               }
+                              setTradingMode('buy');
                               setSelectedOutcome('NO');
                             }}
                             disabled={!statusInfo.canTrade}
@@ -532,6 +567,41 @@ export function MarketDetailPage() {
                     </>
                   )}
 
+                  {/* User Position & Sell Button */}
+                  {userHasPosition && (
+                    <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-3">
+                      <p className="text-sm font-medium">Sua posição</p>
+                      <div className="flex gap-2 text-sm">
+                        {userContracts.map((contract) => (
+                          <div 
+                            key={contract.id}
+                            className={cn(
+                              "flex-1 px-3 py-2 rounded-lg text-center",
+                              contract.outcome === 'YES' 
+                                ? "bg-yes/10 text-yes" 
+                                : "bg-no/10 text-no"
+                            )}
+                          >
+                            <span className="font-bold">{contract.quantity}</span>
+                            <span className="ml-1">{contract.outcome === 'YES' ? 'SIM' : 'NÃO'}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                          // Open trading modal in sell mode with first contract's outcome
+                          setTradingMode('sell');
+                          setSelectedOutcome(userContracts[0]?.outcome || 'YES');
+                        }}
+                      >
+                        Vender Contratos
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Balance */}
                   <div className="pt-4 border-t border-border text-center">
                     <p className="text-xs text-muted-foreground">Seu saldo</p>
@@ -544,14 +614,17 @@ export function MarketDetailPage() {
         </div>
       </div>
 
-      {/* Purchase Modal - Binary */}
+      {/* Trading Modal - Binary */}
       {selectedOutcome && event && event.marketType === 'BINARY' && (
-        <PurchaseModal
+        <TradingModal
           event={event}
-          selectedOutcome={selectedOutcome}
           userBalance={userBalance}
+          userContracts={userContracts}
+          initialMode={tradingMode}
+          initialOutcome={selectedOutcome}
           onClose={() => setSelectedOutcome(null)}
-          onConfirm={handleConfirmPurchase}
+          onBuyConfirm={handleConfirmPurchase}
+          onSellConfirm={handleConfirmSell}
           onRefreshPrice={handleRefreshPrice}
         />
       )}

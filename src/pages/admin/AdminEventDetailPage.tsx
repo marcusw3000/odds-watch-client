@@ -11,7 +11,8 @@ import {
   Lock,
   Scale,
   History,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/ty
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AdminEventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,12 +45,34 @@ export function AdminEventDetailPage() {
     open: false,
     action: null,
   });
+  const [isReprocessing, setIsReprocessing] = useState(false);
 
-  const { data, isLoading, error } = useAdminEvent(id);
+  const { data, isLoading, error, refetch } = useAdminEvent(id);
   const updateStatusMutation = useUpdateEventStatus();
 
   const event = data?.event;
   const auditLogs = data?.auditLogs || [];
+
+  const handleReprocessPayouts = async () => {
+    if (!event || event.status !== 'SETTLED' || !event.result) return;
+    
+    setIsReprocessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-settlement-payouts', {
+        body: { marketId: event.id, winningOutcome: event.result }
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`Payouts reprocessados! Vencedores: ${data?.payouts?.winners || 0}, Comissões: ${data?.commissions?.commissions_processed || 0}`);
+      refetch();
+    } catch (err) {
+      console.error('Reprocess error:', err);
+      toast.error('Erro ao reprocessar payouts');
+    } finally {
+      setIsReprocessing(false);
+    }
+  };
 
   const handleStatusChange = (action: 'pause' | 'resume' | 'close' | 'open') => {
     setStatusDialog({ open: true, action });
@@ -169,6 +193,20 @@ export function AdminEventDetailPage() {
                 Liquidar
               </Button>
             </Link>
+          )}
+          {event.status === 'SETTLED' && event.result && (
+            <Button 
+              variant="outline" 
+              onClick={handleReprocessPayouts} 
+              disabled={isReprocessing}
+            >
+              {isReprocessing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Reprocessar Payouts
+            </Button>
           )}
           {isEditable && (
             <Link to={`/admin/events/${event.id}/edit`}>

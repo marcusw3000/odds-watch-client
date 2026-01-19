@@ -60,7 +60,7 @@ serve(async (req) => {
     // Fetch profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, display_name, avatar_url, is_public, bio")
+      .select("id, display_name, full_name, avatar_url, is_public, bio")
       .eq("id", targetUserId)
       .maybeSingle();
 
@@ -102,7 +102,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         user_id: profile.id,
-        display_name: profile.display_name || "Usuário",
+        display_name: profile.display_name || profile.full_name || "Usuário",
         avatar_url: profile.avatar_url,
         is_public: profile.is_public,
         bio: isOwnProfile || isPublic ? profile.bio : null,

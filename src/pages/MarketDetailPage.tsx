@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   ArrowLeft, 
@@ -299,7 +299,7 @@ export function MarketDetailPage() {
               Halt de Trading
             </div>
             <p className="font-semibold">
-              {format(event.tradingHaltAt, "dd MMM 'às' HH:mm", { locale: ptBR })}
+              {formatDistanceToNow(event.tradingHaltAt, { locale: ptBR, addSuffix: true })}
             </p>
           </CardContent>
         </Card>
@@ -310,7 +310,7 @@ export function MarketDetailPage() {
               Evento
             </div>
             <p className="font-semibold">
-              {format(event.eventAt, "dd MMM 'às' HH:mm", { locale: ptBR })}
+              {formatDistanceToNow(event.eventAt, { locale: ptBR, addSuffix: true })}
             </p>
           </CardContent>
         </Card>

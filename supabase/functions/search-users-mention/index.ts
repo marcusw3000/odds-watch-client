@@ -67,7 +67,7 @@ serve(async (req) => {
     // Search only PUBLIC profiles using the secure view
     const { data: profiles, error } = await adminClient
       .from('profiles_public')
-      .select('id, display_name')
+      .select('id, display_name, full_name')
       .eq('is_public', true)
       .ilike('display_name', `%${sanitizedQuery}%`)
       .limit(5);
@@ -80,10 +80,10 @@ serve(async (req) => {
       });
     }
 
-    // Return only necessary fields (no email, no full_name, no PII)
+    // Return only necessary fields (no email, no PII beyond public name)
     const users = (profiles || []).map(p => ({
       user_id: p.id,
-      display_name: p.display_name || 'Usuário',
+      display_name: p.display_name || p.full_name || 'Usuário',
     }));
 
     console.log(`[search-users-mention] Query "${sanitizedQuery}" returned ${users.length} users`);

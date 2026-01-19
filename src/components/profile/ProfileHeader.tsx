@@ -39,6 +39,8 @@ export function ProfileHeader({
         bio: editedBio || null,
       });
       setIsEditing(false);
+      // Invalidar cache de display info para atualizar comentários imediatamente
+      queryClient.invalidateQueries({ queryKey: ['user-display-info'] });
     } finally {
       setIsSaving(false);
     }

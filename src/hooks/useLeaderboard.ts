@@ -230,6 +230,8 @@ export function useUpdateLeaderboardProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-leaderboard-profile'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['public-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['user-display-info'] });
     },
   });
 }
@@ -306,6 +308,7 @@ export function useUpdateAvatar() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-leaderboard-profile'] });
       queryClient.invalidateQueries({ queryKey: ['public-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['user-display-info'] });
     },
   });
 }

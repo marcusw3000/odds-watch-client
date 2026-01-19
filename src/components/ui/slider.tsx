@@ -15,7 +15,7 @@ const Slider = React.forwardRef<
     <SliderPrimitive.Track className="relative h-2.5 w-full grow overflow-hidden rounded-full bg-muted/60">
       <SliderPrimitive.Range 
         data-slider-range
-        className="absolute h-full bg-primary transition-all duration-150" 
+        className="absolute h-full bg-primary" 
       />
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb 

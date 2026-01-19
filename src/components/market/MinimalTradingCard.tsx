@@ -349,21 +349,53 @@ export function MinimalTradingCard({
           
           {/* Slider for quick selection */}
           <div className="pt-3 pb-1">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs text-muted-foreground">Arraste para ajustar</span>
+              <span className={cn(
+                "text-xs font-mono font-semibold",
+                activeOutcome === 'YES' ? "text-yes" : "text-no"
+              )}>
+                {Math.round(sliderValue[0])}%
+              </span>
+            </div>
             <Slider
               value={sliderValue}
               onValueChange={handleSliderChange}
               max={100}
               step={1}
-              className="w-full"
+              className={cn(
+                "w-full",
+                activeOutcome === 'YES' && "[&_[data-slider-range]]:bg-yes [&_[data-slider-thumb]]:border-yes",
+                activeOutcome === 'NO' && "[&_[data-slider-range]]:bg-no [&_[data-slider-thumb]]:border-no"
+              )}
               disabled={maxValue <= 0}
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5 px-0.5">
-              <span>0%</span>
-              <span>25%</span>
-              <span>50%</span>
-              <span>75%</span>
-              <span>100%</span>
+            {/* Quick action buttons */}
+            <div className="flex gap-1.5 mt-3">
+              {[25, 50, 75, 100].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => handleSliderChange([pct])}
+                  disabled={maxValue <= 0}
+                  className={cn(
+                    "flex-1 py-1.5 text-xs font-medium rounded-md transition-all",
+                    Math.round(sliderValue[0]) === pct
+                      ? activeOutcome === 'YES' 
+                        ? "bg-yes text-yes-foreground" 
+                        : "bg-no text-no-foreground"
+                      : "bg-muted/50 hover:bg-muted text-muted-foreground disabled:opacity-50"
+                  )}
+                >
+                  {pct}%
+                </button>
+              ))}
             </div>
+            {sliderValue[0] >= 100 && mode === 'buy' && (
+              <p className="text-xs text-center text-warning mt-2 animate-fade-in">
+                Usando todo o saldo disponível
+              </p>
+            )}
           </div>
         </div>
 

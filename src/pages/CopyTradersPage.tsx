@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useApprovedCopyTraders, useMyCopySubscriptions, useVerifyCopySubscription, useMyTraderStatus } from "@/hooks/useCopyTrade";
 import { useAuth } from "@/hooks/useAuth";
-import { CopyTraderCard, SubscribeModal, TraderStatusCard } from "@/components/copyTrade";
-import { CopyTrader } from "@/types/copyTrade";
-import { Loader2, Users, TrendingUp, Search } from "lucide-react";
+import { CopyTraderCard, SubscribeModal, TraderStatusCard, EditSubscriptionModal, SubscriptionCard } from "@/components/copyTrade";
+import { CopyTrader, CopySubscription } from "@/types/copyTrade";
+import { Loader2, Users, TrendingUp, Search, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 export function CopyTradersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTrader, setSelectedTrader] = useState<CopyTrader | null>(null);
+  const [editingSubscription, setEditingSubscription] = useState<CopySubscription | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
   const { user } = useAuth();
@@ -41,11 +42,12 @@ export function CopyTradersPage() {
     }
   }, [searchParams, setSearchParams, verifySubscription]);
   
+  // Active subscriptions
+  const activeSubscriptions = mySubscriptions?.filter(sub => sub.status === 'ACTIVE') || [];
+  
   // Get subscribed trader IDs
   const subscribedTraderIds = new Set(
-    mySubscriptions
-      ?.filter(sub => sub.status === 'ACTIVE')
-      .map(sub => sub.trader_id) || []
+    activeSubscriptions.map(sub => sub.trader_id)
   );
   
   // Filter traders by search
@@ -74,6 +76,25 @@ export function CopyTradersPage() {
           traderStatus={myTraderStatus || null} 
           isLoading={loadingTraderStatus} 
         />
+      )}
+      
+      {/* My Subscriptions */}
+      {user && activeSubscriptions.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">Minhas Assinaturas</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeSubscriptions.map((sub) => (
+              <SubscriptionCard
+                key={sub.id}
+                subscription={sub}
+                onEdit={setEditingSubscription}
+              />
+            ))}
+          </div>
+        </div>
       )}
       
       {/* Stats */}
@@ -151,6 +172,13 @@ export function CopyTradersPage() {
         isOpen={!!selectedTrader}
         onClose={() => setSelectedTrader(null)}
         userBalance={balanceData?.balance_available || 0}
+      />
+      
+      {/* Edit Subscription Modal */}
+      <EditSubscriptionModal
+        subscription={editingSubscription}
+        isOpen={!!editingSubscription}
+        onClose={() => setEditingSubscription(null)}
       />
     </div>
   );

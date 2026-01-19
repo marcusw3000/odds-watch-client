@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
-import { MarketEvent } from '@/types/market';
+import { MarketEvent, UserContract } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { useMarketsRealtime } from '@/hooks/useMarketsRealtime';
 import { TrendingMarketCard } from '@/components/market/TrendingMarketCard';
@@ -53,6 +53,7 @@ export function MarketsPage() {
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
   const [trendingIndex, setTrendingIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -60,6 +61,23 @@ export function MarketsPage() {
   useEffect(() => {
     MarketDataProvider.getCategories().then(setCategories);
   }, []);
+
+  // Fetch user contracts when logged in
+  useEffect(() => {
+    const fetchUserContracts = async () => {
+      if (!user) {
+        setUserContracts([]);
+        return;
+      }
+      try {
+        const portfolio = await MarketDataProvider.getUserPortfolio();
+        setUserContracts(portfolio.contracts || []);
+      } catch (error) {
+        console.error('Error fetching user contracts:', error);
+      }
+    };
+    fetchUserContracts();
+  }, [user]);
 
   // Listener for immediate update after user's own trades
   useEffect(() => {
@@ -122,6 +140,28 @@ export function MarketsPage() {
       // Trigger market and portfolio refresh for other open tabs/components
       window.dispatchEvent(new Event('market-update'));
       triggerPortfolioRefresh();
+      // Refresh user contracts
+      const portfolio = await MarketDataProvider.getUserPortfolio();
+      setUserContracts(portfolio.contracts || []);
+    } else {
+      throw new Error(result.message);
+    }
+  };
+
+  const handleConfirmSell = async (contractId: string, minValue: number) => {
+    const result = await MarketDataProvider.sellContract(contractId, minValue);
+
+    if (result.success) {
+      toast({
+        title: 'Venda realizada!',
+        description: `Você vendeu seus contratos por R$${result.saleValue?.toFixed(2)}.`,
+      });
+      handleCloseModal();
+      window.dispatchEvent(new Event('market-update'));
+      triggerPortfolioRefresh();
+      // Refresh user contracts
+      const portfolio = await MarketDataProvider.getUserPortfolio();
+      setUserContracts(portfolio.contracts || []);
     } else {
       throw new Error(result.message);
     }
@@ -306,10 +346,12 @@ export function MarketsPage() {
           event={selectedEvent}
           initialOutcome={selectedOutcome}
           userBalance={userBalance}
+          userContracts={userContracts}
           onClose={handleCloseModal}
           onBuyConfirm={async (outcome, shares, maxCost) => {
             await handleConfirmPurchase(shares, maxCost);
           }}
+          onSellConfirm={handleConfirmSell}
         />
       )}
     </div>

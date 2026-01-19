@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { MarketDataProvider } from '@/services/MarketDataProvider';
-import { TradeQuote } from '@/services/LMSRCalculator';
+import { getQuote as getLMSRQuote, getSellQuote as getLMSRSellQuote, TradeQuote } from '@/services/LMSRCalculator';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -53,8 +52,6 @@ export function MinimalTradingCard({
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
   const [activeOutcome, setActiveOutcome] = useState<'YES' | 'NO'>(initialOutcome);
   const [amount, setAmount] = useState<string>('');
-  const [quote, setQuote] = useState<TradeQuote | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
@@ -101,37 +98,21 @@ export function MinimalTradingCard({
     return 0;
   }, [mode, sharesFromAmount]);
 
-  // Fetch quote with longer debounce for performance
-  useEffect(() => {
-    if (sharesFromAmount <= 0) {
-      setQuote(null);
-      return;
+  // Calculate quote locally - instant, no network calls
+  const quote = useMemo((): TradeQuote | null => {
+    if (sharesFromAmount <= 0 || !event.lmsr) return null;
+    
+    if (mode === 'buy') {
+      return getLMSRQuote(event.lmsr, activeOutcome, sharesFromAmount);
+    } else {
+      return getLMSRSellQuote(event.lmsr, activeOutcome, sharesFromAmount);
     }
-
-    const fetchQuote = async () => {
-      setIsLoading(true);
-      try {
-        if (mode === 'buy') {
-          const newQuote = await MarketDataProvider.getQuote(event.id, activeOutcome, sharesFromAmount);
-          setQuote(newQuote);
-        } else if (onSellConfirm) {
-          const newQuote = await MarketDataProvider.getSellQuote(event.id, activeOutcome, sharesFromAmount);
-          setQuote(newQuote);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const timer = setTimeout(fetchQuote, 500);
-    return () => clearTimeout(timer);
-  }, [sharesFromAmount, event.id, activeOutcome, mode, onSellConfirm]);
+  }, [sharesFromAmount, event.lmsr, activeOutcome, mode]);
 
   // Reset on mode/outcome change
   useEffect(() => {
     setAmount('');
     setError(null);
-    setQuote(null);
     setSliderValue([0]);
   }, [mode, activeOutcome]);
 
@@ -470,7 +451,7 @@ export function MinimalTradingCard({
           size="lg"
           className="w-full h-12"
           onClick={handleConfirm}
-          disabled={isConfirming || !quote || sharesFromAmount <= 0 || isLoading}
+          disabled={isConfirming || !quote || sharesFromAmount <= 0}
         >
           {isConfirming ? (
             <RefreshCw className="h-4 w-4 animate-spin" />

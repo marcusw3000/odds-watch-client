@@ -2290,6 +2290,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_copy_trade_commissions: {
+        Args: { p_market_id: string; p_winning_outcome: string }
+        Returns: Json
+      }
+      process_market_payouts: {
+        Args: { p_market_id: string; p_winning_outcome: string }
+        Returns: Json
+      }
       process_market_settlement_achievements: {
         Args: { p_market_id: string; p_winning_outcome: string }
         Returns: undefined

@@ -213,10 +213,51 @@ Deno.serve(async (req) => {
         },
       });
 
-      logStep(functionName, 'Event settled', { eventId, result });
+      logStep(functionName, 'Event settled, processing payouts...', { eventId, result });
+
+      // Process payouts to winners
+      const { data: payoutResult, error: payoutError } = await adminClient.rpc(
+        'process_market_payouts',
+        { p_market_id: eventId, p_winning_outcome: result }
+      );
+
+      if (payoutError) {
+        logError(functionName, 'Payout processing error (non-fatal)', { error: payoutError });
+      } else {
+        logStep(functionName, 'Payouts processed', payoutResult);
+      }
+
+      // Process copy trade commissions
+      const { data: commissionResult, error: commissionError } = await adminClient.rpc(
+        'process_copy_trade_commissions',
+        { p_market_id: eventId, p_winning_outcome: result }
+      );
+
+      if (commissionError) {
+        logError(functionName, 'Commission processing error (non-fatal)', { error: commissionError });
+      } else {
+        logStep(functionName, 'Copy trade commissions processed', commissionResult);
+      }
+
+      // Process market settlement achievements
+      const { error: achievementError } = await adminClient.rpc(
+        'process_market_settlement_achievements',
+        { p_market_id: eventId, p_winning_outcome: result }
+      );
+
+      if (achievementError) {
+        logError(functionName, 'Achievement processing error (non-fatal)', { error: achievementError });
+      }
+
+      logStep(functionName, 'Settlement complete', { eventId, result, payoutResult, commissionResult });
 
       return new Response(
-        JSON.stringify({ success: true, event: settledEvent }),
+        JSON.stringify({ 
+          success: true, 
+          event: settledEvent,
+          payouts: payoutResult,
+          commissions: commissionResult
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

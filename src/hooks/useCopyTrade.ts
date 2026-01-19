@@ -110,6 +110,22 @@ export function useApprovedCopyTraders() {
         .order('total_followers', { ascending: false });
 
       if (error) throw error;
+      
+      // Fetch profiles to get up-to-date avatar_url
+      if (data && data.length > 0) {
+        const userIds = data.map(t => t.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, avatar_url')
+          .in('id', userIds);
+        
+        // Merge profile avatar with traders
+        return data.map(trader => ({
+          ...trader,
+          avatar_url: profiles?.find(p => p.id === trader.user_id)?.avatar_url || trader.avatar_url
+        })) as CopyTrader[];
+      }
+      
       return (data || []) as CopyTrader[];
     },
   });

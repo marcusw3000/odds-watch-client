@@ -21,6 +21,37 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Require JWT authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      logStep("ERROR: No authorization header");
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    // Verify the user's JWT token
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      logStep("ERROR: Invalid JWT token", { error: claimsError?.message });
+      return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const authenticatedUserId = claimsData.claims.sub;
+    logStep("User authenticated", { userId: authenticatedUserId });
+
     const { session_id } = await req.json();
     if (!session_id) throw new Error("Session ID is required");
     logStep("Session ID received", { session_id });
@@ -38,6 +69,17 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.retrieve(session_id);
     logStep("Session retrieved", { status: session.payment_status, amount: session.amount_total });
 
+    // Verify the session belongs to the authenticated user
+    const sessionUserId = session.metadata?.user_id;
+    if (sessionUserId !== authenticatedUserId) {
+      logStep("ERROR: User ID mismatch", { sessionUserId, authenticatedUserId });
+      return new Response(JSON.stringify({ error: "Unauthorized: session belongs to different user" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+      });
+    }
+    logStep("User authorization verified");
+
     if (session.payment_status !== "paid") {
       return new Response(JSON.stringify({ 
         success: false, 
@@ -49,7 +91,7 @@ serve(async (req) => {
       });
     }
 
-    const userId = session.metadata?.user_id;
+    const userId = sessionUserId;
     const amount = session.amount_total ? session.amount_total / 100 : 0;
     logStep("Payment confirmed", { userId, amount });
 

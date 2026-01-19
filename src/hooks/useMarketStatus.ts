@@ -15,7 +15,10 @@ export interface MarketStatusInfo {
 function calculateStatus(event: MarketEvent): MarketStatus {
   const now = new Date();
   
-  // Already settled
+  // Priorizar status do banco se for SETTLED
+  if (event.status === 'SETTLED') return 'SETTLED';
+  
+  // Already settled (fallback para settledAt)
   if (event.settledAt) return 'SETTLED';
   
   // In contestation period

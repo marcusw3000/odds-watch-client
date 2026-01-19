@@ -236,6 +236,7 @@ export function MarketDetailPage() {
               timeToEvent={statusInfo.timeToEvent}
               contestTimeRemaining={statusInfo.contestTimeRemaining}
               result={event.result}
+              options={event.options}
               isUrgent={statusInfo.isUrgent}
             />
           </div>

@@ -111,6 +111,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
             status={statusInfo.status}
             timeToEvent={statusInfo.timeToEvent}
             result={event.result}
+            options={event.options}
             size="md"
           />
         </div>

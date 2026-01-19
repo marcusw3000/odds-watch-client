@@ -108,6 +108,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
           result={event.result}
+          options={event.options}
           size="sm"
         />
       </div>

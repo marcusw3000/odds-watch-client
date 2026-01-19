@@ -42,7 +42,18 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
   const yesPrice = event.outcomes.YES.price;
   const noPrice = event.outcomes.NO.price;
   const isSettled = statusInfo.status === 'SETTLED';
-  const resultIsYes = event.result === 'YES';
+  
+  // Get winning option label for multiple-choice markets
+  const getWinnerLabel = () => {
+    if (!event.result) return '';
+    if (event.result === 'YES') return 'SIM ✓';
+    if (event.result === 'NO') return 'NÃO ✓';
+    if (event.options && event.options.length > 0) {
+      const winningOption = event.options.find(opt => opt.id === event.result);
+      if (winningOption) return `${winningOption.label} ✓`;
+    }
+    return 'Encerrado';
+  };
 
   // Get status label for minimal display
   const getStatusLabel = () => {
@@ -50,7 +61,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
       case 'HALTED': return 'Pausado';
       case 'PENDING': return 'Aguardando';
       case 'CONTESTED': return 'Contestação';
-      case 'SETTLED': return resultIsYes ? 'SIM ✓' : 'NÃO ✓';
+      case 'SETTLED': return getWinnerLabel();
       default: return '';
     }
   };

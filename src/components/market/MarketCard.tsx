@@ -65,6 +65,7 @@ export const MarketCard = memo(function MarketCard({ event, onBuy, onViewDetails
             status={statusInfo.status}
             timeToHalt={statusInfo.timeToHalt}
             result={event.result}
+            options={event.options}
             size="sm"
             showCountdown={statusInfo.isUrgent}
             isUrgent={statusInfo.isUrgent}

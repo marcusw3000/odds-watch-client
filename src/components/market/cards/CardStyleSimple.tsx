@@ -120,6 +120,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
           result={event.result}
+          options={event.options}
           size="sm"
         />
       </div>

@@ -1,5 +1,5 @@
 import { Clock, Pause, HelpCircle, AlertTriangle, CheckCircle } from 'lucide-react';
-import { MarketStatus, MARKET_STATUS_LABELS } from '@/types/market';
+import { MarketStatus, MARKET_STATUS_LABELS, MarketOption } from '@/types/market';
 import { formatCountdown, getStatusColor } from '@/hooks/useMarketStatus';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,7 @@ interface MarketStatusBadgeProps {
   timeToEvent?: number | null;
   contestTimeRemaining?: number | null;
   result?: string;  // Can be 'YES', 'NO', or option id for multiple-choice markets
+  options?: MarketOption[];  // For multiple-choice markets to display winning option label
   size?: 'sm' | 'md' | 'lg';
   showCountdown?: boolean;
   isUrgent?: boolean;
@@ -20,6 +21,7 @@ export function MarketStatusBadge({
   timeToEvent,
   contestTimeRemaining,
   result,
+  options,
   size = 'sm',
   showCountdown = true,
   isUrgent = false,
@@ -45,7 +47,19 @@ export function MarketStatusBadge({
 
   const getLabel = () => {
     if (status === 'SETTLED' && result) {
-      return result === 'YES' ? 'Resultado: SIM' : result === 'NO' ? 'Resultado: NÃO' : 'Encerrado';
+      // Binary market
+      if (result === 'YES') return 'Resultado: SIM';
+      if (result === 'NO') return 'Resultado: NÃO';
+      
+      // Multiple-choice market - find winning option label
+      if (options && options.length > 0) {
+        const winningOption = options.find(opt => opt.id === result);
+        if (winningOption) {
+          return `Vencedor: ${winningOption.label}`;
+        }
+      }
+      
+      return 'Encerrado';
     }
     return MARKET_STATUS_LABELS[status] || status;
   };

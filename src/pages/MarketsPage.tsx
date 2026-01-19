@@ -10,7 +10,7 @@ import { CompactMarketCard } from '@/components/market/CompactMarketCard';
 import { MarketCardSkeleton } from '@/components/market/MarketCardSkeleton';
 import { CategoryFilter } from '@/components/market/CategoryFilter';
 import { AdvancedFilters } from '@/components/market/AdvancedFilters';
-import { PurchaseModal } from '@/components/market/PurchaseModal';
+import { MinimalTradingCard } from '@/components/market/MinimalTradingCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -300,15 +300,16 @@ export function MarketsPage() {
         )}
       </section>
 
-      {/* Purchase Modal */}
+      {/* Trading Modal - Kalshi Style */}
       {selectedEvent && (
-        <PurchaseModal
+        <MinimalTradingCard
           event={selectedEvent}
-          selectedOutcome={selectedOutcome}
+          initialOutcome={selectedOutcome}
           userBalance={userBalance}
           onClose={handleCloseModal}
-          onConfirm={handleConfirmPurchase}
-          onRefreshPrice={handleRefreshPrice}
+          onBuyConfirm={async (outcome, shares, maxCost) => {
+            await handleConfirmPurchase(shares, maxCost);
+          }}
         />
       )}
     </div>

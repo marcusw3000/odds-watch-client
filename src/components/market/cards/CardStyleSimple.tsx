@@ -136,7 +136,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
                   className="flex-1 h-9 border-yes/40 text-yes hover:bg-yes/10 hover:border-yes font-medium"
                   onClick={() => onBuy(event.id, 'YES')}
                 >
-                  Yes
+                  Sim
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -150,7 +150,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
                   className="flex-1 h-9 border-no/40 text-no hover:bg-no/10 hover:border-no font-medium"
                   onClick={() => onBuy(event.id, 'NO')}
                 >
-                  No
+                  Não
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -166,7 +166,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
                 ? "bg-yes/10 text-yes border-yes/30" 
                 : "bg-muted/50 text-muted-foreground border-border"
             )}>
-              {isSettled ? (resultIsYes ? '✓ Yes' : 'Yes') : <Lock className="h-4 w-4" />}
+              {isSettled ? (resultIsYes ? '✓ Sim' : 'Sim') : <Lock className="h-4 w-4" />}
             </div>
             <div className={cn(
               "flex-1 h-9 rounded-md flex items-center justify-center font-medium text-sm border",
@@ -174,7 +174,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
                 ? "bg-no/10 text-no border-no/30" 
                 : "bg-muted/50 text-muted-foreground border-border"
             )}>
-              {isSettled ? (!resultIsYes ? '✓ No' : 'No') : <Lock className="h-4 w-4" />}
+              {isSettled ? (!resultIsYes ? '✓ Não' : 'Não') : <Lock className="h-4 w-4" />}
             </div>
           </div>
         )}

@@ -142,7 +142,7 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
                         isYes ? "bg-yes-muted text-yes" : "bg-no-muted text-no"
                       )}
                     >
-                      {contract.outcome}
+                      {contract.outcome === 'YES' ? 'SIM' : 'NÃO'}
                     </span>
                     {contract.status === 'ACTIVE' ? (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">

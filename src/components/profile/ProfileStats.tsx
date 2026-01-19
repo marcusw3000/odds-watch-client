@@ -68,8 +68,8 @@ export function ProfileStats({ profile, isOwnProfile }: ProfileStatsProps) {
   const canSeeTrades = isOwnProfile || profile.show_trades;
 
   const winRate = profile.total_trades > 0 
-    ? ((profile.winning_trades / profile.total_trades) * 100).toFixed(1)
-    : '0.0';
+    ? ((profile.winning_trades / profile.total_trades) * 100).toFixed(2)
+    : '0.00';
 
   const stats: StatCardProps[] = [
     {

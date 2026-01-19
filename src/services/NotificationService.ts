@@ -256,7 +256,7 @@ export async function notifyPriceAlert(
     userId,
     type: 'PRICE_ALERT',
     title: 'Alerta de Preço 📊',
-    message: `"${marketTitle}" ${direction} ${Math.abs(percentChange).toFixed(1)}%`,
+    message: `"${marketTitle}" ${direction} ${Math.abs(percentChange).toFixed(2)}%`,
     data: { market_id: marketId, old_price: oldPrice, new_price: newPrice, change: percentChange },
     sendEmail: false,
   });

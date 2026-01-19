@@ -35,8 +35,8 @@ export function MyStatsCard() {
   const formatCurrency = (value: number) => formatCurrencyWithSign(value);
 
   const winRate = stats?.total_trades 
-    ? ((stats.winning_trades / stats.total_trades) * 100).toFixed(1) 
-    : '0.0';
+    ? ((stats.winning_trades / stats.total_trades) * 100).toFixed(2) 
+    : '0.00';
 
   const statItems = [
     {
@@ -48,7 +48,7 @@ export function MyStatsCard() {
     {
       icon: BarChart3,
       label: 'ROI',
-      value: `${(stats?.roi_percent || 0) >= 0 ? '+' : ''}${(stats?.roi_percent || 0).toFixed(1)}%`,
+      value: `${(stats?.roi_percent || 0) >= 0 ? '+' : ''}${(stats?.roi_percent || 0).toFixed(2)}%`,
       color: (stats?.roi_percent || 0) >= 0 ? 'text-green-500' : 'text-red-500',
     },
     {

@@ -193,7 +193,7 @@ export function AdminReferralsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-500">
-              {(stats?.conversionRate ?? 0).toFixed(1)}%
+              {(stats?.conversionRate ?? 0).toFixed(2)}%
             </div>
           </CardContent>
         </Card>
@@ -355,8 +355,8 @@ export function AdminReferralsPage() {
                         }
                       </TableCell>
                       <TableCell>{getStatusBadge(referral.status)}</TableCell>
-                      <TableCell>{(referral.commission_percent * 100).toFixed(0)}%</TableCell>
-                      <TableCell>{(referral.discount_percent * 100).toFixed(0)}%</TableCell>
+                      <TableCell>{(referral.commission_percent * 100).toFixed(2)}%</TableCell>
+                      <TableCell>{(referral.discount_percent * 100).toFixed(2)}%</TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(referral.total_commission_earned)}
                       </TableCell>

@@ -54,7 +54,7 @@ export function BidAskSpread({ eventId, quantity = 10, yesShares, noShares }: Bi
     const buyPrice = buyQuote.avgPrice / 100;
     const sellPrice = sellQuote.avgPrice / 100;
     if (buyPrice === 0) return null;
-    return ((buyPrice - sellPrice) / buyPrice * 100).toFixed(1);
+    return ((buyPrice - sellPrice) / buyPrice * 100).toFixed(2);
   };
 
   const yesSpread = calculateSpread(yesQuotes.buy, yesQuotes.sell);

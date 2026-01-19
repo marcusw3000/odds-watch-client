@@ -198,7 +198,7 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
                             "text-xs",
                             isPnLPositive ? "text-success/80" : "text-destructive/80"
                           )}>
-                            ({isPnLPositive ? '+' : ''}{pnlPercent.toFixed(1)}%)
+                            ({isPnLPositive ? '+' : ''}{pnlPercent.toFixed(2)}%)
                           </p>
                         </div>
                       )

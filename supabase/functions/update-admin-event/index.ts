@@ -268,6 +268,7 @@ Deno.serve(async (req) => {
         description,
         category,
         closeDate,
+        settlementDate,
         imageUrl,
         tags,
         yesPrice,
@@ -292,6 +293,17 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Validate dates if both are provided
+      const finalCloseDate = closeDate ?? currentEvent.close_date;
+      const finalSettlementDate = settlementDate ?? currentEvent.settlement_date;
+      
+      if (finalCloseDate && finalSettlementDate && new Date(finalCloseDate) > new Date(finalSettlementDate)) {
+        return new Response(JSON.stringify({ error: 'Data de halt de trading deve ser anterior ou igual à data do evento' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // Build update object
       const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
@@ -301,6 +313,7 @@ Deno.serve(async (req) => {
       if (description !== undefined) updateData.description = description;
       if (category !== undefined) updateData.category = category;
       if (closeDate !== undefined) updateData.close_date = closeDate;
+      if (settlementDate !== undefined) updateData.settlement_date = settlementDate;
       if (imageUrl !== undefined) updateData.image_url = imageUrl;
       if (tags !== undefined) updateData.tags = tags;
       if (cardStyle !== undefined) updateData.card_style = cardStyle;

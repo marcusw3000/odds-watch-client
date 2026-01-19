@@ -57,7 +57,8 @@ export function AdminEventFormPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('');
-  const [expiryAt, setExpiryAt] = useState<Date | undefined>();
+  const [tradingHaltDate, setTradingHaltDate] = useState<Date | undefined>();
+  const [eventDate, setEventDate] = useState<Date | undefined>();
   
   // Market type (Binary vs Multiple)
   const [marketType, setMarketType] = useState<MarketType>('BINARY');
@@ -101,7 +102,8 @@ export function AdminEventFormPage() {
       setTitle(event.title);
       setDescription(event.description || '');
       setCategory(event.category);
-      setExpiryAt(event.close_date ? parseISO(event.close_date) : undefined);
+      setTradingHaltDate(event.close_date ? parseISO(event.close_date) : undefined);
+      setEventDate(event.settlement_date ? parseISO(event.settlement_date) : undefined);
       
       // Set market type
       setMarketType((event.market_type as MarketType) || 'BINARY');
@@ -150,7 +152,14 @@ export function AdminEventFormPage() {
     if (!title.trim()) newErrors.title = 'Título é obrigatório';
     if (!description.trim()) newErrors.description = 'Descrição é obrigatória';
     if (!category) newErrors.category = 'Categoria é obrigatória';
-    if (!expiryAt) newErrors.expiryAt = 'Data de expiração é obrigatória';
+    if (!tradingHaltDate) newErrors.tradingHaltDate = 'Data de halt de trading é obrigatória';
+    if (!eventDate) newErrors.eventDate = 'Data do evento é obrigatória';
+    
+    // Validate that trading halt is before or equal to event date
+    if (tradingHaltDate && eventDate && tradingHaltDate > eventDate) {
+      newErrors.tradingHaltDate = 'Halt de trading deve ser antes ou igual à data do evento';
+    }
+    
     if (!sourceName.trim()) newErrors.sourceName = 'Nome da fonte é obrigatório';
     if (!sourceUrl.trim()) newErrors.sourceUrl = 'URL da fonte é obrigatória';
     if (!sourceRule.trim()) newErrors.sourceRule = 'Regra de resolução é obrigatória';
@@ -207,7 +216,8 @@ export function AdminEventFormPage() {
           title,
           description,
           category,
-          closeDate: expiryAt!.toISOString(),
+          closeDate: tradingHaltDate!.toISOString(),
+          settlementDate: eventDate!.toISOString(),
           imageUrl: imageData.url || undefined,
           tags,
           yesPrice: marketType === 'BINARY' ? oddsYes / 100 : undefined,
@@ -223,7 +233,8 @@ export function AdminEventFormPage() {
           title,
           description,
           category,
-          closeDate: expiryAt!.toISOString(),
+          closeDate: tradingHaltDate!.toISOString(),
+          settlementDate: eventDate!.toISOString(),
           imageUrl: imageData.url || undefined,
           tags,
           yesPrice: marketType === 'BINARY' ? oddsYes / 100 : undefined,
@@ -327,34 +338,69 @@ export function AdminEventFormPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Data de Expiração *</Label>
+                <Label>Halt de Trading *</Label>
+                <p className="text-xs text-muted-foreground">Quando as negociações param</p>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
                         'w-full justify-start text-left font-normal',
-                        !expiryAt && 'text-muted-foreground',
-                        errors.expiryAt && 'border-destructive'
+                        !tradingHaltDate && 'text-muted-foreground',
+                        errors.tradingHaltDate && 'border-destructive'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expiryAt ? format(expiryAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione a data'}
+                      {tradingHaltDate ? format(tradingHaltDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione a data'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={expiryAt}
-                      onSelect={setExpiryAt}
+                      selected={tradingHaltDate}
+                      onSelect={setTradingHaltDate}
                       disabled={(date) => date < new Date()}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
-                {errors.expiryAt && <p className="text-xs text-destructive">{errors.expiryAt}</p>}
+                {errors.tradingHaltDate && <p className="text-xs text-destructive">{errors.tradingHaltDate}</p>}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data do Evento *</Label>
+                <p className="text-xs text-muted-foreground">Quando o evento acontece</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !eventDate && 'text-muted-foreground',
+                        errors.eventDate && 'border-destructive'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {eventDate ? format(eventDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione a data'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={eventDate}
+                      onSelect={setEventDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {errors.eventDate && <p className="text-xs text-destructive">{errors.eventDate}</p>}
+              </div>
+              <div />
             </div>
 
             {!isEditing && (

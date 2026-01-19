@@ -11,9 +11,11 @@ interface CopyTraderCardProps {
   trader: CopyTrader;
   onSubscribe: (trader: CopyTrader) => void;
   isSubscribed?: boolean;
+  currentUserId?: string;
 }
 
-export function CopyTraderCard({ trader, onSubscribe, isSubscribed }: CopyTraderCardProps) {
+export function CopyTraderCard({ trader, onSubscribe, isSubscribed, currentUserId }: CopyTraderCardProps) {
+  const isOwnProfile = currentUserId === trader.user_id;
   const winRatePercent = trader.win_rate != null ? (trader.win_rate * 100).toFixed(0) : null;
   
   return (
@@ -111,14 +113,20 @@ export function CopyTraderCard({ trader, onSubscribe, isSubscribed }: CopyTrader
       </CardContent>
       
       <CardFooter className="pt-0 relative">
-        <Button 
-          className="w-full" 
-          onClick={() => onSubscribe(trader)}
-          disabled={isSubscribed}
-          variant={isSubscribed ? "outline" : "default"}
-        >
-          {isSubscribed ? 'Já Inscrito' : 'Seguir Trader'}
-        </Button>
+        {isOwnProfile ? (
+          <Badge variant="secondary" className="w-full justify-center py-2">
+            Seu Perfil de Trader
+          </Badge>
+        ) : (
+          <Button 
+            className="w-full" 
+            onClick={() => onSubscribe(trader)}
+            disabled={isSubscribed}
+            variant={isSubscribed ? "outline" : "default"}
+          >
+            {isSubscribed ? 'Já Inscrito' : 'Seguir Trader'}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

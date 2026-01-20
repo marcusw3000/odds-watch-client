@@ -11,11 +11,13 @@ import {
   Trash2,
   MoreHorizontal,
   ExternalLink,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -49,7 +51,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
-import { useAdminEvents, useUpdateEventStatus, useDeleteEvent, AdminEvent } from '@/hooks/useAdminEvents';
+import { 
+  useAdminEvents, 
+  useUpdateEventStatus, 
+  useDeleteEvent, 
+  useBulkUpdateStatus,
+  useBulkDeleteEvents,
+  AdminEvent 
+} from '@/hooks/useAdminEvents';
 import { usePagination } from '@/hooks/usePagination';
 import { EVENT_CATEGORIES } from '@/types/admin';
 import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/types/market';
@@ -63,6 +72,7 @@ export function AdminEventsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [selectedEvents, setSelectedEvents] = useState<Set<string>>(new Set());
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; event: AdminEvent | null }>({
     open: false,
     event: null,
@@ -74,6 +84,13 @@ export function AdminEventsPage() {
   }>({
     open: false,
     event: null,
+    action: null,
+  });
+  const [bulkActionDialog, setBulkActionDialog] = useState<{
+    open: boolean;
+    action: 'pause' | 'resume' | 'delete' | null;
+  }>({
+    open: false,
     action: null,
   });
 
@@ -95,9 +112,65 @@ export function AdminEventsPage() {
 
   const updateStatusMutation = useUpdateEventStatus();
   const deleteMutation = useDeleteEvent();
+  const bulkUpdateMutation = useBulkUpdateStatus();
+  const bulkDeleteMutation = useBulkDeleteEvents();
 
   const events = data?.events || [];
   const totalCount = data?.totalCount || 0;
+
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedEvents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedEvents.size === events.length && events.length > 0) {
+      setSelectedEvents(new Set());
+    } else {
+      setSelectedEvents(new Set(events.map((e) => e.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedEvents(new Set());
+
+  const confirmBulkAction = async () => {
+    if (!bulkActionDialog.action || selectedEvents.size === 0) return;
+
+    const eventIds = [...selectedEvents];
+
+    try {
+      if (bulkActionDialog.action === 'delete') {
+        const result = await bulkDeleteMutation.mutateAsync(eventIds);
+        toast.success(`${result.successful} evento(s) excluído(s)`);
+        if (result.failed > 0) {
+          toast.error(`${result.failed} evento(s) não puderam ser excluídos`);
+        }
+      } else {
+        const statusMap: Record<string, MarketStatus> = {
+          pause: 'HALTED',
+          resume: 'OPEN',
+        };
+        const result = await bulkUpdateMutation.mutateAsync({
+          eventIds,
+          status: statusMap[bulkActionDialog.action],
+        });
+        toast.success(`${result.successful} evento(s) atualizado(s)`);
+        if (result.failed > 0) {
+          toast.error(`${result.failed} evento(s) não puderam ser atualizados`);
+        }
+      }
+      clearSelection();
+    } catch (err) {
+      toast.error('Erro ao executar ação em lote');
+    }
+
+    setBulkActionDialog({ open: false, action: null });
+  };
 
   const handleStatusChange = (event: AdminEvent, action: 'pause' | 'resume' | 'close') => {
     setStatusDialog({ open: true, event, action });
@@ -235,6 +308,13 @@ export function AdminEventsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={selectedEvents.size === events.length && events.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead>Título</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Status</TableHead>
@@ -248,19 +328,29 @@ export function AdminEventsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : events.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   Nenhum evento encontrado
                 </TableCell>
               </TableRow>
             ) : (
               events.map((event) => (
-                <TableRow key={event.id}>
+                <TableRow 
+                  key={event.id}
+                  className={selectedEvents.has(event.id) ? 'bg-muted/50' : ''}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedEvents.has(event.id)}
+                      onCheckedChange={() => toggleSelect(event.id)}
+                      aria-label={`Selecionar ${event.title}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Link 
                       to={`/admin/events/${event.id}`}
@@ -442,6 +532,55 @@ export function AdminEventsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Action Dialog */}
+      <AlertDialog open={bulkActionDialog.open} onOpenChange={(open) => !open && setBulkActionDialog({ open: false, action: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkActionDialog.action === 'pause' && 'Pausar Eventos'}
+              {bulkActionDialog.action === 'resume' && 'Reabrir Eventos'}
+              {bulkActionDialog.action === 'delete' && 'Excluir Eventos'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedEvents.size} evento(s) selecionado(s). Esta ação será aplicada a todos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkAction} 
+              disabled={bulkUpdateMutation.isPending || bulkDeleteMutation.isPending}
+              className={bulkActionDialog.action === 'delete' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+            >
+              {(bulkUpdateMutation.isPending || bulkDeleteMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Actions Floating Bar */}
+      {selectedEvents.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg p-3 flex items-center gap-3">
+          <span className="text-sm font-medium">
+            {selectedEvents.size} selecionado(s)
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Button size="sm" variant="outline" onClick={() => setBulkActionDialog({ open: true, action: 'pause' })}>
+            <Pause className="h-4 w-4 mr-1" /> Pausar
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setBulkActionDialog({ open: true, action: 'resume' })}>
+            <Play className="h-4 w-4 mr-1" /> Reabrir
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => setBulkActionDialog({ open: true, action: 'delete' })}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

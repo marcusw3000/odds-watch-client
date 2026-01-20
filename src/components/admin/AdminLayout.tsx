@@ -17,7 +17,6 @@ import {
   Users,
   Activity,
   Gift,
-  
   Loader2,
   Flag,
   Lightbulb,
@@ -28,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { AdminNotificationBell } from './AdminNotificationBell';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -113,14 +113,17 @@ export function AdminLayout() {
               Admin Panel
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="shrink-0"
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          <div className="flex items-center gap-1">
+            <AdminNotificationBell />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="shrink-0"
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
 
         {/* Navigation */}

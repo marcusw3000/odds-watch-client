@@ -142,12 +142,12 @@ export function MinimalTradingCard({
     }
   }, [sharesFromAmount, event.lmsr, activeOutcome, mode]);
 
-  // Reset on mode/outcome change
+  // Reset only on mode change - preserve input when switching outcome
   useEffect(() => {
     setAmount('');
     setError(null);
     setSliderValue([0]);
-  }, [mode, activeOutcome]);
+  }, [mode]);
 
   // Calculate max value for slider
   const maxValue = mode === 'buy' ? userBalance : currentQuantity;
@@ -312,9 +312,9 @@ export function MinimalTradingCard({
         {/* Outcome Buttons - Compact Kalshi Style */}
         <div className="flex gap-2">
           <button
-            onClick={() => setActiveOutcome('YES')}
+            onClick={() => React.startTransition(() => setActiveOutcome('YES'))}
             className={cn(
-              "flex-1 py-3 px-4 rounded-xl font-bold text-center transition-colors duration-100 border-2",
+              "flex-1 py-3 px-4 rounded-xl font-bold text-center border-2 transition-[background-color,border-color] duration-75",
               activeOutcome === 'YES'
                 ? "bg-yes text-yes-foreground border-yes"
                 : "bg-card border-border hover:border-yes/50 text-foreground"
@@ -323,9 +323,9 @@ export function MinimalTradingCard({
             Sim {yesPrice}¢
           </button>
           <button
-            onClick={() => setActiveOutcome('NO')}
+            onClick={() => React.startTransition(() => setActiveOutcome('NO'))}
             className={cn(
-              "flex-1 py-3 px-4 rounded-xl font-bold text-center transition-colors duration-100 border-2",
+              "flex-1 py-3 px-4 rounded-xl font-bold text-center border-2 transition-[background-color,border-color] duration-75",
               activeOutcome === 'NO'
                 ? "bg-no text-no-foreground border-no"
                 : "bg-card border-border hover:border-no/50 text-foreground"
@@ -386,10 +386,9 @@ export function MinimalTradingCard({
               max={100}
               step={1}
               className={cn(
-                "w-full",
+                "w-full [&_[data-slider-range]]:transition-none [&_[data-slider-thumb]]:transition-none",
                 activeOutcome === 'YES' && "[&_[data-slider-range]]:bg-yes [&_[data-slider-thumb]]:border-yes",
-                activeOutcome === 'NO' && "[&_[data-slider-range]]:bg-no [&_[data-slider-thumb]]:border-no",
-                isSliderDragging && "[&_[data-slider-range]]:transition-none"
+                activeOutcome === 'NO' && "[&_[data-slider-range]]:bg-no [&_[data-slider-thumb]]:border-no"
               )}
               disabled={maxValue <= 0}
             />

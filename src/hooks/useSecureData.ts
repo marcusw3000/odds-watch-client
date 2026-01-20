@@ -343,14 +343,16 @@ export interface AdminUserDetails {
   roles: string[];
   contracts: Array<{
     id: string;
-    event_id: string;
-    event_title: string;
-    outcome: string;
-    quantity: number;
-    price_at_purchase: number;
-    purchased_at: string;
-    status: string;
-    payout_amount?: number;
+    market_id: string;
+    market_title: string;
+    market_status: string;
+    market_result: string | null;
+    position: string;
+    shares: number;
+    average_price: number;
+    total_invested: number;
+    created_at: string;
+    option_id: string | null;
   }>;
   contractStats: {
     total: number;

@@ -979,28 +979,42 @@ export function AdminUsersPage() {
                   <ScrollArea className="h-64">
                     <div className="p-3 space-y-2">
                       {userDetails.contracts.length > 0 ? (
-                        userDetails.contracts.slice(0, 20).map((contract) => (
-                          <div key={contract.id} className="p-3 border rounded space-y-1">
-                            <p className="font-medium text-sm truncate">{contract.event_title}</p>
-                            <div className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-2">
-                                <Badge variant={contract.outcome === 'YES' ? 'default' : 'secondary'}>
-                                  {contract.outcome}
+                        userDetails.contracts.slice(0, 20).map((contract) => {
+                          // Determine contract status based on market status and result
+                          const isActive = contract.market_status === 'active' || contract.market_status === 'halted';
+                          const isWon = contract.market_status === 'settled' && 
+                            contract.market_result?.toUpperCase() === contract.position?.toUpperCase();
+                          const isLost = contract.market_status === 'settled' && 
+                            contract.market_result?.toUpperCase() !== contract.position?.toUpperCase();
+                          const statusLabel = isWon ? 'GANHO' : isLost ? 'PERDIDO' : 'ATIVO';
+                          
+                          return (
+                            <div key={contract.id} className="p-3 border rounded space-y-1">
+                              <p className="font-medium text-sm truncate">{contract.market_title}</p>
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={contract.position === 'YES' ? 'default' : 'secondary'}>
+                                    {contract.position}
+                                  </Badge>
+                                  <span>{contract.shares} shares</span>
+                                  <span className="text-muted-foreground">
+                                    @ {formatCurrency(contract.average_price)}
+                                  </span>
+                                </div>
+                                <Badge variant={
+                                  isWon ? 'default' :
+                                  isLost ? 'destructive' : 'outline'
+                                }>
+                                  {statusLabel}
                                 </Badge>
-                                <span>{contract.quantity} contratos</span>
                               </div>
-                              <Badge variant={
-                                contract.status === 'WON' ? 'default' :
-                                contract.status === 'LOST' ? 'destructive' : 'outline'
-                              }>
-                                {contract.status}
-                              </Badge>
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>Total: {formatCurrency(contract.total_invested)}</span>
+                                <span>{format(new Date(contract.created_at), 'dd/MM/yyyy HH:mm')}</span>
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(contract.purchased_at), 'dd/MM/yyyy HH:mm')}
-                            </p>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <p className="text-center text-muted-foreground py-8">Nenhum contrato</p>
                       )}

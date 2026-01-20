@@ -284,6 +284,7 @@ export function MarketDetailPage() {
                 result={event.result}
                 options={event.options}
                 isUrgent={statusInfo.isUrgent}
+                showCountdown={false}
               />
             </div>
             <h1 className="text-2xl md:text-3xl font-bold leading-tight">

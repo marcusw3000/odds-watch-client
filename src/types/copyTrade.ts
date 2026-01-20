@@ -38,12 +38,12 @@ export interface CopyTrader {
   stripe_price_id: string | null;
   created_at: string;
   updated_at: string;
-  // Joined fields
-  user_email?: string;
+  // Joined fields - fields depend on context (admin vs public)
   profile?: {
-    email: string;
-    full_name: string | null;
-    avatar_url: string | null;
+    id?: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
+    email?: string | null;  // Only available for admins
   };
 }
 

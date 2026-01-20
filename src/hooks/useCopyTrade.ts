@@ -55,7 +55,7 @@ export function useUpdateCopyTradeSettings() {
   });
 }
 
-// Fetch all copy traders (for admin)
+// Fetch all copy traders (for admin - includes email via RLS)
 export function useCopyTraders(status?: string) {
   return useQuery({
     queryKey: ['copy-traders-admin', status],
@@ -76,12 +76,13 @@ export function useCopyTraders(status?: string) {
         throw error;
       }
       
-      // Fetch profiles separately to avoid RLS join issues
+      // For admin context, fetch from profiles table (RLS allows admin access)
+      // This includes email for admin display
       if (data && data.length > 0) {
         const userIds = data.map(t => t.user_id);
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, email, full_name, avatar_url')
+          .select('id, display_name, avatar_url, email')
           .in('id', userIds);
         
         // Merge profiles with traders
@@ -111,11 +112,11 @@ export function useApprovedCopyTraders() {
 
       if (error) throw error;
       
-      // Fetch profiles to get up-to-date avatar_url
+      // Fetch profiles using profiles_public (no PII for public display)
       if (data && data.length > 0) {
         const userIds = data.map(t => t.user_id);
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, avatar_url')
           .in('id', userIds);
         

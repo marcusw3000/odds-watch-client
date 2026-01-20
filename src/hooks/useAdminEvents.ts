@@ -435,3 +435,63 @@ export function useAdminAuditLogs(actionFilter?: string) {
     },
   });
 }
+
+// === Bulk Actions ===
+
+export function useBulkUpdateStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eventIds,
+      status,
+    }: {
+      eventIds: string[];
+      status: MarketStatus;
+    }) => {
+      const results = await Promise.allSettled(
+        eventIds.map((eventId) =>
+          supabase.functions.invoke('update-admin-event', {
+            method: 'POST',
+            body: { action: 'update_status', eventId, status },
+          })
+        )
+      );
+
+      const successful = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.filter((r) => r.status === 'rejected').length;
+
+      return { successful, failed, total: eventIds.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
+    },
+  });
+}
+
+export function useBulkDeleteEvents() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventIds: string[]) => {
+      const results = await Promise.allSettled(
+        eventIds.map((eventId) =>
+          supabase.functions.invoke('update-admin-event', {
+            method: 'POST',
+            body: { action: 'delete', eventId },
+          })
+        )
+      );
+
+      const successful = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.filter((r) => r.status === 'rejected').length;
+
+      return { successful, failed, total: eventIds.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
+    },
+  });
+}

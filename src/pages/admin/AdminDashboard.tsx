@@ -8,7 +8,10 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
-  Loader2
+  Loader2,
+  DollarSign,
+  Users,
+  Wallet
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,14 +22,19 @@ import {
   useRecentEvents,
   AdminEvent 
 } from '@/hooks/useAdminEvents';
+import { useAdminDashboardMetrics } from '@/hooks/useAdminDashboardMetrics';
+import { DataIntegrityCard } from '@/components/admin/DataIntegrityCard';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+function formatCurrency(value: number) {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export function AdminDashboard() {
   const { data: metrics, isLoading: metricsLoading } = useAdminMetrics();
+  const { data: dashboardMetrics, isLoading: dashboardMetricsLoading } = useAdminDashboardMetrics();
   const { data: expiringEvents = [], isLoading: expiringLoading } = useExpiringEvents(7);
   const { data: recentEvents = [], isLoading: recentLoading } = useRecentEvents(5);
-
   const metricCards = [
     { 
       label: 'Total de Eventos', 
@@ -109,6 +117,84 @@ export function AdminDashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Financial Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-emerald-500/10">
+                <DollarSign className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div>
+                {dashboardMetricsLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <p className="text-xl font-bold font-mono">R$ {formatCurrency(dashboardMetrics?.totalVolume ?? 0)}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Volume Total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-amber-500/10">
+                <TrendingUp className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                {dashboardMetricsLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <p className="text-xl font-bold font-mono">R$ {formatCurrency(dashboardMetrics?.pendingRevenue ?? 0)}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Receita Pendente</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-blue-500/10">
+                <Users className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                {dashboardMetricsLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <p className="text-xl font-bold">{dashboardMetrics?.activeUsers7d ?? 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Usuários Ativos (7d)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-violet-500/10">
+                <Wallet className="h-5 w-5 text-violet-500" />
+              </div>
+              <div>
+                {dashboardMetricsLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <p className="text-xl font-bold font-mono">R$ {formatCurrency(dashboardMetrics?.depositsToday ?? 0)}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Depósitos Hoje</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Data Integrity Check */}
+      <DataIntegrityCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expiring Soon */}

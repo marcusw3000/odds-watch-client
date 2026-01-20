@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -32,16 +34,76 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAdminUsers, useAdjustWalletBalance, useManageUserRoles, type AdminUser } from '@/hooks/useSecureData';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  useAdminUsers, 
+  useAdjustWalletBalance, 
+  useManageUserRoles, 
+  useBlockUser,
+  useSendAdminWarning,
+  useAdminUserDetails,
+  type AdminUser 
+} from '@/hooks/useSecureData';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Users, Wallet as WalletIcon, Plus, Minus, Search, Mail, User, Loader2, Shield, ShieldCheck, UserCheck } from 'lucide-react';
+import { 
+  Users, 
+  Wallet as WalletIcon, 
+  Plus, 
+  Minus, 
+  Search, 
+  Mail, 
+  User, 
+  Loader2, 
+  Shield, 
+  ShieldCheck, 
+  UserCheck,
+  MoreHorizontal,
+  Eye,
+  Copy,
+  AlertTriangle,
+  Ban,
+  Unlock,
+  FileText,
+  Bell,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Activity,
+} from 'lucide-react';
 
 const ROLE_CONFIG = {
   admin: { label: 'Admin', icon: ShieldCheck, variant: 'destructive' as const, color: 'text-red-500' },
   moderator: { label: 'Moderador', icon: Shield, variant: 'default' as const, color: 'text-blue-500' },
   user: { label: 'Usuário', icon: UserCheck, variant: 'secondary' as const, color: 'text-muted-foreground' },
+};
+
+const WARNING_CATEGORIES = {
+  warning: { label: 'Advertência', icon: '⚠️' },
+  reminder: { label: 'Lembrete', icon: '📌' },
+  alert: { label: 'Alerta', icon: '🚨' },
 };
 
 export function AdminUsersPage() {
@@ -63,10 +125,28 @@ export function AdminUsersPage() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [pendingRoleChanges, setPendingRoleChanges] = useState<{ action: 'add' | 'remove'; role: string }[]>([]);
 
+  // Block/Unblock dialog state
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [blockAction, setBlockAction] = useState<'block' | 'unblock'>('block');
+  const [blockReason, setBlockReason] = useState('');
+
+  // Warning dialog state
+  const [warningDialogOpen, setWarningDialogOpen] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+  const [warningCategory, setWarningCategory] = useState<'warning' | 'reminder' | 'alert'>('warning');
+  const [warningSendEmail, setWarningSendEmail] = useState(false);
+
+  // Details sheet state
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsUserId, setDetailsUserId] = useState<string | null>(null);
+
   // Use secure hooks
   const { data: users = [], isLoading, refetch } = useAdminUsers(debouncedSearch);
   const adjustBalance = useAdjustWalletBalance();
   const manageRoles = useManageUserRoles();
+  const blockUser = useBlockUser();
+  const sendWarning = useSendAdminWarning();
+  const { data: userDetails, isLoading: detailsLoading } = useAdminUserDetails(detailsUserId);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -79,8 +159,15 @@ export function AdminUsersPage() {
     setDebouncedSearch(searchTerm);
   };
 
-  const openAdjustDialog = (user: AdminUser, type: 'add' | 'subtract') => {
-    setSelectedUser(user);
+  // Copy to clipboard
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copiado!`);
+  };
+
+  // Adjustment functions
+  const openAdjustDialog = (targetUser: AdminUser, type: 'add' | 'subtract') => {
+    setSelectedUser(targetUser);
     setAdjustmentType(type);
     setAdjustmentAmount('');
     setAdjustmentReason('');
@@ -148,14 +235,12 @@ export function AdminUsersPage() {
     const changes: { action: 'add' | 'remove'; role: string }[] = [];
     const originalRoles = selectedUser.roles;
 
-    // Roles to add
     selectedRoles.forEach(role => {
       if (!originalRoles.includes(role)) {
         changes.push({ action: 'add', role });
       }
     });
 
-    // Roles to remove
     originalRoles.forEach(role => {
       if (!selectedRoles.includes(role)) {
         changes.push({ action: 'remove', role });
@@ -180,7 +265,6 @@ export function AdminUsersPage() {
     if (!selectedUser || pendingRoleChanges.length === 0) return;
 
     try {
-      // Process changes sequentially to maintain consistency
       for (const change of pendingRoleChanges) {
         await manageRoles.mutateAsync({
           userId: selectedUser.user_id,
@@ -198,6 +282,77 @@ export function AdminUsersPage() {
     setRoleConfirmOpen(false);
     setPendingRoleChanges([]);
     setSelectedUser(null);
+  };
+
+  // Block/Unblock functions
+  const openBlockDialog = (targetUser: AdminUser, action: 'block' | 'unblock') => {
+    setSelectedUser(targetUser);
+    setBlockAction(action);
+    setBlockReason('');
+    setBlockDialogOpen(true);
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!selectedUser) return;
+
+    if (blockAction === 'block' && !blockReason.trim()) {
+      toast.error('Informe o motivo do bloqueio');
+      return;
+    }
+
+    try {
+      await blockUser.mutateAsync({
+        userId: selectedUser.user_id,
+        action: blockAction,
+        reason: blockReason.trim() || undefined,
+      });
+
+      toast.success(blockAction === 'block' ? 'Usuário bloqueado' : 'Usuário desbloqueado');
+      refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar status');
+    }
+
+    setBlockDialogOpen(false);
+    setSelectedUser(null);
+  };
+
+  // Warning functions
+  const openWarningDialog = (targetUser: AdminUser) => {
+    setSelectedUser(targetUser);
+    setWarningMessage('');
+    setWarningCategory('warning');
+    setWarningSendEmail(false);
+    setWarningDialogOpen(true);
+  };
+
+  const handleSendWarning = async () => {
+    if (!selectedUser || !warningMessage.trim()) {
+      toast.error('Informe a mensagem do aviso');
+      return;
+    }
+
+    try {
+      await sendWarning.mutateAsync({
+        userId: selectedUser.user_id,
+        message: warningMessage.trim(),
+        category: warningCategory,
+        sendEmail: warningSendEmail,
+      });
+
+      toast.success('Aviso enviado com sucesso');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao enviar aviso');
+    }
+
+    setWarningDialogOpen(false);
+    setSelectedUser(null);
+  };
+
+  // Details functions
+  const openDetailsSheet = (targetUser: AdminUser) => {
+    setDetailsUserId(targetUser.user_id);
+    setDetailsOpen(true);
   };
 
   const RoleBadge = ({ role }: { role: string }) => {
@@ -290,13 +445,19 @@ export function AdminUsersPage() {
             </TableHeader>
             <TableBody>
               {filteredUsers.map((targetUser) => (
-                <TableRow key={targetUser.id}>
+                <TableRow key={targetUser.id} className={targetUser.is_blocked ? 'bg-destructive/5' : ''}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="font-medium">
+                        <p className="font-medium flex items-center gap-1">
                           {targetUser.display_name || 'Sem nome'}
+                          {targetUser.is_blocked && (
+                            <Badge variant="destructive" className="text-xs ml-1">
+                              <Ban className="h-3 w-3 mr-1" />
+                              Bloqueado
+                            </Badge>
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground font-mono">
                           {targetUser.user_id.substring(0, 8)}...
@@ -333,30 +494,56 @@ export function AdminUsersPage() {
                     {format(new Date(targetUser.updated_at), 'dd/MM/yyyy HH:mm')}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openRoleDialog(targetUser)}
-                      >
-                        <Shield className="h-4 w-4 mr-1" />
-                        Roles
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openAdjustDialog(targetUser, 'add')}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openAdjustDialog(targetUser, 'subtract')}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => openDetailsSheet(targetUser)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => copyToClipboard(targetUser.user_id, 'ID')}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copiar ID
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => copyToClipboard(targetUser.email, 'Email')}>
+                          <Mail className="h-4 w-4 mr-2" />
+                          Copiar Email
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => openRoleDialog(targetUser)}>
+                          <Shield className="h-4 w-4 mr-2" />
+                          Gerenciar Roles
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openAdjustDialog(targetUser, 'add')}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Creditar Saldo
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openAdjustDialog(targetUser, 'subtract')}>
+                          <Minus className="h-4 w-4 mr-2" />
+                          Debitar Saldo
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => openWarningDialog(targetUser)}>
+                          <AlertTriangle className="h-4 w-4 mr-2 text-yellow-500" />
+                          Enviar Aviso
+                        </DropdownMenuItem>
+                        {targetUser.is_blocked ? (
+                          <DropdownMenuItem onClick={() => openBlockDialog(targetUser, 'unblock')}>
+                            <Unlock className="h-4 w-4 mr-2 text-green-500" />
+                            Desbloquear
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => openBlockDialog(targetUser, 'block')}>
+                            <Ban className="h-4 w-4 mr-2 text-red-500" />
+                            Bloquear
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -371,6 +558,470 @@ export function AdminUsersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* User Details Sheet */}
+      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Detalhes do Usuário
+            </SheetTitle>
+            <SheetDescription>
+              Informações completas e histórico do usuário
+            </SheetDescription>
+          </SheetHeader>
+
+          {detailsLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : userDetails ? (
+            <Tabs defaultValue="profile" className="mt-6">
+              <TabsList className="grid grid-cols-4 w-full">
+                <TabsTrigger value="profile">Perfil</TabsTrigger>
+                <TabsTrigger value="wallet">Carteira</TabsTrigger>
+                <TabsTrigger value="contracts">Contratos</TabsTrigger>
+                <TabsTrigger value="activity">Atividade</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="profile" className="space-y-4 mt-4">
+                <div className="grid gap-4">
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Nome</span>
+                      <span className="font-medium">{userDetails.profile.display_name || userDetails.profile.full_name || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Email</span>
+                      <span className="font-mono text-sm">{userDetails.profile.email}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Telefone</span>
+                      <span className="font-mono text-sm">{userDetails.profile.phone || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">CPF</span>
+                      <span className="font-mono text-sm">{userDetails.profile.cpf || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Perfil Público</span>
+                      <Badge variant={userDetails.profile.is_public ? 'default' : 'secondary'}>
+                        {userDetails.profile.is_public ? 'Sim' : 'Não'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Criado em</span>
+                      <span className="text-sm">{format(new Date(userDetails.profile.created_at), 'dd/MM/yyyy HH:mm')}</span>
+                    </div>
+                  </div>
+
+                  {userDetails.profile.is_blocked && (
+                    <div className="p-4 border border-destructive rounded-lg bg-destructive/5 space-y-2">
+                      <div className="flex items-center gap-2 text-destructive font-medium">
+                        <Ban className="h-4 w-4" />
+                        Usuário Bloqueado
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Motivo:</strong> {userDetails.profile.blocked_reason || 'Não informado'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Bloqueado em:</strong> {userDetails.profile.blocked_at ? format(new Date(userDetails.profile.blocked_at), 'dd/MM/yyyy HH:mm') : 'N/A'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-3">Roles</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {userDetails.roles.length > 0 ? (
+                        userDetails.roles.map(role => <RoleBadge key={role} role={role} />)
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Nenhum role atribuído</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-3">Indicações</h4>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold">{userDetails.referralStats.total}</p>
+                        <p className="text-sm text-muted-foreground">Total</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-green-600">{userDetails.referralStats.activated}</p>
+                        <p className="text-sm text-muted-foreground">Ativadas</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-yellow-600">{userDetails.referralStats.pending}</p>
+                        <p className="text-sm text-muted-foreground">Pendentes</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="wallet" className="space-y-4 mt-4">
+                {userDetails.wallet ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Disponível</p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {formatCurrency(userDetails.wallet.balance_available)}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Bloqueado</p>
+                            <p className="text-2xl font-bold text-yellow-600">
+                              {formatCurrency(userDetails.wallet.balance_locked)}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div className="border rounded-lg">
+                      <div className="p-3 border-b bg-muted/50">
+                        <h4 className="font-medium">Transações Recentes</h4>
+                      </div>
+                      <ScrollArea className="h-64">
+                        <div className="p-3 space-y-2">
+                          {userDetails.ledgerEntries.length > 0 ? (
+                            userDetails.ledgerEntries.slice(0, 20).map((entry) => (
+                              <div key={entry.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                                <div className="flex items-center gap-2">
+                                  {entry.direction === 'CREDIT' ? (
+                                    <Plus className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Minus className="h-4 w-4 text-red-500" />
+                                  )}
+                                  <span>{entry.ref_type}</span>
+                                </div>
+                                <div className="text-right">
+                                  <p className={entry.direction === 'CREDIT' ? 'text-green-600' : 'text-red-600'}>
+                                    {entry.direction === 'CREDIT' ? '+' : '-'}{formatCurrency(entry.amount)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {format(new Date(entry.created_at), 'dd/MM HH:mm')}
+                                  </p>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-center text-muted-foreground py-8">Nenhuma transação</p>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">Carteira não encontrada</p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="contracts" className="space-y-4 mt-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-4 text-center">
+                      <FileText className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-2xl font-bold">{userDetails.contractStats.total}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 text-center">
+                      <Clock className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                      <p className="text-2xl font-bold">{userDetails.contractStats.active}</p>
+                      <p className="text-xs text-muted-foreground">Ativos</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 text-center">
+                      <CheckCircle className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                      <p className="text-2xl font-bold">{userDetails.contractStats.won}</p>
+                      <p className="text-xs text-muted-foreground">Ganhos</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 text-center">
+                      <XCircle className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                      <p className="text-2xl font-bold">{userDetails.contractStats.lost}</p>
+                      <p className="text-xs text-muted-foreground">Perdidos</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="border rounded-lg">
+                  <div className="p-3 border-b bg-muted/50">
+                    <h4 className="font-medium">Contratos Recentes</h4>
+                  </div>
+                  <ScrollArea className="h-64">
+                    <div className="p-3 space-y-2">
+                      {userDetails.contracts.length > 0 ? (
+                        userDetails.contracts.slice(0, 20).map((contract) => (
+                          <div key={contract.id} className="p-3 border rounded space-y-1">
+                            <p className="font-medium text-sm truncate">{contract.event_title}</p>
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={contract.outcome === 'YES' ? 'default' : 'secondary'}>
+                                  {contract.outcome}
+                                </Badge>
+                                <span>{contract.quantity} contratos</span>
+                              </div>
+                              <Badge variant={
+                                contract.status === 'WON' ? 'default' :
+                                contract.status === 'LOST' ? 'destructive' : 'outline'
+                              }>
+                                {contract.status}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(contract.purchased_at), 'dd/MM/yyyy HH:mm')}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-8">Nenhum contrato</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="activity" className="space-y-4 mt-4">
+                <div className="border rounded-lg">
+                  <div className="p-3 border-b bg-muted/50 flex items-center gap-2">
+                    <Bell className="h-4 w-4" />
+                    <h4 className="font-medium">Notificações Recentes</h4>
+                  </div>
+                  <ScrollArea className="h-48">
+                    <div className="p-3 space-y-2">
+                      {userDetails.notifications.length > 0 ? (
+                        userDetails.notifications.map((notif) => (
+                          <div key={notif.id} className={`p-2 border rounded text-sm ${notif.is_read ? 'opacity-60' : ''}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{notif.title}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(notif.created_at), 'dd/MM HH:mm')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{notif.message}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4">Nenhuma notificação</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                <div className="border rounded-lg">
+                  <div className="p-3 border-b bg-muted/50 flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    <h4 className="font-medium">Histórico Administrativo</h4>
+                  </div>
+                  <ScrollArea className="h-48">
+                    <div className="p-3 space-y-2">
+                      {userDetails.auditLogs.length > 0 ? (
+                        userDetails.auditLogs.map((log) => (
+                          <div key={log.id} className="p-2 border rounded text-sm">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline">{log.action_type}</Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(log.created_at), 'dd/MM HH:mm')}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4">Nenhuma ação administrativa</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">Usuário não encontrado</p>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Block/Unblock Dialog */}
+      <AlertDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {blockAction === 'block' ? (
+                <>
+                  <Ban className="h-5 w-5 text-red-500" />
+                  Bloquear Usuário
+                </>
+              ) : (
+                <>
+                  <Unlock className="h-5 w-5 text-green-500" />
+                  Desbloquear Usuário
+                </>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  {blockAction === 'block' 
+                    ? 'O usuário não poderá acessar a plataforma enquanto estiver bloqueado.'
+                    : 'O usuário poderá voltar a acessar a plataforma normalmente.'
+                  }
+                </p>
+                
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="font-medium">{selectedUser?.display_name}</p>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {selectedUser?.email}
+                  </p>
+                </div>
+
+                {blockAction === 'block' && (
+                  <div className="space-y-2">
+                    <Label>Motivo do bloqueio *</Label>
+                    <Textarea
+                      value={blockReason}
+                      onChange={(e) => setBlockReason(e.target.value)}
+                      placeholder="Informe o motivo do bloqueio..."
+                      rows={3}
+                    />
+                  </div>
+                )}
+
+                {blockAction === 'unblock' && selectedUser?.blocked_reason && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                    <strong>Motivo original do bloqueio:</strong>
+                    <p className="text-sm mt-1">{selectedUser.blocked_reason}</p>
+                  </div>
+                )}
+
+                <p className="text-sm text-destructive font-medium">
+                  Esta ação será registrada no log de auditoria.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmBlock}
+              disabled={blockUser.isPending}
+              className={blockAction === 'block' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {blockUser.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : blockAction === 'block' ? (
+                'Bloquear'
+              ) : (
+                'Desbloquear'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Warning Dialog */}
+      <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Enviar Aviso ao Usuário
+            </DialogTitle>
+            <DialogDescription>
+              O usuário receberá uma notificação com sua mensagem
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Usuário</Label>
+              <div className="bg-muted p-3 rounded space-y-1">
+                <p className="font-medium">
+                  {selectedUser?.display_name || 'Sem nome'}
+                </p>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {selectedUser?.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select 
+                value={warningCategory} 
+                onValueChange={(v) => setWarningCategory(v as 'warning' | 'reminder' | 'alert')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(WARNING_CATEGORIES).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>
+                      {config.icon} {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Mensagem *</Label>
+              <Textarea
+                value={warningMessage}
+                onChange={(e) => setWarningMessage(e.target.value)}
+                placeholder="Digite a mensagem para o usuário..."
+                rows={4}
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="send-email"
+                checked={warningSendEmail}
+                onCheckedChange={(checked) => setWarningSendEmail(checked === true)}
+              />
+              <label
+                htmlFor="send-email"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Enviar também por email
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarningDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSendWarning} disabled={sendWarning.isPending}>
+              {sendWarning.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar Aviso'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Role Management Dialog */}
       <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
@@ -462,42 +1113,44 @@ export function AdminUsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Alterações de Permissão</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <p>Você está prestes a alterar as permissões do usuário:</p>
-              
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="font-medium">{selectedUser?.display_name}</p>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {selectedUser?.email}
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>Você está prestes a alterar as permissões do usuário:</p>
+                
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="font-medium">{selectedUser?.display_name}</p>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {selectedUser?.email}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {pendingRoleChanges.map((change, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 p-2 rounded ${
+                        change.action === 'add' 
+                          ? 'bg-green-500/10 text-green-700 dark:text-green-400' 
+                          : 'bg-red-500/10 text-red-700 dark:text-red-400'
+                      }`}
+                    >
+                      {change.action === 'add' ? (
+                        <Plus className="h-4 w-4" />
+                      ) : (
+                        <Minus className="h-4 w-4" />
+                      )}
+                      <span>
+                        {change.action === 'add' ? 'Adicionar' : 'Remover'} role:{' '}
+                        <strong>{ROLE_CONFIG[change.role as keyof typeof ROLE_CONFIG]?.label || change.role}</strong>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-sm text-destructive font-medium">
+                  Esta ação será registrada no log de auditoria.
                 </p>
               </div>
-
-              <div className="space-y-2">
-                {pendingRoleChanges.map((change, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-2 p-2 rounded ${
-                      change.action === 'add' 
-                        ? 'bg-green-500/10 text-green-700 dark:text-green-400' 
-                        : 'bg-red-500/10 text-red-700 dark:text-red-400'
-                    }`}
-                  >
-                    {change.action === 'add' ? (
-                      <Plus className="h-4 w-4" />
-                    ) : (
-                      <Minus className="h-4 w-4" />
-                    )}
-                    <span>
-                      {change.action === 'add' ? 'Adicionar' : 'Remover'} role:{' '}
-                      <strong>{ROLE_CONFIG[change.role as keyof typeof ROLE_CONFIG]?.label || change.role}</strong>
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-sm text-destructive font-medium">
-                Esta ação será registrada no log de auditoria.
-              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -597,40 +1250,42 @@ export function AdminUsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Ajuste de Saldo</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <p>Você está prestes a realizar o seguinte ajuste:</p>
-              
-              <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span>Tipo:</span>
-                  <Badge variant={adjustmentType === 'add' ? 'default' : 'destructive'}>
-                    {adjustmentType === 'add' ? 'CRÉDITO' : 'DÉBITO'}
-                  </Badge>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>Você está prestes a realizar o seguinte ajuste:</p>
+                
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span>Tipo:</span>
+                    <Badge variant={adjustmentType === 'add' ? 'default' : 'destructive'}>
+                      {adjustmentType === 'add' ? 'CRÉDITO' : 'DÉBITO'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Valor:</span>
+                    <span className="font-bold">
+                      {adjustmentAmount && formatCurrency(parseFloat(adjustmentAmount))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Novo Saldo:</span>
+                    <span className="font-bold">
+                      {selectedUser && adjustmentAmount && formatCurrency(
+                        selectedUser.balance_available + 
+                        (adjustmentType === 'add' ? 1 : -1) * parseFloat(adjustmentAmount)
+                      )}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Valor:</span>
-                  <span className="font-bold">
-                    {adjustmentAmount && formatCurrency(parseFloat(adjustmentAmount))}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Novo Saldo:</span>
-                  <span className="font-bold">
-                    {selectedUser && adjustmentAmount && formatCurrency(
-                      selectedUser.balance_available + 
-                      (adjustmentType === 'add' ? 1 : -1) * parseFloat(adjustmentAmount)
-                    )}
-                  </span>
-                </div>
-              </div>
 
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                <strong>Motivo:</strong> {adjustmentReason}
-              </div>
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                  <strong>Motivo:</strong> {adjustmentReason}
+                </div>
 
-              <p className="text-sm text-destructive font-medium">
-                Esta ação será registrada no log de auditoria e não pode ser desfeita.
-              </p>
+                <p className="text-sm text-destructive font-medium">
+                  Esta ação será registrada no log de auditoria e não pode ser desfeita.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1327,6 +1327,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           copy_trader_id: string | null
+          cpf: string | null
           created_at: string
           current_streak: number
           display_name: string | null
@@ -1371,6 +1372,7 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           copy_trader_id?: string | null
+          cpf?: string | null
           created_at?: string
           current_streak?: number
           display_name?: string | null
@@ -1415,6 +1417,7 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           copy_trader_id?: string | null
+          cpf?: string | null
           created_at?: string
           current_streak?: number
           display_name?: string | null

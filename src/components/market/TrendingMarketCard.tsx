@@ -52,8 +52,25 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
   const isSettled = statusInfo.status === 'SETTLED';
   const resultIsYes = event.result === 'YES';
 
-  // Generate mock price history data with dates
+  // Generate mock price history data with dates - using deterministic seeded random
   const priceHistory = useMemo(() => {
+    // Seeded random function for deterministic "randomness" based on event.id
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed * 9999) * 10000;
+      return x - Math.floor(x);
+    };
+    
+    // Simple hash of event.id for seed base
+    const hashCode = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    };
+    
+    const seedBase = hashCode(event.id);
     const createdAt = event.createdAt ? new Date(event.createdAt) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const now = new Date();
     const daysDiff = Math.max(differenceInDays(now, createdAt), 1);
@@ -70,9 +87,10 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     
     for (let i = 0; i <= dataPoints; i++) {
       const date = new Date(createdAt.getTime() + (i * (now.getTime() - createdAt.getTime()) / dataPoints));
-      const randomVariation = (Math.random() - 0.5) * 6;
+      // Use deterministic random based on event.id and index
+      const variation = (seededRandom(seedBase + i) - 0.5) * 6;
       
-      yesPrice = Math.max(5, Math.min(95, yesPrice + yesStep + randomVariation));
+      yesPrice = Math.max(5, Math.min(95, yesPrice + yesStep + variation));
       noPrice = 100 - yesPrice;
       
       data.push({
@@ -90,7 +108,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     }
     
     return data;
-  }, [event.createdAt, event.outcomes.YES.price, event.outcomes.NO.price]);
+  }, [event.id, event.createdAt, event.outcomes.YES.price, event.outcomes.NO.price]);
 
   return (
     <div 
@@ -343,6 +361,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                   strokeWidth={1.5}
                   dot={false}
                   activeDot={{ r: 3, fill: 'hsl(var(--yes))' }}
+                  isAnimationActive={false}
                 />
                 <Line
                   type="linear"
@@ -351,6 +370,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                   strokeWidth={1.5}
                   dot={false}
                   activeDot={{ r: 3, fill: 'hsl(var(--muted-foreground))' }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>

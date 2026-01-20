@@ -44,7 +44,7 @@ const AdminAuditLogsPage = lazy(() => import("./pages/admin/AdminAuditLogsPage")
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage").then(m => ({ default: m.AdminUsersPage })));
 const AdminMarketEventsPage = lazy(() => import("./pages/admin/AdminMarketEventsPage").then(m => ({ default: m.AdminMarketEventsPage })));
 const AdminReferralsPage = lazy(() => import("./pages/admin/AdminReferralsPage").then(m => ({ default: m.AdminReferralsPage })));
-const AdminAppearancePage = lazy(() => import("./pages/admin/AdminAppearancePage").then(m => ({ default: m.AdminAppearancePage })));
+
 const AdminReportsPage = lazy(() => import("./pages/admin/AdminReportsPage").then(m => ({ default: m.AdminReportsPage })));
 const AdminSuggestionsPage = lazy(() => import("./pages/admin/AdminSuggestionsPage").then(m => ({ default: m.AdminSuggestionsPage })));
 const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
@@ -210,7 +210,7 @@ const App = () => (
               <Route path="users" element={<Suspense fallback={<AdminLoadingFallback />}><AdminUsersPage /></Suspense>} />
               <Route path="market-events" element={<Suspense fallback={<AdminLoadingFallback />}><AdminMarketEventsPage /></Suspense>} />
               <Route path="referrals" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReferralsPage /></Suspense>} />
-              <Route path="appearance" element={<Suspense fallback={<AdminLoadingFallback />}><AdminAppearancePage /></Suspense>} />
+              
               <Route path="reports" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReportsPage /></Suspense>} />
               <Route path="suggestions" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSuggestionsPage /></Suspense>} />
               <Route path="support" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSupportPage /></Suspense>} />

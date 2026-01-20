@@ -279,6 +279,163 @@ export function useManageUserRoles() {
   });
 }
 
+// Admin user details interface
+export interface AdminUserDetails {
+  profile: {
+    id: string;
+    display_name: string;
+    full_name: string;
+    email: string;
+    phone?: string;
+    cpf?: string;
+    avatar_url?: string;
+    bio?: string;
+    is_public: boolean;
+    is_blocked: boolean;
+    blocked_at?: string;
+    blocked_reason?: string;
+    blocked_by?: string;
+    created_at: string;
+    updated_at: string;
+  };
+  wallet: {
+    id: string;
+    balance_available: number;
+    balance_locked: number;
+    currency: string;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  roles: string[];
+  contracts: Array<{
+    id: string;
+    event_id: string;
+    event_title: string;
+    outcome: string;
+    quantity: number;
+    price_at_purchase: number;
+    purchased_at: string;
+    status: string;
+    payout_amount?: number;
+  }>;
+  contractStats: {
+    total: number;
+    active: number;
+    won: number;
+    lost: number;
+  };
+  ledgerEntries: Array<{
+    id: string;
+    ref_type: string;
+    direction: string;
+    amount: number;
+    net_amount: number;
+    status: string;
+    created_at: string;
+  }>;
+  notifications: Array<{
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+  }>;
+  referralStats: {
+    total: number;
+    activated: number;
+    pending: number;
+  };
+  auditLogs: Array<{
+    id: string;
+    action_type: string;
+    details: Record<string, unknown>;
+    created_at: string;
+  }>;
+}
+
+// Fetch admin user details (admin only)
+export function useAdminUserDetails(userId: string | null) {
+  const { isAdmin } = useAuth();
+  
+  return useQuery({
+    queryKey: ['admin-user-details', userId],
+    queryFn: async (): Promise<AdminUserDetails | null> => {
+      if (!userId) return null;
+      
+      const { data, error } = await supabase.functions.invoke('get-admin-user-details', {
+        body: { user_id: userId },
+      });
+      
+      if (error) {
+        console.error('Error fetching admin user details:', error);
+        throw error;
+      }
+      
+      return data as AdminUserDetails;
+    },
+    enabled: isAdmin && !!userId,
+    staleTime: 30000,
+  });
+}
+
+// Block/unblock user (admin only)
+export function useBlockUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { userId: string; action: 'block' | 'unblock'; reason?: string }) => {
+      const { data, error } = await supabase.functions.invoke('block-user', {
+        body: { 
+          user_id: params.userId, 
+          action: params.action, 
+          reason: params.reason 
+        },
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to update user status');
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-details'] });
+    },
+  });
+}
+
+// Send admin warning (admin only)
+export function useSendAdminWarning() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { 
+      userId: string; 
+      message: string; 
+      category?: 'warning' | 'reminder' | 'alert';
+      sendEmail?: boolean;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('admin-send-warning', {
+        body: { 
+          user_id: params.userId, 
+          message: params.message,
+          category: params.category || 'warning',
+          send_email: params.sendEmail || false,
+        },
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to send warning');
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user-details'] });
+    },
+  });
+}
+
 // Fetch fee policy snapshot (admin only)
 export function useFeePolicySnapshot(snapshotId: string | null) {
   const { isAdmin } = useAuth();

@@ -60,7 +60,7 @@ export function PurchaseSuccessModal({
 
   const shareLink = generateMarketShareLink(eventId, { outcome, source: 'copy' });
   const socialLinks = generateSocialShareLinks({
-    title: `Acabei de apostar ${outcome === 'YES' ? 'SIM' : 'NÃO'} em "${eventTitle}" 🎯`,
+    title: `Comprei contratos de ${outcome === 'YES' ? 'SIM' : 'NÃO'} em "${eventTitle}" 🎯`,
     description: `${shares} contratos por R$${totalCost.toFixed(2)}. Lucro potencial: R$${potentialProfit.toFixed(2)}!`,
     deepLink: shareLink,
     hashtags: ['trading', 'previsões', 'mercado'],
@@ -84,7 +84,7 @@ export function PurchaseSuccessModal({
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `aposta-${outcome.toLowerCase()}-${Date.now()}.png`;
+          link.download = `posicao-${outcome.toLowerCase()}-${Date.now()}.png`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -121,7 +121,7 @@ export function PurchaseSuccessModal({
 
   const handleInstagramShare = async () => {
     await navigator.clipboard.writeText(
-      `🎯 Acabei de apostar ${outcome === 'YES' ? 'SIM' : 'NÃO'} em "${eventTitle}"\n\n` +
+      `🎯 Comprei contratos de ${outcome === 'YES' ? 'SIM' : 'NÃO'} em "${eventTitle}"\n\n` +
       `📊 ${shares} contratos por R$${totalCost.toFixed(2)}\n` +
       `💰 Lucro potencial: R$${potentialProfit.toFixed(2)}\n\n` +
       `🔗 ${shareLink}`
@@ -181,7 +181,7 @@ export function PurchaseSuccessModal({
           
           <h2 id="purchase-success-title" className="text-xl font-bold mb-1">Compra Confirmada! 🎉</h2>
           <p className="text-sm text-muted-foreground">
-            Sua aposta foi registrada com sucesso
+            Sua posição foi registrada com sucesso
           </p>
         </div>
 

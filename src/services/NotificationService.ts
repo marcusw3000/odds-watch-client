@@ -73,7 +73,7 @@ export async function notifyMarketClosingSoon(
     userId,
     type: 'MARKET_CLOSING_SOON',
     title: 'Mercado Fechando em Breve',
-    message: `"${marketTitle}" fecha em ${timeRemaining}. Última chance de apostar!`,
+    message: `"${marketTitle}" fecha em ${timeRemaining}. Última chance de negociar!`,
     data: { market_id: marketId, market_title: marketTitle, time_remaining: timeRemaining },
     sendEmail: true,
   });

@@ -91,7 +91,7 @@ export function InviteToTrade({
 
           {/* Outcome Selection */}
           <div>
-            <p className="text-sm text-muted-foreground mb-2">Sua aposta:</p>
+            <p className="text-sm text-muted-foreground mb-2">Sua posição:</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setSelectedOutcome('YES')}

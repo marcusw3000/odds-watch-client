@@ -43,10 +43,12 @@ export interface NotificationPreferences {
   in_app_trade_updates: boolean;
   in_app_achievements: boolean;
   in_app_system: boolean;
+  in_app_social: boolean;
   email_market_settled: boolean;
   email_market_closing: boolean;
   email_weekly_summary: boolean;
   email_marketing: boolean;
+  email_mentions: boolean;
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
   created_at: string;

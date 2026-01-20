@@ -1677,6 +1677,7 @@ export type Database = {
           id: string
           is_hidden: boolean
           likes_count: number
+          mentions: string[] | null
           parent_id: string | null
           replies_count: number
           suggestion_id: string
@@ -1689,6 +1690,7 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           likes_count?: number
+          mentions?: string[] | null
           parent_id?: string | null
           replies_count?: number
           suggestion_id: string
@@ -1701,6 +1703,7 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           likes_count?: number
+          mentions?: string[] | null
           parent_id?: string | null
           replies_count?: number
           suggestion_id?: string
@@ -2369,6 +2372,8 @@ export type Database = {
         | "ADMIN_NEW_REPORT"
         | "ADMIN_NEW_CONTESTATION"
         | "USER_WARNING"
+        | "SUPPORT_REPLY"
+        | "SUPPORT_TICKET_RESOLVED"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -2554,6 +2559,8 @@ export const Constants = {
         "ADMIN_NEW_REPORT",
         "ADMIN_NEW_CONTESTATION",
         "USER_WARNING",
+        "SUPPORT_REPLY",
+        "SUPPORT_TICKET_RESOLVED",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

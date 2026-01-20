@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, RefreshCw, Search } from 'lucide-react';
@@ -49,13 +49,20 @@ export function MarketsPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null);
+  // Store only the ID to avoid re-renders when events array updates
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
   const [trendingIndex, setTrendingIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  
+  // Memoize the selected event - only updates when ID changes or the specific event's data changes
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) return null;
+    return events.find(e => e.id === selectedEventId) || null;
+  }, [selectedEventId, events]);
 
   // Fetch categories separately (they don't change frequently)
   useEffect(() => {
@@ -92,34 +99,30 @@ export function MarketsPage() {
     setIsRefreshing(false);
   };
 
-  const handleBuy = (eventId: string, outcome: 'YES' | 'NO') => {
+  const handleBuy = useCallback((eventId: string, outcome: 'YES' | 'NO') => {
     if (!user) {
       navigate('/auth', { state: { returnTo: `/market/${eventId}?action=buy&outcome=${outcome}` } });
       return;
     }
-    const event = events.find((e) => e.id === eventId);
-    if (event) {
-      setSelectedEvent(event);
-      setSelectedOutcome(outcome);
-    }
-  };
+    // Store only the ID to prevent re-renders when events array updates
+    setSelectedEventId(eventId);
+    setSelectedOutcome(outcome);
+  }, [user, navigate]);
 
-  const handleViewDetails = (eventId: string) => {
+  const handleViewDetails = useCallback((eventId: string) => {
     navigate(`/market/${eventId}`);
-  };
+  }, [navigate]);
 
-  const handleCloseModal = () => {
-    setSelectedEvent(null);
-  };
+  const handleCloseModal = useCallback(() => {
+    setSelectedEventId(null);
+  }, []);
 
-  const handleRefreshPrice = async () => {
+  const handleRefreshPrice = useCallback(async () => {
     if (!selectedEvent) return null;
     const updatedEvent = await MarketDataProvider.refreshOdds(selectedEvent.id);
-    if (updatedEvent) {
-      setSelectedEvent(updatedEvent);
-    }
+    // No need to set state - selectedEvent will auto-update via useMemo when events refresh
     return updatedEvent;
-  };
+  }, [selectedEvent]);
 
   const handleConfirmPurchase = async (shares: number, maxCost: number) => {
     if (!selectedEvent) return;

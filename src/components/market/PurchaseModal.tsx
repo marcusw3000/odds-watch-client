@@ -238,7 +238,7 @@ export function PurchaseModal({
         {/* Selected Outcome */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Sua aposta</p>
+            <p className="text-sm text-muted-foreground mb-1">Sua posição</p>
             <div className="flex items-center gap-2">
               <span className={cn(
                 "px-3 py-1.5 rounded-lg font-bold text-lg",

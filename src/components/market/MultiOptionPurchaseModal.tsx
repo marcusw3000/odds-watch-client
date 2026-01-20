@@ -233,7 +233,7 @@ export function MultiOptionPurchaseModal({
         {/* Selected Option */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Sua aposta</p>
+            <p className="text-sm text-muted-foreground mb-1">Sua posição</p>
             <div className="flex items-center gap-2">
               {selectedOption.imageUrl ? (
                 <div 

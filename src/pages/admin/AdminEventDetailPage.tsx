@@ -433,10 +433,10 @@ export function AdminEventDetailPage() {
               {statusDialog.action === 'open' && 'Abrir Mercado'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {statusDialog.action === 'pause' && 'O evento será pausado e não aceitará novas apostas até ser reaberto.'}
-              {statusDialog.action === 'resume' && 'O evento será reaberto e voltará a aceitar apostas.'}
+              {statusDialog.action === 'pause' && 'O evento será pausado e não aceitará novas negociações até ser reaberto.'}
+              {statusDialog.action === 'resume' && 'O evento será reaberto e voltará a aceitar negociações.'}
               {statusDialog.action === 'close' && 'O mercado será fechado permanentemente. Após fechado, só poderá ser liquidado.'}
-              {statusDialog.action === 'open' && 'O mercado será aberto e começará a aceitar apostas.'}
+              {statusDialog.action === 'open' && 'O mercado será aberto e começará a aceitar negociações.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

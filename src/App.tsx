@@ -6,26 +6,28 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Layout } from "./components/layout/Layout";
-import { MarketsPage } from "./pages/MarketsPage";
-import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { supabase } from "@/integrations/supabase/client";
-import { PortfolioPage } from "./pages/PortfolioPage";
 import NotFound from "./pages/NotFound";
-import { AuthPage } from "./pages/AuthPage";
-import { LeaderboardPage } from "./pages/LeaderboardPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { FeesPage } from "./pages/FeesPage";
-import { ReferralPage } from "./pages/ReferralPage";
-import ProfilePage from "./pages/ProfilePage";
-import { SuggestionsPage } from "./pages/SuggestionsPage";
-import { SuggestionDetailPage } from "./pages/SuggestionDetailPage";
-import { TermosPage } from "./pages/TermosPage";
-import { PrivacidadePage } from "./pages/PrivacidadePage";
-import { LGPDPage } from "./pages/LGPDPage";
-import { FAQPage } from "./pages/FAQPage";
-import { CopyTradersPage } from "./pages/CopyTradersPage";
-import { TraderDashboardPage } from "./pages/TraderDashboardPage";
 import { Loader2 } from "lucide-react";
+
+// Lazy load main pages for bundle optimization
+const MarketsPage = lazy(() => import("./pages/MarketsPage").then(m => ({ default: m.MarketsPage })));
+const MarketDetailPage = lazy(() => import("./pages/MarketDetailPage").then(m => ({ default: m.MarketDetailPage })));
+const PortfolioPage = lazy(() => import("./pages/PortfolioPage").then(m => ({ default: m.PortfolioPage })));
+const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage").then(m => ({ default: m.LeaderboardPage })));
+const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
+const FeesPage = lazy(() => import("./pages/FeesPage").then(m => ({ default: m.FeesPage })));
+const ReferralPage = lazy(() => import("./pages/ReferralPage").then(m => ({ default: m.ReferralPage })));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const SuggestionsPage = lazy(() => import("./pages/SuggestionsPage").then(m => ({ default: m.SuggestionsPage })));
+const SuggestionDetailPage = lazy(() => import("./pages/SuggestionDetailPage").then(m => ({ default: m.SuggestionDetailPage })));
+const TermosPage = lazy(() => import("./pages/TermosPage").then(m => ({ default: m.TermosPage })));
+const PrivacidadePage = lazy(() => import("./pages/PrivacidadePage").then(m => ({ default: m.PrivacidadePage })));
+const LGPDPage = lazy(() => import("./pages/LGPDPage").then(m => ({ default: m.LGPDPage })));
+const FAQPage = lazy(() => import("./pages/FAQPage").then(m => ({ default: m.FAQPage })));
+const CopyTradersPage = lazy(() => import("./pages/CopyTradersPage").then(m => ({ default: m.CopyTradersPage })));
+const TraderDashboardPage = lazy(() => import("./pages/TraderDashboardPage").then(m => ({ default: m.TraderDashboardPage })));
 
 // Lazy load admin pages for bundle optimization
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
@@ -52,6 +54,12 @@ const AdminCopyTradeSettingsPage = lazy(() => import("./pages/admin/AdminCopyTra
 const AdminCopyTradersPage = lazy(() => import("./pages/admin/AdminCopyTradersPage"));
 
 // Loading fallback for lazy-loaded components
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[50vh]">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
+
 const AdminLoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-background">
     <div className="flex flex-col items-center gap-3">
@@ -164,24 +172,24 @@ const App = () => (
             <Routes>
               <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/markets" replace />} />
-              <Route path="/markets" element={<MarketsPage />} />
-              <Route path="/market/:id" element={<MarketDetailPage />} />
-              <Route path="/portfolio" element={<PortfolioPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/referral" element={<ReferralPage />} />
-              <Route path="/fees" element={<FeesPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/profile/:userId" element={<ProfilePage />} />
-              <Route path="/suggestions" element={<SuggestionsPage />} />
-              <Route path="/suggestions/:id" element={<SuggestionDetailPage />} />
-              <Route path="/termos" element={<TermosPage />} />
-              <Route path="/privacidade" element={<PrivacidadePage />} />
-              <Route path="/lgpd" element={<LGPDPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-              <Route path="/copy-traders" element={<CopyTradersPage />} />
-              <Route path="/trader/dashboard" element={<TraderDashboardPage />} />
+              <Route path="/markets" element={<Suspense fallback={<PageLoadingFallback />}><MarketsPage /></Suspense>} />
+              <Route path="/market/:id" element={<Suspense fallback={<PageLoadingFallback />}><MarketDetailPage /></Suspense>} />
+              <Route path="/portfolio" element={<Suspense fallback={<PageLoadingFallback />}><PortfolioPage /></Suspense>} />
+              <Route path="/leaderboard" element={<Suspense fallback={<PageLoadingFallback />}><LeaderboardPage /></Suspense>} />
+              <Route path="/settings" element={<Suspense fallback={<PageLoadingFallback />}><SettingsPage /></Suspense>} />
+              <Route path="/auth" element={<Suspense fallback={<PageLoadingFallback />}><AuthPage /></Suspense>} />
+              <Route path="/referral" element={<Suspense fallback={<PageLoadingFallback />}><ReferralPage /></Suspense>} />
+              <Route path="/fees" element={<Suspense fallback={<PageLoadingFallback />}><FeesPage /></Suspense>} />
+              <Route path="/profile" element={<Suspense fallback={<PageLoadingFallback />}><ProfilePage /></Suspense>} />
+              <Route path="/profile/:userId" element={<Suspense fallback={<PageLoadingFallback />}><ProfilePage /></Suspense>} />
+              <Route path="/suggestions" element={<Suspense fallback={<PageLoadingFallback />}><SuggestionsPage /></Suspense>} />
+              <Route path="/suggestions/:id" element={<Suspense fallback={<PageLoadingFallback />}><SuggestionDetailPage /></Suspense>} />
+              <Route path="/termos" element={<Suspense fallback={<PageLoadingFallback />}><TermosPage /></Suspense>} />
+              <Route path="/privacidade" element={<Suspense fallback={<PageLoadingFallback />}><PrivacidadePage /></Suspense>} />
+              <Route path="/lgpd" element={<Suspense fallback={<PageLoadingFallback />}><LGPDPage /></Suspense>} />
+              <Route path="/faq" element={<Suspense fallback={<PageLoadingFallback />}><FAQPage /></Suspense>} />
+              <Route path="/copy-traders" element={<Suspense fallback={<PageLoadingFallback />}><CopyTradersPage /></Suspense>} />
+              <Route path="/trader/dashboard" element={<Suspense fallback={<PageLoadingFallback />}><TraderDashboardPage /></Suspense>} />
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}

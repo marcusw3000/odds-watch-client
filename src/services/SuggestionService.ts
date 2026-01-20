@@ -257,7 +257,8 @@ export const SuggestionService = {
         suggestion_id: suggestionId,
         user_id: user.user.id,
         content,
-        parent_id: parentId || null
+        parent_id: parentId || null,
+        mentions: mentionedUserIds || []
       })
       .select()
       .single();

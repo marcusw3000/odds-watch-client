@@ -50,6 +50,28 @@ export interface AdminUser {
   roles: string[];
 }
 
+export interface AdminUsersPagination {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export interface AdminUsersFilters {
+  search?: string;
+  limit?: number;
+  offset?: number;
+  sortBy?: 'display_name' | 'email' | 'balance_available' | 'balance_total' | 'updated_at' | 'created_at';
+  sortOrder?: 'asc' | 'desc';
+  filterBlocked?: boolean | null;
+  filterRole?: string | null;
+}
+
+export interface AdminUsersResponse {
+  users: AdminUser[];
+  pagination: AdminUsersPagination;
+}
+
 export interface UserDisplayInfo {
   user_id: string;
   display_name: string;
@@ -143,14 +165,23 @@ export function useSecurePortfolio() {
 }
 
 // Fetch admin users securely via Edge Function
-export function useAdminUsers(search?: string) {
+export function useAdminUsers(filters?: AdminUsersFilters) {
   const { isAdmin } = useAuth();
   
   return useQuery({
-    queryKey: ['admin-users', search],
-    queryFn: async (): Promise<AdminUser[]> => {
+    queryKey: ['admin-users', filters],
+    queryFn: async (): Promise<AdminUsersResponse> => {
       const { data, error } = await supabase.functions.invoke('get-admin-users', {
-        body: { search },
+        method: 'POST',
+        body: {
+          search: filters?.search || '',
+          limit: filters?.limit || 20,
+          offset: filters?.offset || 0,
+          sortBy: filters?.sortBy || 'updated_at',
+          sortOrder: filters?.sortOrder || 'desc',
+          filterBlocked: filters?.filterBlocked ?? null,
+          filterRole: filters?.filterRole ?? null,
+        },
       });
       
       if (error) {
@@ -158,10 +189,13 @@ export function useAdminUsers(search?: string) {
         throw error;
       }
       
-      return (data as any).users as AdminUser[];
+      return {
+        users: (data as any).users as AdminUser[],
+        pagination: (data as any).pagination as AdminUsersPagination,
+      };
     },
     enabled: isAdmin,
-    staleTime: 60000,
+    staleTime: 30000,
   });
 }
 

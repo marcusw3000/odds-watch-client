@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,8 @@ import {
   useBlockUser,
   useSendAdminWarning,
   useAdminUserDetails,
-  type AdminUser 
+  type AdminUser,
+  type AdminUsersFilters,
 } from '@/hooks/useSecureData';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
@@ -87,11 +88,18 @@ import {
   Unlock,
   FileText,
   Bell,
-  TrendingUp,
   Clock,
   CheckCircle,
   XCircle,
   Activity,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Filter,
 } from 'lucide-react';
 
 const ROLE_CONFIG = {
@@ -106,10 +114,24 @@ const WARNING_CATEGORIES = {
   alert: { label: 'Alerta', icon: '🚨' },
 };
 
+const PAGE_SIZES = [10, 20, 50, 100];
+
+type SortField = 'display_name' | 'email' | 'balance_available' | 'balance_total' | 'updated_at' | 'created_at';
+
 export function AdminUsersPage() {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // Pagination and filters state
+  const [filters, setFilters] = useState<AdminUsersFilters>({
+    search: '',
+    limit: 20,
+    offset: 0,
+    sortBy: 'updated_at',
+    sortOrder: 'desc',
+    filterBlocked: null,
+    filterRole: null,
+  });
+  const [searchInput, setSearchInput] = useState('');
 
   // Adjustment dialog state
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
@@ -141,12 +163,19 @@ export function AdminUsersPage() {
   const [detailsUserId, setDetailsUserId] = useState<string | null>(null);
 
   // Use secure hooks
-  const { data: users = [], isLoading, refetch } = useAdminUsers(debouncedSearch);
+  const { data, isLoading, refetch } = useAdminUsers(filters);
+  const users = data?.users ?? [];
+  const pagination = data?.pagination ?? { total: 0, limit: 20, offset: 0, hasMore: false };
+  
   const adjustBalance = useAdjustWalletBalance();
   const manageRoles = useManageUserRoles();
   const blockUser = useBlockUser();
   const sendWarning = useSendAdminWarning();
   const { data: userDetails, isLoading: detailsLoading } = useAdminUserDetails(detailsUserId);
+
+  // Pagination calculations
+  const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -155,8 +184,51 @@ export function AdminUsersPage() {
     }).format(value);
   };
 
+  // Pagination handlers
+  const goToPage = (page: number) => {
+    const newOffset = (page - 1) * filters.limit!;
+    setFilters(prev => ({ ...prev, offset: newOffset }));
+  };
+
+  const handlePageSizeChange = (size: string) => {
+    setFilters(prev => ({ ...prev, limit: parseInt(size), offset: 0 }));
+  };
+
+  // Search handler
   const handleSearch = () => {
-    setDebouncedSearch(searchTerm);
+    setFilters(prev => ({ ...prev, search: searchInput, offset: 0 }));
+  };
+
+  // Sort handler
+  const handleSort = (field: SortField) => {
+    setFilters(prev => ({
+      ...prev,
+      sortBy: field,
+      sortOrder: prev.sortBy === field && prev.sortOrder === 'asc' ? 'desc' : 'asc',
+      offset: 0,
+    }));
+  };
+
+  // Filter handlers
+  const handleBlockedFilter = (value: string) => {
+    let filterBlocked: boolean | null = null;
+    if (value === 'blocked') filterBlocked = true;
+    if (value === 'active') filterBlocked = false;
+    setFilters(prev => ({ ...prev, filterBlocked, offset: 0 }));
+  };
+
+  const handleRoleFilter = (value: string) => {
+    setFilters(prev => ({ ...prev, filterRole: value === 'all' ? null : value, offset: 0 }));
+  };
+
+  // Sort icon component
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (filters.sortBy !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    }
+    return filters.sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1" />
+      : <ArrowDown className="h-4 w-4 ml-1" />;
   };
 
   // Copy to clipboard
@@ -368,18 +440,7 @@ export function AdminUsersPage() {
     );
   };
 
-  const filteredUsers = users.filter(u => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      u.user_id.toLowerCase().includes(term) ||
-      u.email.toLowerCase().includes(term) ||
-      u.display_name.toLowerCase().includes(term) ||
-      u.roles.some(r => r.toLowerCase().includes(term))
-    );
-  });
-
-  if (isLoading) {
+  if (isLoading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -399,18 +460,21 @@ export function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Buscar Usuário</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Buscar e Filtrar
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
                 placeholder="Buscar por email, nome, ID ou role..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
@@ -419,32 +483,129 @@ export function AdminUsersPage() {
               Buscar
             </Button>
           </div>
+          
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Status:</Label>
+              <Select 
+                value={filters.filterBlocked === true ? 'blocked' : filters.filterBlocked === false ? 'active' : 'all'}
+                onValueChange={handleBlockedFilter}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="blocked">Bloqueados</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Role:</Label>
+              <Select 
+                value={filters.filterRole || 'all'}
+                onValueChange={handleRoleFilter}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="moderator">Moderador</SelectItem>
+                  <SelectItem value="user">Usuário</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Por página:</Label>
+              <Select 
+                value={String(filters.limit)}
+                onValueChange={handlePageSizeChange}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZES.map(size => (
+                    <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <WalletIcon className="h-5 w-5" />
-            Usuários ({users.length})
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <WalletIcon className="h-5 w-5" />
+              Usuários ({pagination.total})
+            </div>
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="font-semibold -ml-3"
+                    onClick={() => handleSort('display_name')}
+                  >
+                    Usuário
+                    <SortIcon field="display_name" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="font-semibold -ml-3"
+                    onClick={() => handleSort('email')}
+                  >
+                    Email
+                    <SortIcon field="email" />
+                  </Button>
+                </TableHead>
                 <TableHead>Roles</TableHead>
-                <TableHead className="text-right">Saldo Disponível</TableHead>
+                <TableHead className="text-right">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="font-semibold -mr-3"
+                    onClick={() => handleSort('balance_available')}
+                  >
+                    Saldo Disponível
+                    <SortIcon field="balance_available" />
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right">Saldo Total</TableHead>
-                <TableHead>Última Atualização</TableHead>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="font-semibold -ml-3"
+                    onClick={() => handleSort('updated_at')}
+                  >
+                    Última Atualização
+                    <SortIcon field="updated_at" />
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((targetUser) => (
+              {users.map((targetUser) => (
                 <TableRow key={targetUser.id} className={targetUser.is_blocked ? 'bg-destructive/5' : ''}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -547,7 +708,7 @@ export function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredUsers.length === 0 && (
+              {users.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     Nenhum usuário encontrado
@@ -556,6 +717,58 @@ export function AdminUsersPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          {pagination.total > 0 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {pagination.offset + 1} - {Math.min(pagination.offset + users.length, pagination.total)} de {pagination.total} usuários
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-sm">Página</span>
+                  <span className="font-medium">{currentPage}</span>
+                  <span className="text-sm">de</span>
+                  <span className="font-medium">{totalPages}</span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

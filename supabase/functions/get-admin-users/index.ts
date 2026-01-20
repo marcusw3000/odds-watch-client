@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type SortField = "display_name" | "email" | "balance_available" | "balance_total" | "updated_at" | "created_at";
+type SortOrder = "asc" | "desc";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -28,16 +30,16 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
     
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !userData?.user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -45,32 +47,64 @@ serve(async (req) => {
     );
 
     // Check if user is admin
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
+    const { data: hasAdminRole } = await supabaseAdmin.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
 
-    if (!roleData) {
+    if (!hasAdminRole) {
       return new Response(
         JSON.stringify({ error: "Forbidden - Admin access required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Parse query params for pagination/search
-    const url = new URL(req.url);
-    const search = url.searchParams.get("search") || "";
-    const limit = parseInt(url.searchParams.get("limit") || "50");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    // Parse request body for pagination/search/sort
+    let search = "";
+    let limit = 20;
+    let offset = 0;
+    let sortBy: SortField = "updated_at";
+    let sortOrder: SortOrder = "desc";
+    let filterBlocked: boolean | null = null;
+    let filterRole: string | null = null;
 
-    // Fetch wallets
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        search = body.search || "";
+        limit = Math.min(Math.max(body.limit || 20, 1), 100);
+        offset = Math.max(body.offset || 0, 0);
+        sortBy = body.sortBy || "updated_at";
+        sortOrder = body.sortOrder || "desc";
+        filterBlocked = body.filterBlocked ?? null;
+        filterRole = body.filterRole || null;
+      } catch {
+        // Use defaults
+      }
+    }
+
+    // First get total count for pagination
+    let countQuery = supabaseAdmin
+      .from("wallets")
+      .select("id", { count: "exact", head: true });
+
+    const { count: totalCount } = await countQuery;
+
+    // Build main query - fetch all wallets with pagination
     let walletsQuery = supabaseAdmin
       .from("wallets")
-      .select("id, user_id, balance_available, balance_locked, currency, created_at, updated_at")
-      .order("updated_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .select("id, user_id, balance_available, balance_locked, currency, created_at, updated_at");
+
+    // Apply sorting for wallet fields
+    if (sortBy === "balance_available" || sortBy === "balance_total") {
+      walletsQuery = walletsQuery.order("balance_available", { ascending: sortOrder === "asc" });
+    } else if (sortBy === "updated_at" || sortBy === "created_at") {
+      walletsQuery = walletsQuery.order(sortBy, { ascending: sortOrder === "asc" });
+    } else {
+      walletsQuery = walletsQuery.order("updated_at", { ascending: false });
+    }
+
+    walletsQuery = walletsQuery.range(offset, offset + limit - 1);
 
     const { data: walletsData, error: walletsError } = await walletsQuery;
 
@@ -124,25 +158,13 @@ serve(async (req) => {
       rolesMap.set(r.user_id, existing);
     });
 
-    // Build response with masked emails and roles
-    const users = (walletsData || [])
+    // Build response with filtering
+    let users = (walletsData || [])
       .map((wallet: any) => {
         const profile = profilesMap.get(wallet.user_id);
         const displayName = profile?.display_name || profile?.full_name || "Sem nome";
         const email = profile?.email;
         const roles = rolesMap.get(wallet.user_id) || [];
-
-        // Apply search filter
-        if (search) {
-          const searchLower = search.toLowerCase();
-          const matchesName = displayName.toLowerCase().includes(searchLower);
-          const matchesEmail = email?.toLowerCase().includes(searchLower);
-          const matchesId = wallet.user_id.toLowerCase().includes(searchLower);
-          const matchesRole = roles.some(r => r.toLowerCase().includes(searchLower));
-          if (!matchesName && !matchesEmail && !matchesId && !matchesRole) {
-            return null;
-          }
-        }
 
         return {
           id: wallet.id,
@@ -160,11 +182,53 @@ serve(async (req) => {
           updated_at: wallet.updated_at,
           roles: roles,
         };
-      })
-      .filter(Boolean);
+      });
+
+    // Apply search filter (client-side for simplicity with joined data)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      users = users.filter((u: any) => {
+        const matchesName = u.display_name.toLowerCase().includes(searchLower);
+        const matchesEmail = u.email?.toLowerCase().includes(searchLower);
+        const matchesId = u.user_id.toLowerCase().includes(searchLower);
+        const matchesRole = u.roles.some((r: string) => r.toLowerCase().includes(searchLower));
+        return matchesName || matchesEmail || matchesId || matchesRole;
+      });
+    }
+
+    // Apply blocked filter
+    if (filterBlocked !== null) {
+      users = users.filter((u: any) => u.is_blocked === filterBlocked);
+    }
+
+    // Apply role filter
+    if (filterRole) {
+      users = users.filter((u: any) => u.roles.includes(filterRole));
+    }
+
+    // Sort by display_name or email if requested (needs to be done after joining)
+    if (sortBy === "display_name") {
+      users.sort((a: any, b: any) => {
+        const cmp = a.display_name.localeCompare(b.display_name);
+        return sortOrder === "asc" ? cmp : -cmp;
+      });
+    } else if (sortBy === "email") {
+      users.sort((a: any, b: any) => {
+        const cmp = (a.email || "").localeCompare(b.email || "");
+        return sortOrder === "asc" ? cmp : -cmp;
+      });
+    }
 
     return new Response(
-      JSON.stringify({ users }),
+      JSON.stringify({ 
+        users,
+        pagination: {
+          total: totalCount || 0,
+          limit,
+          offset,
+          hasMore: offset + users.length < (totalCount || 0),
+        }
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

@@ -34,6 +34,7 @@ import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { MarketDetailSkeleton } from '@/components/market/MarketDetailSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
@@ -326,60 +327,88 @@ export function MarketDetailPage() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-              <Clock className="h-4 w-4" />
-              Halt de Trading
-            </div>
-            <p className="font-semibold">
-              {(() => {
-                const days = differenceInDays(event.tradingHaltAt, new Date());
-                if (days < 0) return 'Encerrado';
-                if (days === 0) return 'Hoje';
-                if (days === 1) return 'Amanhã';
-                return `em ${days} dias`;
-              })()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-              <Calendar className="h-4 w-4" />
-              Evento
-            </div>
-            <p className="font-semibold">
-              {(() => {
-                const days = differenceInDays(event.eventAt, new Date());
-                if (days < 0) return 'Encerrado';
-                if (days === 0) return 'Hoje';
-                if (days === 1) return 'Amanhã';
-                return `em ${days} dias`;
-              })()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-              <TrendingUp className="h-4 w-4" />
-              Volume
-            </div>
-            <p className="font-semibold font-mono">{formatVolume(event.volume)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-              <Users className="h-4 w-4" />
-              Investimento
-            </div>
-            <p className="font-semibold font-mono">
-              R${event.limits.minBuy} - R${event.limits.maxBuy}
-            </p>
-          </CardContent>
-        </Card>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="cursor-help">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <Clock className="h-4 w-4" />
+                  Halt de Trading
+                </div>
+                <p className="font-semibold">
+                  {(() => {
+                    const days = differenceInDays(event.tradingHaltAt, new Date());
+                    if (days < 0) return 'Encerrado';
+                    if (days === 0) return 'Hoje';
+                    if (days === 1) return 'Amanhã';
+                    return `em ${days} dias`;
+                  })()}
+                </p>
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>Data limite para negociar. Após este prazo, não será possível comprar ou vender posições.</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="cursor-help">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <Calendar className="h-4 w-4" />
+                  Evento
+                </div>
+                <p className="font-semibold">
+                  {(() => {
+                    const days = differenceInDays(event.eventAt, new Date());
+                    if (days < 0) return 'Encerrado';
+                    if (days === 0) return 'Hoje';
+                    if (days === 1) return 'Amanhã';
+                    return `em ${days} dias`;
+                  })()}
+                </p>
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>Data em que o resultado será conhecido e o mercado será liquidado.</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="cursor-help">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <TrendingUp className="h-4 w-4" />
+                  Volume
+                </div>
+                <p className="font-semibold font-mono">{formatVolume(event.volume)}</p>
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>Total de dinheiro negociado neste mercado até agora.</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="cursor-help">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <Users className="h-4 w-4" />
+                  Investimento
+                </div>
+                <p className="font-semibold font-mono">
+                  R${event.limits.minBuy} - R${event.limits.maxBuy}
+                </p>
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>Valor mínimo e máximo permitido por posição neste mercado.</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Main Content */}

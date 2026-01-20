@@ -110,20 +110,21 @@ serve(async (req) => {
 
     // Fetch recent contracts (last 50)
     const { data: contracts } = await supabaseAdmin
-      .from("contracts")
+      .from("user_contracts")
       .select(`
         id,
-        event_id,
-        outcome,
-        quantity,
-        price_at_purchase,
-        purchased_at,
-        status,
-        payout_amount,
-        events!inner(title)
+        market_id,
+        position,
+        shares,
+        average_price,
+        total_invested,
+        created_at,
+        updated_at,
+        option_id,
+        markets!inner(id, title, status, result)
       `)
       .eq("user_id", user_id)
-      .order("purchased_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(50);
 
     // Fetch recent ledger entries (last 50)
@@ -159,9 +160,17 @@ serve(async (req) => {
     // Calculate stats
     const contractStats = contracts ? {
       total: contracts.length,
-      active: contracts.filter((c: any) => c.status === "ACTIVE").length,
-      won: contracts.filter((c: any) => c.status === "WON").length,
-      lost: contracts.filter((c: any) => c.status === "LOST").length,
+      active: contracts.filter((c: any) => 
+        c.markets?.status === 'active' || c.markets?.status === 'halted'
+      ).length,
+      won: contracts.filter((c: any) => 
+        c.markets?.status === 'settled' && 
+        c.markets?.result?.toUpperCase() === c.position?.toUpperCase()
+      ).length,
+      lost: contracts.filter((c: any) => 
+        c.markets?.status === 'settled' && 
+        c.markets?.result?.toUpperCase() !== c.position?.toUpperCase()
+      ).length,
     } : { total: 0, active: 0, won: 0, lost: 0 };
 
     const referralStatsComputed = referralStats ? {
@@ -210,14 +219,16 @@ serve(async (req) => {
         roles: (roles || []).map((r: any) => r.role),
         contracts: (contracts || []).map((c: any) => ({
           id: c.id,
-          event_id: c.event_id,
-          event_title: c.events?.title,
-          outcome: c.outcome,
-          quantity: c.quantity,
-          price_at_purchase: c.price_at_purchase,
-          purchased_at: c.purchased_at,
-          status: c.status,
-          payout_amount: c.payout_amount,
+          market_id: c.market_id,
+          market_title: c.markets?.title,
+          market_status: c.markets?.status,
+          market_result: c.markets?.result,
+          position: c.position,
+          shares: c.shares,
+          average_price: c.average_price,
+          total_invested: c.total_invested,
+          created_at: c.created_at,
+          option_id: c.option_id,
         })),
         contractStats,
         ledgerEntries: ledgerEntries || [],

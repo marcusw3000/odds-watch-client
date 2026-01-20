@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { MarketEvent, UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,39 @@ interface SuccessData {
 
 const DEFAULT_SLIPPAGE = 0.05;
 const SELL_SLIPPAGE = 0.02;
+
+// Memoized percentage button component
+const PercentageButton = React.memo(function PercentageButton({
+  pct,
+  isActive,
+  isYes,
+  onClick,
+  disabled
+}: {
+  pct: number;
+  isActive: boolean;
+  isYes: boolean;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors duration-100",
+        isActive
+          ? isYes
+            ? "bg-yes text-yes-foreground"
+            : "bg-no text-no-foreground"
+          : "bg-muted/50 hover:bg-muted text-muted-foreground disabled:opacity-50"
+      )}
+    >
+      {pct}%
+    </button>
+  );
+});
 
 export function MinimalTradingCard({
   event,
@@ -119,18 +152,21 @@ export function MinimalTradingCard({
   // Calculate max value for slider
   const maxValue = mode === 'buy' ? userBalance : currentQuantity;
 
-  // Slider change handler
+  // Memoize active percentage to avoid recalculations
+  const activePercentage = useMemo(() => Math.round(sliderValue[0]), [sliderValue]);
+
+  // Slider change handler - batched updates
   const handleSliderChange = useCallback((value: number[]) => {
-    setSliderValue(value);
     const percentage = value[0] / 100;
-    if (mode === 'buy') {
-      const newAmount = (percentage * userBalance).toFixed(2);
-      setAmount(newAmount === '0.00' ? '' : newAmount);
-    } else {
-      const newAmount = Math.floor(percentage * currentQuantity);
-      setAmount(newAmount === 0 ? '' : newAmount.toString());
-    }
-    setError(null);
+    const newAmount = mode === 'buy'
+      ? (percentage * userBalance).toFixed(2)
+      : Math.floor(percentage * currentQuantity).toString();
+    
+    React.startTransition(() => {
+      setSliderValue(value);
+      setAmount(newAmount === '0.00' || newAmount === '0' ? '' : newAmount);
+      setError(null);
+    });
   }, [mode, userBalance, currentQuantity]);
 
   // Handle input change - sync slider only if not dragging
@@ -360,22 +396,14 @@ export function MinimalTradingCard({
             {/* Quick action buttons */}
             <div className="flex gap-1.5 mt-3">
               {[25, 50, 75, 100].map((pct) => (
-                <button
+                <PercentageButton
                   key={pct}
-                  type="button"
+                  pct={pct}
+                  isActive={activePercentage === pct}
+                  isYes={activeOutcome === 'YES'}
                   onClick={() => handleSliderChange([pct])}
                   disabled={maxValue <= 0}
-                  className={cn(
-                    "flex-1 py-1.5 text-xs font-medium rounded-md transition-all",
-                    Math.round(sliderValue[0]) === pct
-                      ? activeOutcome === 'YES' 
-                        ? "bg-yes text-yes-foreground" 
-                        : "bg-no text-no-foreground"
-                      : "bg-muted/50 hover:bg-muted text-muted-foreground disabled:opacity-50"
-                  )}
-                >
-                  {pct}%
-                </button>
+                />
               ))}
             </div>
             {sliderValue[0] >= 100 && mode === 'buy' && (

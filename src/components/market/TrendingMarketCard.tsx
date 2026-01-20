@@ -316,8 +316,8 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
           </div>
 
           {/* Chart */}
-          <div className="flex-1 min-h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 min-h-[180px]" style={{ contain: 'layout style' }}>
+            <ResponsiveContainer width="100%" height={180}>
               <LineChart data={priceHistory} margin={{ top: 5, right: 45, left: 0, bottom: 5 }}>
                 <XAxis 
                   dataKey="date" 

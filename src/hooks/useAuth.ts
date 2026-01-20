@@ -105,7 +105,7 @@ export function useAuth() {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, cpf?: string, phone?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -114,7 +114,9 @@ export function useAuth() {
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName || ''
+          full_name: fullName || '',
+          cpf: cpf ? cpf.replace(/\D/g, '') : null,
+          phone: phone ? phone.replace(/\D/g, '') : null,
         }
       }
     });

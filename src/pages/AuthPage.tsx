@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, AlertCircle, Mail, Gift, KeyRound, Eye, EyeOff, User, Lock, TrendingUp } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Gift, KeyRound, Eye, EyeOff, User, Lock, TrendingUp, CreditCard, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { validateCPF, formatCPF, validateBrazilianPhone, formatPhone, extractDigits } from '@/lib/brazilianValidation';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -28,6 +29,19 @@ const loginSchema = z.object({
 const signupSchema = z.object({
   fullName: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome deve ter menos de 100 caracteres'),
   email: z.string().trim().email('Email inválido'),
+  cpf: z.string()
+    .min(1, 'CPF é obrigatório')
+    .refine(val => extractDigits(val).length === 11, {
+      message: 'CPF deve ter 11 dígitos',
+    })
+    .refine(val => validateCPF(val), {
+      message: 'CPF inválido',
+    }),
+  phone: z.string()
+    .min(1, 'Telefone é obrigatório')
+    .refine(val => validateBrazilianPhone(val), {
+      message: 'Telefone inválido (use DDD + número)',
+    }),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'Você deve aceitar os termos para continuar',
@@ -80,6 +94,8 @@ export function AuthPage() {
     defaultValues: {
       fullName: '',
       email: '',
+      cpf: '',
+      phone: '',
       password: '',
       acceptTerms: false,
     },
@@ -142,7 +158,7 @@ export function AuthPage() {
     setSuccessMessage(null);
 
     try {
-      const { error: signUpError } = await signUp(data.email, data.password, data.fullName);
+      const { error: signUpError } = await signUp(data.email, data.password, data.fullName, data.cpf, data.phone);
       
       if (signUpError) {
         if (signUpError.message.includes('User already registered')) {
@@ -565,6 +581,58 @@ export function AuthPage() {
                               autoComplete="email"
                               className="pl-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                               {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={signupForm.control}
+                    name="cpf"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CPF</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="text"
+                              placeholder="000.000.000-00"
+                              inputMode="numeric"
+                              maxLength={14}
+                              autoComplete="off"
+                              className="pl-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                              {...field}
+                              onChange={(e) => field.onChange(formatCPF(e.target.value))}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={signupForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="tel"
+                              placeholder="(11) 99999-9999"
+                              inputMode="numeric"
+                              maxLength={15}
+                              autoComplete="tel"
+                              className="pl-10 h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                              {...field}
+                              onChange={(e) => field.onChange(formatPhone(e.target.value))}
                             />
                           </div>
                         </FormControl>

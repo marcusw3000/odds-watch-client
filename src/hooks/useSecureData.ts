@@ -38,9 +38,13 @@ export interface AdminUser {
   user_id: string;
   display_name: string;
   email: string;
+  phone?: string;
   balance_available: number;
   balance_locked: number;
   currency: string;
+  is_blocked: boolean;
+  blocked_at?: string;
+  blocked_reason?: string;
   created_at: string;
   updated_at: string;
   roles: string[];

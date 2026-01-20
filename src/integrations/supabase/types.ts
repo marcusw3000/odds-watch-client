@@ -1323,6 +1323,9 @@ export type Database = {
           best_suggestion_score: number | null
           best_trade_profit: number
           bio: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
           copy_trader_id: string | null
           created_at: string
           current_streak: number
@@ -1334,9 +1337,11 @@ export type Database = {
           has_night_trade: boolean | null
           has_speed_trade: boolean | null
           id: string
+          is_blocked: boolean | null
           is_copy_trader: boolean | null
           is_public: boolean
           markets_won_streak: number | null
+          phone: string | null
           roi_percent: number
           show_profit: boolean
           show_roi: boolean
@@ -1362,6 +1367,9 @@ export type Database = {
           best_suggestion_score?: number | null
           best_trade_profit?: number
           bio?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           copy_trader_id?: string | null
           created_at?: string
           current_streak?: number
@@ -1373,9 +1381,11 @@ export type Database = {
           has_night_trade?: boolean | null
           has_speed_trade?: boolean | null
           id: string
+          is_blocked?: boolean | null
           is_copy_trader?: boolean | null
           is_public?: boolean
           markets_won_streak?: number | null
+          phone?: string | null
           roi_percent?: number
           show_profit?: boolean
           show_roi?: boolean
@@ -1401,6 +1411,9 @@ export type Database = {
           best_suggestion_score?: number | null
           best_trade_profit?: number
           bio?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           copy_trader_id?: string | null
           created_at?: string
           current_streak?: number
@@ -1412,9 +1425,11 @@ export type Database = {
           has_night_trade?: boolean | null
           has_speed_trade?: boolean | null
           id?: string
+          is_blocked?: boolean | null
           is_copy_trader?: boolean | null
           is_public?: boolean
           markets_won_streak?: number | null
+          phone?: string | null
           roi_percent?: number
           show_profit?: boolean
           show_roi?: boolean
@@ -1433,6 +1448,20 @@ export type Database = {
           winning_trades?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_blocked_by_fkey"
+            columns: ["blocked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_blocked_by_fkey"
+            columns: ["blocked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_copy_trader_id_fkey"
             columns: ["copy_trader_id"]

@@ -65,11 +65,11 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
           <div 
             key={option.id}
             className={cn(
-              "p-3 rounded-lg border transition-all",
+              "p-3 rounded-lg border transition-colors duration-100",
               isWinner 
                 ? "bg-yes/10 border-yes/30" 
                 : cn(colors.bg, colors.border),
-              canTrade && "hover:shadow-md"
+              canTrade && "hover:bg-muted/20"
             )}
           >
             <div className="flex items-center gap-3">

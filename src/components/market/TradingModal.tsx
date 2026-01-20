@@ -294,7 +294,7 @@ export function TradingModal({
             type="button"
             onClick={() => setActiveOutcome('YES')}
             className={cn(
-              "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all",
+              "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors duration-100",
               activeOutcome === 'YES'
                 ? "bg-yes/10 border-yes text-yes"
                 : "bg-card border-border hover:border-yes/50 text-muted-foreground"
@@ -324,7 +324,7 @@ export function TradingModal({
             type="button"
             onClick={() => setActiveOutcome('NO')}
             className={cn(
-              "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all",
+              "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors duration-100",
               activeOutcome === 'NO'
                 ? "bg-no/10 border-no text-no"
                 : "bg-card border-border hover:border-no/50 text-muted-foreground"

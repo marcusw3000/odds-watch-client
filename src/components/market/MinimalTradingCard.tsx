@@ -287,7 +287,7 @@ export function MinimalTradingCard({
             <button
               onClick={() => setMode('buy')}
               className={cn(
-                "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all",
+                "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors duration-100",
                 mode === 'buy' 
                   ? "bg-background shadow-sm text-foreground" 
                   : "text-muted-foreground hover:text-foreground"
@@ -298,7 +298,7 @@ export function MinimalTradingCard({
             <button
               onClick={() => setMode('sell')}
               className={cn(
-                "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all",
+                "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors duration-100",
                 mode === 'sell' 
                   ? "bg-background shadow-sm text-foreground" 
                   : "text-muted-foreground hover:text-foreground"
@@ -314,7 +314,7 @@ export function MinimalTradingCard({
           <button
             onClick={() => setActiveOutcome('YES')}
             className={cn(
-              "flex-1 py-3 px-4 rounded-xl font-bold text-center transition-all border-2",
+              "flex-1 py-3 px-4 rounded-xl font-bold text-center transition-colors duration-100 border-2",
               activeOutcome === 'YES'
                 ? "bg-yes text-yes-foreground border-yes"
                 : "bg-card border-border hover:border-yes/50 text-foreground"
@@ -325,7 +325,7 @@ export function MinimalTradingCard({
           <button
             onClick={() => setActiveOutcome('NO')}
             className={cn(
-              "flex-1 py-3 px-4 rounded-xl font-bold text-center transition-all border-2",
+              "flex-1 py-3 px-4 rounded-xl font-bold text-center transition-colors duration-100 border-2",
               activeOutcome === 'NO'
                 ? "bg-no text-no-foreground border-no"
                 : "bg-card border-border hover:border-no/50 text-foreground"

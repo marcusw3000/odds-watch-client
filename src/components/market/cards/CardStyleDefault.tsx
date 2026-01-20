@@ -6,6 +6,7 @@ import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
+import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -214,9 +215,12 @@ export const CardStyleDefault = memo(function CardStyleDefault({
 
       {/* Footer - always at bottom */}
       <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <TrendingUp className="h-3 w-3" />
-          <span>{formatVolume(event.volume)}</span>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <PriceSparkline eventId={event.id} currentPrice={event.outcomes.YES.price} />
+          <div className="flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            <span>{formatVolume(event.volume)}</span>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <FavoriteButton marketId={event.id} size="sm" />

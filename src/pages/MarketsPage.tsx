@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { TrendingUp, RefreshCw, Search } from 'lucide-react';
+import { TrendingUp, RefreshCw, Search, Loader2 } from 'lucide-react';
 import { MarketEvent, UserContract } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { useMarketsRealtime } from '@/hooks/useMarketsRealtime';
@@ -11,13 +11,19 @@ import { MarketCardSkeleton } from '@/components/market/MarketCardSkeleton';
 import { CategoryFilter } from '@/components/market/CategoryFilter';
 import { AdvancedFilters } from '@/components/market/AdvancedFilters';
 import { MinimalTradingCard } from '@/components/market/MinimalTradingCard';
+import { QuickSort } from '@/components/market/QuickSort';
+import { MarketEmptyState } from '@/components/market/MarketEmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useMarketFilters } from '@/hooks/useMarketFilters';
+import { useMarketFilters, MarketFilters } from '@/hooks/useMarketFilters';
+import { useInfiniteMarkets } from '@/hooks/useInfiniteMarkets';
+import { useViewportSkeletons } from '@/hooks/useViewportSkeletons';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { cn } from '@/lib/utils';
 
 interface LayoutContext {
   userBalance: number;
@@ -28,12 +34,19 @@ export function MarketsPage() {
   const { userBalance } = useOutletContext<LayoutContext>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Use realtime hook for markets data
   const { events, isLoading: isLoadingMarkets, refetch } = useMarketsRealtime();
   
   // Favorites system
   const { favoriteIds } = useFavorites();
+  
+  // Initialize from URL params
+  const initialCategory = searchParams.get('category');
+  const initialSearch = searchParams.get('q') || '';
+  const initialSort = (searchParams.get('sort') as MarketFilters['sortBy']) || 'volume';
+  const initialOrder = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
   
   // Advanced filters
   const {
@@ -43,11 +56,12 @@ export function MarketsPage() {
     hasActiveFilters,
     activeFilterCount,
     applyFilters,
+    setFilters,
   } = useMarketFilters(favoriteIds);
   
   const [categories, setCategories] = useState<string[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(initialCategory);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [isRefreshing, setIsRefreshing] = useState(false);
   // Store only the ID to avoid re-renders when events array updates
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -57,6 +71,33 @@ export function MarketsPage() {
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  
+  // Viewport-aware skeletons
+  const skeletonCount = useViewportSkeletons();
+  
+  // Initialize sort from URL
+  useEffect(() => {
+    if (initialSort !== filters.sortBy || initialOrder !== filters.sortOrder) {
+      setFilters(prev => ({
+        ...prev,
+        sortBy: initialSort,
+        sortOrder: initialOrder,
+      }));
+    }
+  }, []); // Only on mount
+  
+  // Sync filters to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (activeCategory) params.set('category', activeCategory);
+    if (searchQuery) params.set('q', searchQuery);
+    if (filters.sortBy !== 'volume') params.set('sort', filters.sortBy);
+    if (filters.sortOrder !== 'desc') params.set('order', filters.sortOrder);
+    if (filters.showFavoritesOnly) params.set('favorites', '1');
+    
+    setSearchParams(params, { replace: true });
+  }, [activeCategory, searchQuery, filters.sortBy, filters.sortOrder, filters.showFavoritesOnly, setSearchParams]);
   
   // Memoize the selected event - only updates when ID changes or the specific event's data changes
   const selectedEvent = useMemo(() => {
@@ -93,11 +134,16 @@ export function MarketsPage() {
     return () => window.removeEventListener('market-update', handleMarketUpdate);
   }, [refetch]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await refetch();
     setIsRefreshing(false);
-  };
+  }, [refetch]);
+
+  // Pull to refresh for mobile
+  const { containerRef, pullDistance, pullProgress, isRefreshing: isPullRefreshing } = usePullToRefresh({
+    onRefresh: handleRefresh,
+  });
 
   const handleBuy = useCallback((eventId: string, outcome: 'YES' | 'NO') => {
     if (!user) {
@@ -197,32 +243,88 @@ export function MarketsPage() {
     setTrendingIndex((prev) => (prev < Math.min(2, events.length - 1) ? prev + 1 : 0));
   }, [events.length]);
 
+  // Handle sort change
+  const handleSortChange = useCallback((sortBy: MarketFilters['sortBy'], order: 'asc' | 'desc') => {
+    updateFilter('sortBy', sortBy);
+    updateFilter('sortOrder', order);
+  }, [updateFilter]);
+
+  // Calculate category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    events.forEach(e => {
+      counts[e.category] = (counts[e.category] || 0) + 1;
+    });
+    return counts;
+  }, [events]);
+
   // Apply search and category filter first, then advanced filters
-  const baseFilteredEvents = events.filter((event) => {
+  const baseFilteredEvents = useMemo(() => events.filter((event) => {
     const matchesCategory = !activeCategory || event.category === activeCategory;
     const matchesSearch =
       !searchQuery ||
       event.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
-  });
+  }), [events, activeCategory, searchQuery]);
 
   // Apply advanced filters
-  const filteredEvents = applyFilters(baseFilteredEvents);
+  const filteredEvents = useMemo(() => applyFilters(baseFilteredEvents), [applyFilters, baseFilteredEvents]);
 
   // Get trending markets (top 3 by volume or first 3)
-  const trendingEvents = [...filteredEvents]
-    .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-    .slice(0, 3);
+  const trendingEvents = useMemo(() => 
+    [...filteredEvents]
+      .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+      .slice(0, 3),
+    [filteredEvents]
+  );
 
   // Get remaining markets for the grid
-  const gridEvents = filteredEvents.filter(
-    (e) => !trendingEvents.slice(0, 1).find((t) => t.id === e.id)
+  const gridEvents = useMemo(() => 
+    filteredEvents.filter(
+      (e) => !trendingEvents.slice(0, 1).find((t) => t.id === e.id)
+    ),
+    [filteredEvents, trendingEvents]
   );
+
+  // Infinite scroll
+  const { 
+    displayedEvents, 
+    hasMore, 
+    isLoadingMore, 
+    loadMoreRef 
+  } = useInfiniteMarkets({ 
+    allEvents: gridEvents,
+    pageSize: 12,
+  });
 
   const currentTrendingEvent = trendingEvents[trendingIndex] || trendingEvents[0];
 
+  // Clear handlers for empty state
+  const handleClearSearch = useCallback(() => setSearchQuery(''), []);
+  const handleClearCategory = useCallback(() => setActiveCategory(null), []);
+
   return (
-    <div className="space-y-8">
+    <div ref={containerRef} className="space-y-8">
+      {/* Pull to refresh indicator */}
+      {pullDistance > 0 && (
+        <div 
+          className="flex justify-center items-center transition-all duration-200 overflow-hidden"
+          style={{ height: pullDistance }}
+        >
+          <RefreshCw 
+            className={cn(
+              "h-6 w-6 text-primary transition-transform",
+              isPullRefreshing && "animate-spin",
+              pullProgress >= 1 && "text-primary"
+            )} 
+            style={{ 
+              transform: `rotate(${pullProgress * 180}deg)`,
+              opacity: Math.min(pullProgress, 1),
+            }}
+          />
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -259,16 +361,25 @@ export function MarketsPage() {
           categories={categories}
           activeCategory={activeCategory}
           onSelect={setActiveCategory}
+          categoryCounts={categoryCounts}
+          totalCount={events.length}
         />
-        <AdvancedFilters
-          filters={filters}
-          onUpdateFilter={updateFilter}
-          onClearFilters={clearFilters}
-          categories={categories}
-          hasActiveFilters={hasActiveFilters}
-          activeFilterCount={activeFilterCount}
-          isLoggedIn={!!user}
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <QuickSort
+            sortBy={filters.sortBy}
+            sortOrder={filters.sortOrder}
+            onSortChange={handleSortChange}
+          />
+          <AdvancedFilters
+            filters={filters}
+            onUpdateFilter={updateFilter}
+            onClearFilters={clearFilters}
+            categories={categories}
+            hasActiveFilters={hasActiveFilters}
+            activeFilterCount={activeFilterCount}
+            isLoggedIn={!!user}
+          />
+        </div>
       </div>
 
       {/* Trending Section */}
@@ -297,49 +408,61 @@ export function MarketsPage() {
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Todos os mercados</h2>
-          <span className="text-sm text-muted-foreground">
-            {gridEvents.length} mercados disponíveis
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {displayedEvents.length} de {gridEvents.length} mercados
           </span>
         </div>
 
         {isLoadingMarkets ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[...Array(skeletonCount)].map((_, i) => (
               <MarketCardSkeleton key={i} />
             ))}
           </div>
         ) : gridEvents.length === 0 ? (
-          <div className="text-center py-16">
-            <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum mercado encontrado</h3>
-            <p className="text-muted-foreground">
-              {hasActiveFilters 
-                ? 'Tente ajustar os filtros para ver mais resultados.'
-                : 'Tente ajustar os filtros ou volte mais tarde.'
-              }
-            </p>
-            {hasActiveFilters && (
-              <Button variant="outline" className="mt-4" onClick={clearFilters}>
-                Limpar filtros
-              </Button>
-            )}
-          </div>
+          <MarketEmptyState
+            searchQuery={searchQuery}
+            activeCategory={activeCategory}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
+            onClearSearch={handleClearSearch}
+            onClearCategory={handleClearCategory}
+            onSelectCategory={setActiveCategory}
+            suggestedCategories={categories}
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {gridEvents.map((event, index) => (
-              <div
-                key={event.id}
-                className={index < 8 ? "animate-fade-in" : ""}
-                style={index < 8 ? { animationDelay: `${index * 30}ms` } : undefined}
-              >
-                <CompactMarketCard
-                  event={event}
-                  onBuy={handleBuy}
-                  onViewDetails={handleViewDetails}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {displayedEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  className={index < 12 ? "animate-fade-in" : ""}
+                  style={index < 12 ? { animationDelay: `${(index % 12) * 30}ms` } : undefined}
+                >
+                  <CompactMarketCard
+                    event={event}
+                    onBuy={handleBuy}
+                    onViewDetails={handleViewDetails}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            {/* Infinite scroll sentinel */}
+            <div ref={loadMoreRef} className="flex justify-center py-8">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Carregando mais...</span>
+                </div>
+              )}
+              {!hasMore && gridEvents.length > 12 && (
+                <span className="text-sm text-muted-foreground">
+                  Você viu todos os mercados
+                </span>
+              )}
+            </div>
+          </>
         )}
       </section>
 

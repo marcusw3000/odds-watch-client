@@ -4,6 +4,7 @@ import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketTags } from '@/components/market/MarketTags';
+import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import {
@@ -157,22 +158,25 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
         </div>
       </div>
 
-      {/* Tags and Volume - subtle */}
+      {/* Tags, Sparkline and Volume - subtle */}
       <div className="flex items-center gap-2 mt-2 pl-11">
         {event.tags && event.tags.length > 0 && (
           <MarketTags tags={event.tags} maxTags={2} size="sm" />
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto cursor-help">
-              <TrendingUp className="h-2.5 w-2.5" />
-              <span>{formatVolume(event.volume)}</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>Volume negociado</p>
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2 ml-auto">
+          <PriceSparkline eventId={event.id} currentPrice={yesPrice} width={40} height={14} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-help">
+                <TrendingUp className="h-2.5 w-2.5" />
+                <span>{formatVolume(event.volume)}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Volume negociado</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </div>
   );

@@ -87,15 +87,27 @@ serve(async (req) => {
 
     const { data: profilesData } = await supabaseAdmin
       .from("profiles")
-      .select("id, display_name, full_name, email")
+      .select("id, display_name, full_name, email, phone, is_blocked, blocked_at, blocked_reason")
       .in("id", userIds);
 
-    const profilesMap = new Map<string, { display_name: string | null; full_name: string | null; email: string | null }>();
+    const profilesMap = new Map<string, { 
+      display_name: string | null; 
+      full_name: string | null; 
+      email: string | null;
+      phone: string | null;
+      is_blocked: boolean;
+      blocked_at: string | null;
+      blocked_reason: string | null;
+    }>();
     (profilesData || []).forEach((p: any) => {
       profilesMap.set(p.id, {
         display_name: p.display_name,
         full_name: p.full_name,
         email: p.email,
+        phone: p.phone,
+        is_blocked: p.is_blocked ?? false,
+        blocked_at: p.blocked_at,
+        blocked_reason: p.blocked_reason,
       });
     });
 
@@ -137,9 +149,13 @@ serve(async (req) => {
           user_id: wallet.user_id,
           display_name: displayName,
           email: email ?? "N/A",
+          phone: profile?.phone ?? null,
           balance_available: wallet.balance_available,
           balance_locked: wallet.balance_locked,
           currency: wallet.currency,
+          is_blocked: profile?.is_blocked ?? false,
+          blocked_at: profile?.blocked_at ?? null,
+          blocked_reason: profile?.blocked_reason ?? null,
           created_at: wallet.created_at,
           updated_at: wallet.updated_at,
           roles: roles,

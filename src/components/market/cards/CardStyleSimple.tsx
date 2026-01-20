@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
+import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import {
@@ -197,13 +198,16 @@ export const CardStyleSimple = memo(function CardStyleSimple({
       <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
-              <TrendingUp className="h-3 w-3" />
-              <span>{formatVolume(event.volume)}</span>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground cursor-help">
+              <PriceSparkline eventId={event.id} currentPrice={yesPrice} />
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                <span>{formatVolume(event.volume)}</span>
+              </div>
             </div>
           </TooltipTrigger>
           <TooltipContent side="top">
-            <p>Volume total negociado neste mercado</p>
+            <p>Tendência 7 dias • Volume total negociado</p>
           </TooltipContent>
         </Tooltip>
         <Button

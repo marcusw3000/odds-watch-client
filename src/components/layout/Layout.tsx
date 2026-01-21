@@ -48,7 +48,7 @@ export function Layout() {
       </a>
       
       <Header balance={userBalance} isBalanceLoading={isBalanceLoading} />
-      <main id="main-content" className="flex-1 container mx-auto px-4 py-8">
+      <main id="main-content" className="flex-1 container mx-auto px-4 py-8 min-h-[calc(100vh-200px)]">
         <div key={location.pathname} className="animate-fade-in">
           <Outlet context={{ userBalance, setUserBalance }} />
         </div>

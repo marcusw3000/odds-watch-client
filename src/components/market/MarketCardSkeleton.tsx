@@ -1,6 +1,6 @@
 export function MarketCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card min-h-[280px]">
       <div className="p-5 pb-4 space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between">

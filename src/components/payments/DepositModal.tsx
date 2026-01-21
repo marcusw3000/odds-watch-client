@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useCreatePaymentIntent, useConfirmPayment, useCheckPixStatus } from '@/hooks/usePayments';
 import { useSavedCards, useChargeSavedCard } from '@/hooks/useSavedCards';
-import { stripePromise } from '@/lib/stripe';
+import { getStripePromise } from '@/lib/stripe';
 import { StripePaymentForm } from './StripePaymentForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -622,7 +622,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                   </div>
 
                   {/* QR Code or Loading */}
-                  {!stripePromise || !clientSecret ? (
+                  {!clientSecret ? (
                     <div className="space-y-4 py-6">
                       <Skeleton className="h-48 w-48 mx-auto" />
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -632,7 +632,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                     </div>
                   ) : (
                     <Elements 
-                      stripe={stripePromise} 
+                      stripe={getStripePromise()} 
                       options={{
                         clientSecret,
                         appearance: stripeAppearance,
@@ -665,7 +665,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {!stripePromise ? (
+              {!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? (
                 <div className="p-6 rounded-lg bg-destructive/10 border border-destructive/30 text-center space-y-3">
                   <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
                   <div>
@@ -690,7 +690,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
                 </div>
               ) : (
                 <Elements 
-                  stripe={stripePromise} 
+                  stripe={getStripePromise()} 
                   options={{
                     clientSecret,
                     appearance: stripeAppearance,

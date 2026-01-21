@@ -5,7 +5,6 @@ import { Confetti } from '@/components/ui/confetti';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { generateMarketShareLink, generateSocialShareLinks } from '@/lib/deepLinks';
-import html2canvas from 'html2canvas';
 import { haptics } from '@/lib/haptics';
 
 // Custom X icon
@@ -71,6 +70,9 @@ export function PurchaseSuccessModal({
     
     setIsDownloading(true);
     try {
+      // Dynamically import html2canvas to reduce initial bundle size
+      const html2canvas = (await import('html2canvas')).default;
+      
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: '#0f172a',
         scale: 2, // Higher resolution

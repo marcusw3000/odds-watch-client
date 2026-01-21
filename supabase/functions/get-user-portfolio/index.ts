@@ -52,12 +52,12 @@ serve(async (req) => {
         .maybeSingle(),
       supabaseAdmin
         .from("user_contracts")
-        .select("id, market_id, position, shares, average_price, total_invested, created_at, markets(title, status, result)")
+        .select("id, market_id, position, shares, average_price, total_invested, created_at, markets!user_contracts_market_id_fkey(title, status, result)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
       supabaseAdmin
         .from("transactions")
-        .select("id, type, position, shares, price_per_share, total_amount, created_at, markets(title)")
+        .select("id, type, position, shares, price_per_share, total_amount, created_at, markets!fk_transactions_market(title)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(100),

@@ -269,13 +269,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_comments_market"
-            columns: ["market_id"]
-            isOneToOne: false
-            referencedRelation: "markets"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_comments_user"
             columns: ["user_id"]
             isOneToOne: false
@@ -844,27 +837,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_ledger_entries_wallet"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ledger_entries_wallet"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets_safe"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ledger_entries_wallet"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets_with_profile"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ledger_entries_fee_snapshot_id_fkey"
             columns: ["fee_snapshot_id"]
             isOneToOne: false
@@ -933,13 +905,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_market_options_market"
-            columns: ["market_id"]
-            isOneToOne: false
-            referencedRelation: "markets"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "market_options_market_id_fkey"
             columns: ["market_id"]
             isOneToOne: false
@@ -983,13 +948,6 @@ export type Database = {
           source?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fk_market_settlements_market"
-            columns: ["market_id"]
-            isOneToOne: false
-            referencedRelation: "markets"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "market_settlements_market_id_fkey"
             columns: ["market_id"]
@@ -1274,22 +1232,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["notification_type"]
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_notifications_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_notifications_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       payments: {
         Row: {
@@ -1957,13 +1900,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_transactions_market"
-            columns: ["market_id"]
-            isOneToOne: false
-            referencedRelation: "markets"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "transactions_market_id_fkey"
             columns: ["market_id"]
             isOneToOne: false
@@ -2047,20 +1983,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_user_contracts_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_user_contracts_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "user_contracts_market_id_fkey"
             columns: ["market_id"]
             isOneToOne: false
@@ -2096,27 +2018,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fk_user_favorites_market"
-            columns: ["market_id"]
-            isOneToOne: false
-            referencedRelation: "markets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_user_favorites_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_user_favorites_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "user_favorites_market_id_fkey"
             columns: ["market_id"]

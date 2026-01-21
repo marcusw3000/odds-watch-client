@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
-import { TrendingUp, Plus, Lock } from 'lucide-react';
+import { TrendingUp, Lock } from 'lucide-react';
+import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
@@ -216,14 +217,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
             <p>Tendência 7 dias • Volume total negociado</p>
           </TooltipContent>
         </Tooltip>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onViewDetails?.(event.id)}
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
+        <FavoriteButton marketId={event.id} size="sm" />
       </div>
     </div>
   );

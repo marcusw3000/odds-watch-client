@@ -1,4 +1,4 @@
-import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption } from '@/types/market';
+import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption, RecurrenceType } from '@/types/market';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   getPriceYes, 
@@ -77,6 +77,8 @@ function transformDbMarket(
     optionsExclusive: dbMarket.options_exclusive ?? true,
     tags: dbMarket.tags || undefined,
     cardStyle: (dbMarket.card_style as 'default' | 'buttons' | 'simple' | 'minimal') || undefined,
+    recurrenceType: (dbMarket.recurrence_type as RecurrenceType) || 'none',
+    parentMarketId: dbMarket.parent_market_id || undefined,
     options,
   };
 }

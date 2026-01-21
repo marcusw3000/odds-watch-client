@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
+import { RecurrenceLabel } from '@/components/market/RecurrenceLabel';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -113,10 +114,15 @@ export const MultiOptionCard = memo(function MultiOptionCard({
         </h3>
       </div>
 
-      {/* Tags */}
-      {event.tags && event.tags.length > 0 && (
-        <div className="mt-2">
-          <MarketTags tags={event.tags} maxTags={2} size="sm" />
+      {/* Recurrence + Tags */}
+      {((event.recurrenceType && event.recurrenceType !== 'none') || (event.tags && event.tags.length > 0)) && (
+        <div className="flex flex-wrap items-center gap-1 mt-2">
+          {event.recurrenceType && event.recurrenceType !== 'none' && (
+            <RecurrenceLabel type={event.recurrenceType} size="sm" />
+          )}
+          {event.tags && event.tags.length > 0 && (
+            <MarketTags tags={event.tags} maxTags={2} size="sm" />
+          )}
         </div>
       )}
 

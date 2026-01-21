@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
 import { TrendingUp, Lock } from 'lucide-react';
+import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
@@ -202,6 +203,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
             <span>{formatVolume(event.volume)}</span>
           </div>
         </div>
+        <FavoriteButton marketId={event.id} size="sm" />
       </div>
     </div>
   );

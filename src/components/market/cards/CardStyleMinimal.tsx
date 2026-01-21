@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketTags } from '@/components/market/MarketTags';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
-import { formatVolume } from '@/lib/formatters';
+import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -93,7 +93,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
             <div 
               className="absolute inset-0 bg-cover"
               style={{
-                backgroundImage: `url(${event.imageUrl})`,
+                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 64 })})`,
                 backgroundPosition: 'center',
               }}
             />

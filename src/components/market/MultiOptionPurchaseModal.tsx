@@ -4,6 +4,7 @@ import { MarketEvent, MarketOption } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { optimizeImageUrl } from '@/lib/formatters';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 import { SlippageSelector } from './SlippageSelector';
@@ -238,7 +239,7 @@ export function MultiOptionPurchaseModal({
               {selectedOption.imageUrl ? (
                 <div 
                   className="w-8 h-8 rounded-full bg-cover bg-center"
-                  style={{ backgroundImage: `url(${selectedOption.imageUrl})` }}
+                  style={{ backgroundImage: `url(${optimizeImageUrl(selectedOption.imageUrl, { width: 64 })})` }}
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">

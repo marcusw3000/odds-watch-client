@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
       resolution,
       cardStyle,
       marketType = 'BINARY',
+      recurrenceType,
       options,
     } = body;
 
@@ -165,6 +166,7 @@ Deno.serve(async (req) => {
         settlement_type: settlementType || 'MANUAL',
         resolution: resolution || null,
         card_style: cardStyle || 'default',
+        recurrence_type: recurrenceType || 'none',
         lmsr_b: lmsrB,
         yes_shares: marketType === 'BINARY' ? yesShares : 0,
         no_shares: marketType === 'BINARY' ? noShares : 0,

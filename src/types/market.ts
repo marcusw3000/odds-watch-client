@@ -2,7 +2,8 @@ import { LMSRState } from '@/services/LMSRCalculator';
 
 export type MarketStatus = 'OPEN' | 'HALTED' | 'PENDING' | 'CONTESTED' | 'SETTLED';
 export type MarketType = 'BINARY' | 'MULTIPLE';
-export type SettlementType = 
+export type RecurrenceType = 'none' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
+export type SettlementType =
   | 'MANUAL'
   | 'SELIC'
   | 'SELIC_META'
@@ -114,6 +115,10 @@ export interface MarketEvent {
   
   // Card display style
   cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
+  
+  // Recurrence type for repeating markets
+  recurrenceType?: RecurrenceType;
+  parentMarketId?: string;
 }
 
 // Database market type (from Supabase)
@@ -145,6 +150,8 @@ export interface DbMarket {
   options_exclusive: boolean;
   tags: string[] | null;
   card_style: string | null;
+  recurrence_type: string | null;
+  parent_market_id: string | null;
 }
 
 // Database market option type

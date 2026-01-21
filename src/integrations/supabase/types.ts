@@ -1085,6 +1085,8 @@ export type Database = {
           market_type: string
           no_shares: number
           options_exclusive: boolean
+          parent_market_id: string | null
+          recurrence_type: string | null
           resolution: Json | null
           result: string | null
           result_source: string | null
@@ -1119,6 +1121,8 @@ export type Database = {
           market_type?: string
           no_shares?: number
           options_exclusive?: boolean
+          parent_market_id?: string | null
+          recurrence_type?: string | null
           resolution?: Json | null
           result?: string | null
           result_source?: string | null
@@ -1153,6 +1157,8 @@ export type Database = {
           market_type?: string
           no_shares?: number
           options_exclusive?: boolean
+          parent_market_id?: string | null
+          recurrence_type?: string | null
           resolution?: Json | null
           result?: string | null
           result_source?: string | null
@@ -1167,7 +1173,15 @@ export type Database = {
           updated_at?: string
           yes_shares?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "markets_parent_market_id_fkey"
+            columns: ["parent_market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_preferences: {
         Row: {

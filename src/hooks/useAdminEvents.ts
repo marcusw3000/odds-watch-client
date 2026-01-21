@@ -20,6 +20,8 @@ export interface AdminEvent {
   image_url: string | null;
   tags: string[] | null;
   card_style: string | null;
+  recurrence_type: string | null;
+  parent_market_id: string | null;
   created_at: string;
   updated_at: string;
   settlement_type: string;
@@ -233,6 +235,7 @@ export interface CreateEventData {
   resolution?: Record<string, unknown>;
   cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
   marketType?: 'BINARY' | 'MULTIPLE';
+  recurrenceType?: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
   options?: Array<{
     label: string;
     description?: string;

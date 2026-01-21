@@ -33,6 +33,7 @@ import { CardStyleSelector } from '@/components/admin/CardStyleSelector';
 import { MultiOptionEditor, MarketOption } from '@/components/admin/MultiOptionEditor';
 import { CardStyleType } from '@/types/cardStyles';
 import { MarketType } from '@/types/marketOption';
+import { RecurrenceType } from '@/types/market';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -83,6 +84,9 @@ export function AdminEventFormPage() {
   // Card style
   const [cardStyle, setCardStyle] = useState<CardStyleType>('default');
 
+  // Recurrence type
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
+
   // Tags state
   const [tags, setTags] = useState<string[]>([]);
 
@@ -123,6 +127,7 @@ export function AdminEventFormPage() {
       setInitialOddsYes(yesPercentage);
       
       setCardStyle((event.card_style as CardStyleType) || 'default');
+      setRecurrenceType((event.recurrence_type as RecurrenceType) || 'none');
       setTags(event.tags || []);
       setImageData({
         url: event.image_url || '',
@@ -242,6 +247,7 @@ export function AdminEventFormPage() {
           resolution,
           cardStyle,
           marketType,
+          recurrenceType: recurrenceType !== 'none' ? recurrenceType : undefined,
           options: marketType === 'MULTIPLE' ? options.map(o => ({
             label: o.label,
             description: o.description,
@@ -400,7 +406,26 @@ export function AdminEventFormPage() {
                 </Popover>
                 {errors.eventDate && <p className="text-xs text-destructive">{errors.eventDate}</p>}
               </div>
-              <div />
+              
+              {/* Recurrence Type */}
+              <div className="space-y-2">
+                <Label>Recorrência</Label>
+                <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as RecurrenceType)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhuma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma (único)</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="quarterly">Trimestral</SelectItem>
+                    <SelectItem value="annually">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Mercados recorrentes exibem um badge indicando a frequência
+                </p>
+              </div>
             </div>
 
             {!isEditing && (

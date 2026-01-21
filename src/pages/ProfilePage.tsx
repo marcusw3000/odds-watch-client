@@ -92,6 +92,7 @@ export default function ProfilePage() {
         best_trade_profit: publicProfile.best_trade_profit ?? 0,
         created_at: publicProfile.created_at || '',
         updated_at: publicProfile.updated_at || '',
+        is_copy_trader: publicProfile.is_copy_trader ?? false,
       } : null);
 
   // Find rank in leaderboard
@@ -179,6 +180,16 @@ export default function ProfilePage() {
     );
   }
 
+  // Hide history tab for approved copy traders when viewing someone else's profile
+  const isApprovedTrader = !isOwnProfile && profile?.is_copy_trader === true;
+  
+  // Calculate grid columns based on visible tabs
+  const getGridCols = () => {
+    if (isOwnProfile) return 'grid-cols-4';
+    if (isApprovedTrader) return 'grid-cols-2';
+    return 'grid-cols-3';
+  };
+
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
       {/* Header */}
@@ -191,10 +202,10 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="stats" className="w-full">
-        <TabsList className={`grid w-full ${isOwnProfile ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full ${getGridCols()}`}>
           <TabsTrigger value="stats">Estatísticas</TabsTrigger>
           <TabsTrigger value="achievements">Conquistas</TabsTrigger>
-          <TabsTrigger value="history">Histórico</TabsTrigger>
+          {!isApprovedTrader && <TabsTrigger value="history">Histórico</TabsTrigger>}
           {isOwnProfile && <TabsTrigger value="settings">Configurações</TabsTrigger>}
         </TabsList>
 
@@ -206,13 +217,15 @@ export default function ProfilePage() {
           <AchievementsWithProgress />
         </TabsContent>
 
-        <TabsContent value="history" className="mt-6">
-          <PublicTradeHistory
-            userId={targetUserId || ''}
-            profile={profile}
-            isOwnProfile={isOwnProfile}
-          />
-        </TabsContent>
+        {!isApprovedTrader && (
+          <TabsContent value="history" className="mt-6">
+            <PublicTradeHistory
+              userId={targetUserId || ''}
+              profile={profile}
+              isOwnProfile={isOwnProfile}
+            />
+          </TabsContent>
+        )}
 
         {isOwnProfile && (
           <TabsContent value="settings" className="mt-6">

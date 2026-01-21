@@ -2,7 +2,16 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./index.html",
+    "./src/**/*.{ts,tsx}",
+  ],
+  // Safelist only animations/utilities that are dynamically generated or conditionally used
+  safelist: [
+    "animate-fade-in",
+    "animate-pulse",
+    "animate-spin",
+  ],
   prefix: "",
   theme: {
     container: {

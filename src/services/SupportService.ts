@@ -1,6 +1,45 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { SupportTicket, SupportMessage, SupportCategory, SupportStatus, SupportPriority } from '@/types/support';
 
+// ============= PROFILE CACHE =============
+
+interface CachedProfile {
+  displayName: string;
+  avatarUrl: string | null;
+  cachedAt: number;
+}
+
+const profileCache = new Map<string, CachedProfile>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedProfiles(userIds: string[]): { cached: Map<string, CachedProfile>; uncached: string[] } {
+  const now = Date.now();
+  const cached = new Map<string, CachedProfile>();
+  const uncached: string[] = [];
+
+  for (const userId of userIds) {
+    const entry = profileCache.get(userId);
+    if (entry && now - entry.cachedAt < CACHE_TTL) {
+      cached.set(userId, entry);
+    } else {
+      uncached.push(userId);
+    }
+  }
+
+  return { cached, uncached };
+}
+
+function setCachedProfiles(profiles: Record<string, { display_name: string; avatar_url: string | null }>) {
+  const now = Date.now();
+  for (const [userId, profile] of Object.entries(profiles)) {
+    profileCache.set(userId, {
+      displayName: profile.display_name,
+      avatarUrl: profile.avatar_url,
+      cachedAt: now,
+    });
+  }
+}
+
 // ============= USER METHODS =============
 
 export async function createTicket(
@@ -62,29 +101,48 @@ export async function getTicketMessages(ticketId: string): Promise<SupportMessag
 
   if (error) throw error;
 
-  // Fetch display info via Edge Function for each unique sender
   const messages = data || [];
   const userIds = [...new Set(messages.map((m: any) => m.sender_id))];
+  
+  // Check cache first
+  const { cached, uncached } = getCachedProfiles(userIds);
   const displayInfoMap = new Map<string, { displayName: string; avatarUrl: string | null }>();
 
-  await Promise.all(
-    userIds.map(async (userId) => {
-      try {
-        const { data: info } = await supabase.functions.invoke('get-user-display-info', {
-          body: { user_id: userId, context: 'support' },
-        });
-        if (info) {
+  // Add cached entries to map
+  for (const [userId, profile] of cached) {
+    displayInfoMap.set(userId, {
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+    });
+  }
+
+  // Fetch uncached profiles in a single batch request
+  if (uncached.length > 0) {
+    try {
+      const { data: batchData } = await supabase.functions.invoke('get-users-display-info-batch', {
+        body: { user_ids: uncached, context: 'support' },
+      });
+
+      if (batchData?.profiles) {
+        // Cache the new profiles
+        setCachedProfiles(batchData.profiles);
+
+        // Add to display map
+        for (const [userId, profile] of Object.entries(batchData.profiles as Record<string, any>)) {
           displayInfoMap.set(userId, {
-            displayName: info.display_name || 'Usuário',
-            avatarUrl: info.avatar_url,
+            displayName: profile.display_name || 'Usuário',
+            avatarUrl: profile.avatar_url,
           });
         }
-      } catch {
-        // Fallback if edge function fails
+      }
+    } catch (err) {
+      console.error('Error fetching batch profiles:', err);
+      // Fallback for failed batch fetch
+      for (const userId of uncached) {
         displayInfoMap.set(userId, { displayName: 'Usuário', avatarUrl: null });
       }
-    })
-  );
+    }
+  }
 
   return messages.map((msg: any) => ({
     ...msg,

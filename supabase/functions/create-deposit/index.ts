@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { encryptSensitiveData } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,11 +98,8 @@ serve(async (req) => {
     });
     logStep("Checkout session created", { sessionId: session.id });
 
-    // Encrypt Stripe checkout session ID before storing
-    const encryptedSessionId = await encryptSensitiveData(session.id);
-    logStep("Stripe session ID encrypted for storage");
-
     // Create payment record in database
+    // Note: Stripe IDs are stored as plain text - they are opaque tokens, not sensitive data
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -119,7 +115,7 @@ serve(async (req) => {
         fee: 0,
         net_amount: amount,
         status: "PENDING",
-        stripe_checkout_session_id: encryptedSessionId,
+        stripe_checkout_session_id: session.id,
       });
 
     if (paymentError) {

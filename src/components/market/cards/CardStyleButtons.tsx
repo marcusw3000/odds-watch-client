@@ -9,6 +9,7 @@ import { RecurrenceLabel } from '@/components/market/RecurrenceLabel';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { gridClasses, getCategoryIcon, OptionRow } from './CardGridLayout';
 import {
   Tooltip,
   TooltipContent,
@@ -30,17 +31,6 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
 
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      Economia: '🏛️',
-      Câmbio: '💱',
-      Esportes: '⚽',
-      Mercado: '📈',
-      Política: '🗳️',
-    };
-    return icons[category] || '📊';
-  };
-
   const hasImage = Boolean(event.imageUrl);
   const yesPrice = event.outcomes.YES.price;
   const noPrice = event.outcomes.NO.price;
@@ -49,10 +39,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
 
   return (
     <div 
-      className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 min-h-[280px] flex flex-col",
-        "hover:scale-[1.01] hover:border-primary/30 hover:shadow-md"
-      )}
+      className={cn(gridClasses.container, "group")}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -62,8 +49,8 @@ export const CardStyleButtons = memo(function CardStyleButtons({
         statusColors.bg
       )} />
 
-      {/* Header */}
-      <div className="flex items-start gap-3 min-h-[56px]">
+      {/* Zone 1: Header */}
+      <div className={gridClasses.header}>
         <div className={cn(
           "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
           !statusInfo.canTrade && "grayscale"
@@ -86,26 +73,16 @@ export const CardStyleButtons = memo(function CardStyleButtons({
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground mb-0.5">{event.category}</p>
-          <h3 
-            className="text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
-            onClick={() => onViewDetails?.(event.id)}
-          >
-            {event.title}
-          </h3>
-        </div>
+        <h3 
+          className="flex-1 text-sm font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onViewDetails?.(event.id)}
+        >
+          {event.title}
+        </h3>
       </div>
 
-      {/* Recurrence */}
-      {event.recurrenceType && event.recurrenceType !== 'none' && (
-        <div className="flex flex-wrap items-center gap-1 mt-2">
-          <RecurrenceLabel type={event.recurrenceType} size="sm" />
-        </div>
-      )}
-
-      {/* Status badge */}
-      <div className="mt-2 h-[24px]">
+      {/* Zone 2: Status */}
+      <div className={gridClasses.status}>
         <MarketStatusBadge 
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
@@ -113,16 +90,35 @@ export const CardStyleButtons = memo(function CardStyleButtons({
           options={event.options}
           size="sm"
         />
+        {event.recurrenceType && event.recurrenceType !== 'none' && (
+          <RecurrenceLabel type={event.recurrenceType} size="sm" />
+        )}
       </div>
 
-      {/* Buttons - grows to fill space */}
-      <div className="flex-1 flex flex-col justify-center my-3">
+      {/* Zone 3: Options */}
+      <div className={gridClasses.options}>
+        <OptionRow 
+          label="Sim" 
+          price={yesPrice} 
+          isWinner={isSettled && resultIsYes}
+          variant="yes"
+        />
+        <OptionRow 
+          label="Não" 
+          price={noPrice} 
+          isWinner={isSettled && !resultIsYes}
+          variant="no"
+        />
+      </div>
+
+      {/* Zone 4: Buttons */}
+      <div className={gridClasses.buttons}>
         {statusInfo.canTrade ? (
-          <div className="flex gap-2">
+          <>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                  className="flex-1 h-10 bg-yes hover:bg-yes/90 text-yes-foreground font-bold"
                   onClick={() => onBuy(event.id, 'YES')}
                 >
                   SIM {yesPrice}¢
@@ -135,7 +131,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                  className="flex-1 h-10 bg-no hover:bg-no/90 text-no-foreground font-bold"
                   onClick={() => onBuy(event.id, 'NO')}
                 >
                   NÃO {noPrice}¢
@@ -145,9 +141,9 @@ export const CardStyleButtons = memo(function CardStyleButtons({
                 <p>Compre NÃO se acredita que o evento <strong>não vai</strong> acontecer</p>
               </TooltipContent>
             </Tooltip>
-          </div>
+          </>
         ) : (
-          <div className="flex gap-2">
+          <>
             <div className={cn(
               "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
               isSettled && resultIsYes 
@@ -164,25 +160,12 @@ export const CardStyleButtons = memo(function CardStyleButtons({
             )}>
               {isSettled ? (!resultIsYes ? '✓ NÃO' : 'NÃO') : <Lock className="h-4 w-4" />}
             </div>
-          </div>
+          </>
         )}
-
-        {/* Payout info */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex justify-between text-xs text-muted-foreground mt-3 cursor-help">
-              <span>R$1 → R${(100 / yesPrice).toFixed(2)}</span>
-              <span>R$1 → R${(100 / noPrice).toFixed(2)}</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-xs">
-            <p>Se acertar, você recebe R$1,00 por contrato. O retorno depende do preço de compra.</p>
-          </TooltipContent>
-        </Tooltip>
       </div>
 
-      {/* Footer - always at bottom */}
-      <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
+      {/* Zone 5: Footer */}
+      <div className={gridClasses.footer}>
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-2 text-xs text-muted-foreground cursor-help">

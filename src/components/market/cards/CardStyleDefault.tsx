@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { TrendingUp, Plus, Lock } from 'lucide-react';
+import { TrendingUp, Lock } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
@@ -9,6 +9,7 @@ import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { gridClasses, getCategoryIcon, OptionRow } from './CardGridLayout';
 
 interface CardStyleDefaultProps {
   event: MarketEvent;
@@ -25,34 +26,13 @@ export const CardStyleDefault = memo(function CardStyleDefault({
   const [isHovered, setIsHovered] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
 
-  // formatVolume is now imported from @/lib/formatters
-
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      Economia: '🏛️',
-      Câmbio: '💱',
-      Esportes: '⚽',
-      Mercado: '📈',
-      Política: '🗳️',
-      economia: '🏛️',
-      câmbio: '💱',
-      esportes: '⚽',
-      mercado: '📈',
-      política: '🗳️',
-    };
-    return icons[category] || '📊';
-  };
-
   const hasImage = Boolean(event.imageUrl);
   const isSettled = statusInfo.status === 'SETTLED';
   const resultIsYes = event.result === 'YES';
 
   return (
     <div 
-      className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 min-h-[280px] flex flex-col",
-        "hover:border-primary/30 hover:shadow-md hover:scale-[1.01]"
-      )}
+      className={cn(gridClasses.container, "group")}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -62,8 +42,8 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         statusColors.bg
       )} />
 
-      {/* Header with image and title */}
-      <div className="flex items-start gap-3 min-h-[48px]">
+      {/* Zone 1: Header */}
+      <div className={gridClasses.header}>
         <div className={cn(
           "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
           !statusInfo.canTrade && "grayscale"
@@ -85,12 +65,10 @@ export const CardStyleDefault = memo(function CardStyleDefault({
               }}
             />
           ) : (
-            <div 
-              className={cn(
-                "absolute inset-0 flex items-center justify-center text-lg transition-transform duration-300 ease-out",
-                statusInfo.canTrade && isHovered && "scale-110"
-              )}
-            >
+            <div className={cn(
+              "absolute inset-0 flex items-center justify-center text-lg transition-transform duration-300 ease-out",
+              statusInfo.canTrade && isHovered && "scale-110"
+            )}>
               {getCategoryIcon(event.category)}
             </div>
           )}
@@ -104,15 +82,8 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         </h3>
       </div>
 
-      {/* Recurrence */}
-      {event.recurrenceType && event.recurrenceType !== 'none' && (
-        <div className="flex flex-wrap items-center gap-1 mt-2">
-          <RecurrenceLabel type={event.recurrenceType} size="sm" />
-        </div>
-      )}
-
-      {/* Status badge */}
-      <div className="mt-2 h-[24px]">
+      {/* Zone 2: Status */}
+      <div className={gridClasses.status}>
         <MarketStatusBadge 
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
@@ -120,101 +91,70 @@ export const CardStyleDefault = memo(function CardStyleDefault({
           options={event.options}
           size="sm"
         />
+        {event.recurrenceType && event.recurrenceType !== 'none' && (
+          <RecurrenceLabel type={event.recurrenceType} size="sm" />
+        )}
       </div>
 
-      {/* Options - grows to fill space */}
-      <div className="flex-1 flex flex-col justify-center space-y-2 my-3">
-        <div className="flex items-center justify-between">
-          <span className={cn(
-            "text-xs text-muted-foreground truncate max-w-[100px]",
-            isSettled && resultIsYes && "text-yes font-medium"
-          )}>Sim</span>
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "text-sm font-bold text-muted-foreground",
-              isSettled && resultIsYes && "text-yes"
-            )}>{event.outcomes.YES.price}%</span>
-            <div className="flex gap-1">
-              {statusInfo.canTrade ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                    onClick={() => onBuy(event.id, 'YES')}
-                  >
-                    Sim
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
-                    onClick={() => onBuy(event.id, 'NO')}
-                  >
-                    Não
-                  </Button>
-                </>
-              ) : (
-                <div className="flex gap-1 h-6">
-                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
-                    <Lock className="h-3 w-3" />
-                  </div>
-                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
-                    <Lock className="h-3 w-3" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className={cn(
-            "text-xs text-muted-foreground truncate max-w-[100px]",
-            isSettled && !resultIsYes && "text-no font-medium"
-          )}>Não</span>
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "text-sm font-bold text-muted-foreground",
-              isSettled && !resultIsYes && "text-no"
-            )}>{event.outcomes.NO.price}%</span>
-            <div className="flex gap-1">
-              {statusInfo.canTrade ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-[10px] font-medium border-yes/30 hover:bg-yes/10 hover:text-yes hover:border-yes"
-                    onClick={() => onBuy(event.id, 'YES')}
-                  >
-                    Sim
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-[10px] font-medium border-no/30 hover:bg-no/10 hover:text-no hover:border-no"
-                    onClick={() => onBuy(event.id, 'NO')}
-                  >
-                    Não
-                  </Button>
-                </>
-              ) : (
-                <div className="flex gap-1 h-6">
-                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
-                    <Lock className="h-3 w-3" />
-                  </div>
-                  <div className="h-6 px-2 rounded-md border border-border bg-muted/40 text-muted-foreground flex items-center justify-center text-[10px] font-medium">
-                    <Lock className="h-3 w-3" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Zone 3: Options */}
+      <div className={gridClasses.options}>
+        <OptionRow 
+          label="Sim" 
+          price={event.outcomes.YES.price} 
+          isWinner={isSettled && resultIsYes}
+          variant="yes"
+        />
+        <OptionRow 
+          label="Não" 
+          price={event.outcomes.NO.price} 
+          isWinner={isSettled && !resultIsYes}
+          variant="no"
+        />
       </div>
 
-      {/* Footer - always at bottom */}
-      <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
+      {/* Zone 4: Buttons */}
+      <div className={gridClasses.buttons}>
+        {statusInfo.canTrade ? (
+          <>
+            <Button
+              className="flex-1 h-10 bg-yes/10 hover:bg-yes/20 text-yes border border-yes/30 font-bold"
+              variant="outline"
+              onClick={() => onBuy(event.id, 'YES')}
+            >
+              Comprar Sim
+            </Button>
+            <Button
+              className="flex-1 h-10 bg-no/10 hover:bg-no/20 text-no border border-no/30 font-bold"
+              variant="outline"
+              onClick={() => onBuy(event.id, 'NO')}
+            >
+              Comprar Não
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className={cn(
+              "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
+              isSettled && resultIsYes 
+                ? "bg-yes/20 text-yes border border-yes/30" 
+                : "bg-muted text-muted-foreground"
+            )}>
+              {isSettled ? (resultIsYes ? '✓ SIM' : 'SIM') : <Lock className="h-4 w-4" />}
+            </div>
+            <div className={cn(
+              "flex-1 h-10 rounded-md flex items-center justify-center font-bold text-sm",
+              isSettled && !resultIsYes 
+                ? "bg-no/20 text-no border border-no/30" 
+                : "bg-muted text-muted-foreground"
+            )}>
+              {isSettled ? (!resultIsYes ? '✓ NÃO' : 'NÃO') : <Lock className="h-4 w-4" />}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Zone 5: Footer */}
+      <div className={gridClasses.footer}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <PriceSparkline eventId={event.id} currentPrice={event.outcomes.YES.price} />
           <div className="flex items-center gap-1">
@@ -222,17 +162,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
             <span>{formatVolume(event.volume)}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <FavoriteButton marketId={event.id} size="sm" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => onViewDetails?.(event.id)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <FavoriteButton marketId={event.id} size="sm" />
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { encryptSensitiveData } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,14 +67,12 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Encrypt payment intent ID to match stored format
-    const encryptedPaymentIntentId = await encryptSensitiveData(paymentIntentId);
-
     // Check if this payment was already processed
+    // Note: Stripe IDs are stored as plain text - they are opaque tokens, not sensitive data
     const { data: existingPayment } = await supabaseAdmin
       .from("payments")
       .select("*")
-      .eq("stripe_payment_intent_id", encryptedPaymentIntentId)
+      .eq("stripe_payment_intent_id", paymentIntentId)
       .single();
 
     if (existingPayment?.status === "COMPLETED") {
@@ -102,7 +99,7 @@ serve(async (req) => {
         const { error: updateError } = await supabaseAdmin
           .from("payments")
           .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
-          .eq("stripe_payment_intent_id", encryptedPaymentIntentId);
+          .eq("stripe_payment_intent_id", paymentIntentId);
 
         if (updateError) {
           logStep("Error updating payment", { error: updateError });

@@ -4,6 +4,7 @@ import { MarketEvent, MarketOption } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { optimizeImageUrl } from '@/lib/formatters';
 import {
   Tooltip,
   TooltipContent,
@@ -77,7 +78,7 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
               {option.imageUrl ? (
                 <div 
                   className="w-10 h-10 rounded-full bg-cover bg-center shrink-0 border-2 border-background"
-                  style={{ backgroundImage: `url(${option.imageUrl})` }}
+                  style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, { width: 80 })})` }}
                 />
               ) : (
                 <div className={cn(

@@ -6,7 +6,7 @@ import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
-import { formatVolume } from '@/lib/formatters';
+import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -74,7 +74,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
                 statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
-                backgroundImage: `url(${event.imageUrl})`,
+                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 80 })})`,
                 backgroundPosition: 'center',
               }}
             />

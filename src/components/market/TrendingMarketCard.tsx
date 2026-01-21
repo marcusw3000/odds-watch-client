@@ -7,7 +7,7 @@ import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
-import { formatVolume } from '@/lib/formatters';
+import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface TrendingMarketCardProps {
@@ -152,7 +152,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                     statusInfo.canTrade && isHovered && "scale-110"
                   )}
                   style={{
-                    backgroundImage: `url(${event.imageUrl})`,
+                    backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 112 })})`,
                     backgroundPosition: event.imagePosition 
                       ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
                       : 'center',

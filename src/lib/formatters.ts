@@ -104,3 +104,34 @@ export const formatDateTime = (date: Date | string): string => {
     minute: '2-digit',
   });
 };
+
+/**
+ * Optimize Supabase Storage image URLs by converting to WebP format.
+ * Supabase Storage supports image transformations via URL parameters.
+ * This reduces image file sizes for better performance.
+ */
+export const optimizeImageUrl = (url: string | undefined, options?: { width?: number; quality?: number }): string => {
+  if (!url) return '';
+  
+  // Only transform Supabase storage URLs
+  const supabaseStoragePattern = /supabase\.co\/storage\/v1\/object\/public\//;
+  if (!supabaseStoragePattern.test(url)) return url;
+  
+  // Build transformation parameters
+  const params = new URLSearchParams();
+  params.set('format', 'webp');
+  
+  if (options?.width) {
+    params.set('width', options.width.toString());
+  }
+  
+  if (options?.quality) {
+    params.set('quality', options.quality.toString());
+  } else {
+    params.set('quality', '80'); // Default quality for good balance
+  }
+  
+  // Append parameters to URL
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}${params.toString()}`;
+};

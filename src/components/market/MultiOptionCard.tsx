@@ -6,7 +6,7 @@ import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
-import { formatVolume } from '@/lib/formatters';
+import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -94,7 +94,7 @@ export const MultiOptionCard = memo(function MultiOptionCard({
                 statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
-                backgroundImage: `url(${event.imageUrl})`,
+                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 80 })})`,
                 backgroundPosition: 'center',
               }}
             />
@@ -149,7 +149,7 @@ export const MultiOptionCard = memo(function MultiOptionCard({
               {option.imageUrl ? (
                 <div 
                   className="w-6 h-6 rounded-full bg-cover bg-center shrink-0"
-                  style={{ backgroundImage: `url(${option.imageUrl})` }}
+                  style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, { width: 48 })})` }}
                 />
               ) : (
                 <div className={cn(

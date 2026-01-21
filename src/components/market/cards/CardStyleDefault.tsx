@@ -7,7 +7,7 @@ import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { MarketTags } from '@/components/market/MarketTags';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
-import { formatVolume } from '@/lib/formatters';
+import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface CardStyleDefaultProps {
@@ -75,7 +75,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
                 statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
-                backgroundImage: `url(${event.imageUrl})`,
+                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 80 })})`,
                 backgroundPosition: event.imagePosition 
                   ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
                   : 'center',

@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
 import { updateMetaTags, resetMetaTags } from '@/lib/seo';
 import { cn } from '@/lib/utils';
+import { optimizeImageUrl } from '@/lib/formatters';
 import { useDeepLink } from '@/hooks/useDeepLink';
 import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 
@@ -265,7 +266,7 @@ export function MarketDetailPage() {
           {event.imageUrl && (
             <div className="flex-shrink-0">
               <img
-                src={event.imageUrl}
+                src={optimizeImageUrl(event.imageUrl, { width: 192 })}
                 alt={event.title}
                 className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover border border-border"
               />

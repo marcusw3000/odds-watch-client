@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { optimizeImageUrl } from '@/lib/formatters';
 import { getQuote as getLMSRQuote, getSellQuote as getLMSRSellQuote, TradeQuote } from '@/services/LMSRCalculator';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -260,8 +261,8 @@ export function MinimalTradingCard({
       <div className="flex items-center gap-3 p-4 border-b border-border">
         {event.imageUrl && (
           <img 
-            src={event.imageUrl} 
-            alt="" 
+            src={optimizeImageUrl(event.imageUrl, { width: 80 })} 
+            alt=""
             className="w-10 h-10 rounded-lg object-cover flex-shrink-0" 
           />
         )}

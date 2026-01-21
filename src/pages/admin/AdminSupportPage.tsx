@@ -162,26 +162,36 @@ export default function AdminSupportPage() {
   });
 
   // Tickets query with pagination
-  const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
+  const { data: ticketsData, isLoading: ticketsLoading, isFetching: ticketsFetching } = useQuery({
     queryKey: ['admin-support-tickets', filters, pagination.page, pagination.pageSize],
     queryFn: () => getAllTickets({
       ...filters,
       limit: pagination.pageSize,
       offset: pagination.offset,
     }),
-    refetchInterval: 15000,
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    refetchInterval: 20000, // Reduced from 15s to 20s
   });
 
   // Update pagination total when data changes
   const totalCount = ticketsData?.totalCount || 0;
   const tickets = ticketsData?.tickets || [];
 
+  // Dynamic refetch interval based on ticket status
+  const messageRefetchInterval = useMemo(() => {
+    if (!selectedTicket) return false;
+    // Faster refresh if ticket is actively being worked on
+    if (selectedTicket.status === 'in_progress') return 10000;
+    return 20000;
+  }, [selectedTicket?.status]);
+
   // Messages query for selected ticket
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading, isFetching: messagesFetching } = useQuery({
     queryKey: ['ticket-messages', selectedTicket?.id],
     queryFn: () => (selectedTicket ? getTicketMessages(selectedTicket.id) : Promise.resolve([])),
     enabled: !!selectedTicket,
-    refetchInterval: 5000,
+    staleTime: 8000, // Consider messages fresh for 8 seconds
+    refetchInterval: messageRefetchInterval,
   });
 
   // Mutations

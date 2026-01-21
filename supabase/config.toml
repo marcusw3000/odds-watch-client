@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.get-admin-user-details]
 verify_jwt = false
+
+[functions.get-users-display-info-batch]
+verify_jwt = false

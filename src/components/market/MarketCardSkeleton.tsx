@@ -11,12 +11,6 @@ export function MarketCardSkeleton() {
         </div>
       </div>
 
-      {/* Tags */}
-      <div className="flex gap-2 mt-3">
-        <div className="h-5 w-14 rounded-full bg-muted animate-shimmer" />
-        <div className="h-5 w-16 rounded-full bg-muted animate-shimmer" />
-      </div>
-
       {/* Status */}
       <div className="mt-2">
         <div className="h-6 w-20 rounded bg-muted animate-shimmer" />

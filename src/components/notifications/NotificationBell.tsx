@@ -338,16 +338,16 @@ export function NotificationBell() {
           )}
         </div>
         
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="h-[400px]" aria-live="polite" aria-label="Lista de notificações">
           {isLoading ? (
             <NotificationSkeleton count={3} />
           ) : displayNotifications.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <div className="p-8 text-center text-muted-foreground" role="status">
+              <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" aria-hidden="true" />
               <p>Nenhuma notificação</p>
             </div>
           ) : (
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-border" role="list">
               {displayNotifications.map((notification, index) => {
                 const isGroup = isGroupedNotification(notification);
                 const type = notification.type;

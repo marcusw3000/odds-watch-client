@@ -22,6 +22,7 @@ export function useCopyTradeSettings() {
       if (error) throw error;
       return data as CopyTradeSettings;
     },
+    staleTime: 60000, // 1 minute - settings rarely change
   });
 }
 
@@ -129,6 +130,7 @@ export function useApprovedCopyTraders() {
       
       return (data || []) as CopyTrader[];
     },
+    staleTime: 60000, // 1 minute - trader list doesn't change frequently
   });
 }
 
@@ -149,6 +151,7 @@ export function useCopyTrader(traderId: string | null) {
       return data as CopyTrader;
     },
     enabled: !!traderId,
+    staleTime: 30000, // 30 seconds
   });
 }
 
@@ -169,6 +172,7 @@ export function useMyTraderStatus() {
       if (error) throw error;
       return data as CopyTrader | null;
     },
+    staleTime: 60000, // 1 minute
   });
 }
 
@@ -437,6 +441,7 @@ export function useMyCopySubscriptions() {
       if (error) throw error;
       return (data || []) as unknown as CopySubscription[];
     },
+    staleTime: 30000, // 30 seconds
   });
 }
 

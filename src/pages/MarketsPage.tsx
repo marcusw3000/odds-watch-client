@@ -405,7 +405,7 @@ export function MarketsPage() {
       ) : null}
 
       {/* Markets Grid */}
-      <section>
+      <section className="min-h-[600px]">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Todos os mercados</h2>
           <span className="text-sm text-muted-foreground tabular-nums">

@@ -49,8 +49,8 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   return (
     <div 
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 h-[260px] flex flex-col",
-        "hover:border-primary/30 hover:shadow-md"
+        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 min-h-[280px] flex flex-col",
+        "hover:scale-[1.01] hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

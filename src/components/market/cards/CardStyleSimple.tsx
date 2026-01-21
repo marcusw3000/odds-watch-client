@@ -48,8 +48,8 @@ export const CardStyleSimple = memo(function CardStyleSimple({
   return (
     <div 
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 h-[260px] flex flex-col",
-        "hover:border-primary/30 hover:shadow-md"
+        "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-200 min-h-[280px] flex flex-col",
+        "hover:scale-[1.01] hover:border-primary/30 hover:shadow-md"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -64,7 +64,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
       <div className="flex items-start justify-between gap-3 min-h-[56px]">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div className={cn(
-            "flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden relative bg-secondary",
+            "flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative bg-secondary",
             !statusInfo.canTrade && "grayscale"
           )}>
             {hasImage ? (
@@ -74,12 +74,12 @@ export const CardStyleSimple = memo(function CardStyleSimple({
                   statusInfo.canTrade && isHovered && "scale-110"
                 )}
               style={{
-                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 96 })})`,
+                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 80 })})`,
                   backgroundPosition: 'center',
                 }}
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-xl">
+              <div className="absolute inset-0 flex items-center justify-center text-lg">
                 {getCategoryIcon(event.category)}
               </div>
             )}

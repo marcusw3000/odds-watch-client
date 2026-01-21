@@ -6,6 +6,18 @@ export interface CardStyleOption {
   description: string;
 }
 
+// Standardized card dimensions for consistent layout
+export const CARD_DIMENSIONS = {
+  container: 'min-h-[280px] flex flex-col',
+  hover: 'hover:scale-[1.01] hover:border-primary/30 hover:shadow-md',
+  transition: 'transition-all duration-200',
+  borderRadius: 'rounded-xl',
+  padding: 'p-4',
+  headerHeight: 'min-h-[56px]',
+  imageSize: 'w-10 h-10',
+  gap: 'gap-4',
+} as const;
+
 export const CARD_STYLES: CardStyleOption[] = [
   {
     id: 'default',

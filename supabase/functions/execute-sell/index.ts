@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     // Get contract to get shares count (if not provided) and validate ownership
     const { data: contract, error: contractError } = await supabaseAdmin
       .from("user_contracts")
-      .select("id, shares, position, market_id, markets(title)")
+      .select("id, shares, position, market_id, markets!user_contracts_market_id_fkey(title)")
       .eq("id", contractId)
       .eq("user_id", userId)
       .single();

@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('wallets').select('balance_available, total_deposited, currency, created_at').eq('user_id', user.id).single(),
-      supabase.from('user_contracts').select('*, markets(title)').eq('user_id', user.id),
-      supabase.from('transactions').select('*, markets(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(500),
+      supabase.from('user_contracts').select('*, markets!user_contracts_market_id_fkey(title)').eq('user_id', user.id),
+      supabase.from('transactions').select('*, markets!fk_transactions_market(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(500),
       supabase.from('payments').select('id, type, amount, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('notifications').select('id, type, title, message, created_at, is_read').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
       supabase.from('user_achievements').select('*, achievements(name, description)').eq('user_id', user.id),

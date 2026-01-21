@@ -544,10 +544,10 @@ export const MarketDataProvider = {
       | { balance_available: number; total_deposited: number; total_withdrawn: number }
       | null;
 
-    // Get contracts
+    // Get contracts - use explicit FK to avoid PGRST201 ambiguity error
     const contractsResult = await supabase
       .from('user_contracts')
-      .select('*, markets(title)')
+      .select('*, markets!user_contracts_market_id_fkey(title)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -556,10 +556,10 @@ export const MarketDataProvider = {
       throw contractsResult.error;
     }
 
-    // Get transactions
+    // Get transactions - use explicit FK to avoid PGRST201 ambiguity error
     const transactionsResult = await supabase
       .from('transactions')
-      .select('*, markets(title)')
+      .select('*, markets!fk_transactions_market(title)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);

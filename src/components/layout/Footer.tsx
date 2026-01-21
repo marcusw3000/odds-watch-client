@@ -3,7 +3,7 @@ import { Shield, Scale, FileText, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card/50 mt-auto min-h-[137px]">
+    <footer className="border-t border-border bg-card/50 mt-auto min-h-[180px] sm:min-h-[137px]">
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col gap-4">
           {/* Disclaimer */}

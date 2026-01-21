@@ -364,7 +364,7 @@ export function MarketsPage() {
           categoryCounts={categoryCounts}
           totalCount={events.length}
         />
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-h-[76px] sm:min-h-[40px]">
           <QuickSort
             sortBy={filters.sortBy}
             sortOrder={filters.sortOrder}

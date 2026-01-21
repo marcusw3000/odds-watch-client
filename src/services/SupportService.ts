@@ -93,9 +93,10 @@ export async function getMyTickets(): Promise<SupportTicket[]> {
 }
 
 export async function getTicketMessages(ticketId: string): Promise<SupportMessage[]> {
+  // Fetch only required fields for faster response
   const { data, error } = await supabase
     .from('support_messages')
-    .select('*')
+    .select('id, ticket_id, sender_id, message, is_staff, created_at')
     .eq('ticket_id', ticketId)
     .order('created_at', { ascending: true });
 
@@ -116,41 +117,29 @@ export async function getTicketMessages(ticketId: string): Promise<SupportMessag
     });
   }
 
-  // Fetch uncached profiles in a single batch request
-  if (uncached.length > 0) {
-    try {
-      const { data: batchData } = await supabase.functions.invoke('get-users-display-info-batch', {
-        body: { user_ids: uncached, context: 'support' },
-      });
-
-      if (batchData?.profiles) {
-        // Cache the new profiles
-        setCachedProfiles(batchData.profiles);
-
-        // Add to display map
-        for (const [userId, profile] of Object.entries(batchData.profiles as Record<string, any>)) {
-          displayInfoMap.set(userId, {
-            displayName: profile.display_name || 'Usuário',
-            avatarUrl: profile.avatar_url,
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching batch profiles:', err);
-      // Fallback for failed batch fetch
-      for (const userId of uncached) {
-        displayInfoMap.set(userId, { displayName: 'Usuário', avatarUrl: null });
-      }
-    }
-  }
-
-  return messages.map((msg: any) => ({
+  // Return messages immediately with cached/fallback data, fetch uncached profiles async
+  const enrichedMessages = messages.map((msg: any) => ({
     ...msg,
     sender_name: msg.is_staff 
       ? 'Equipe de Suporte' 
       : (displayInfoMap.get(msg.sender_id)?.displayName || 'Usuário'),
-    sender_avatar: displayInfoMap.get(msg.sender_id)?.avatarUrl,
+    sender_avatar: displayInfoMap.get(msg.sender_id)?.avatarUrl || null,
   }));
+
+  // Fetch uncached profiles in background (non-blocking for subsequent calls)
+  if (uncached.length > 0) {
+    supabase.functions.invoke('get-users-display-info-batch', {
+      body: { user_ids: uncached, context: 'support' },
+    }).then(({ data: batchData }) => {
+      if (batchData?.profiles) {
+        setCachedProfiles(batchData.profiles);
+      }
+    }).catch(err => {
+      console.error('Error fetching batch profiles:', err);
+    });
+  }
+
+  return enrichedMessages;
 }
 
 export async function sendMessage(ticketId: string, message: string): Promise<SupportMessage | null> {

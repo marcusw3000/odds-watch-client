@@ -1,8 +1,8 @@
 import { memo, useState, useMemo } from 'react';
-import { TrendingUp, ChevronLeft, ChevronRight, Plus, Lock } from 'lucide-react';
+import { TrendingUp, ChevronLeft, ChevronRight, Plus, Lock, CheckCircle2, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
@@ -31,9 +31,8 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
 }: TrendingMarketCardProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const statusColors = getStatusColor(statusInfo.status);
-
-  // formatVolume is now imported from @/lib/formatters (note: this variant has slight differences but we'll use the standard one)
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
@@ -51,6 +50,10 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
   const hasImage = Boolean(event.imageUrl);
   const isSettled = statusInfo.status === 'SETTLED';
   const resultIsYes = event.result === 'YES';
+  
+  // Check if market is recent (< 3 days)
+  const createdAt = event.createdAt ? new Date(event.createdAt) : new Date();
+  const isRecentMarket = differenceInDays(new Date(), createdAt) < 3;
 
   // Generate mock price history data with dates - using deterministic seeded random
   const priceHistory = useMemo(() => {
@@ -116,6 +119,17 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Settled result banner */}
+      {isSettled && (
+        <div className={cn(
+          "flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium",
+          resultIsYes ? "bg-yes/20 text-yes" : "bg-no/20 text-no"
+        )}>
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Resultado: {resultIsYes ? 'SIM' : 'NÃO'}</span>
+        </div>
+      )}
+
       {/* Status indicator border */}
       <div className={cn(
         "absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl transition-colors",
@@ -123,7 +137,7 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
       )} />
 
       {/* Status badge for non-tradeable markets */}
-      {!statusInfo.canTrade && (
+      {!statusInfo.canTrade && !isSettled && (
         <div className="absolute top-4 right-4 z-10">
           <MarketStatusBadge 
             status={statusInfo.status}
@@ -271,9 +285,26 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
             <div className="mb-4">
               <span className="text-xs font-medium text-primary">Descrição</span>
               <span className="mx-2 text-muted-foreground">·</span>
-              <span className="text-sm text-muted-foreground line-clamp-2">
+              <span 
+                className={cn(
+                  "text-sm text-muted-foreground",
+                  !showFullDescription && "line-clamp-3"
+                )}
+              >
                 {event.description}
               </span>
+              {event.description.length > 150 && (
+                <button
+                  onClick={() => setShowFullDescription(!showFullDescription)}
+                  className="ml-1 text-xs text-primary hover:underline inline-flex items-center gap-0.5"
+                >
+                  {showFullDescription ? (
+                    <>Ver menos <ChevronUp className="h-3 w-3" /></>
+                  ) : (
+                    <>Ver mais <ChevronDown className="h-3 w-3" /></>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
@@ -317,63 +348,77 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
 
           {/* Chart */}
           <div className="flex-1 min-h-[180px]" style={{ contain: 'layout style' }}>
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={priceHistory} margin={{ top: 5, right: 45, left: 0, bottom: 5 }}>
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis 
-                  domain={[20, 80]}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `${value}%`}
-                  orientation="right"
-                  width={35}
-                  ticks={[30, 45, 60, 75]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  formatter={(value: number, name: string) => [
-                    `${value}%`, 
-                    name === 'yes' ? 'Sim' : 'Não'
-                  ]}
-                  labelFormatter={(_, payload) => {
-                    if (payload && payload[0]) {
-                      return payload[0].payload.fullDate;
-                    }
-                    return '';
-                  }}
-                />
-                <Line
-                  type="linear"
-                  dataKey="yes"
-                  stroke="hsl(var(--yes))"
-                  strokeWidth={1.5}
-                  dot={false}
-                  activeDot={{ r: 3, fill: 'hsl(var(--yes))' }}
-                  isAnimationActive={false}
-                />
-                <Line
-                  type="linear"
-                  dataKey="no"
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeWidth={1.5}
-                  dot={false}
-                  activeDot={{ r: 3, fill: 'hsl(var(--muted-foreground))' }}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {isRecentMarket ? (
+              <div className="h-[180px] flex flex-col items-center justify-center text-center text-muted-foreground bg-muted/30 rounded-lg">
+                <Clock className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm font-medium">Mercado recente</p>
+                <p className="text-xs opacity-70">Histórico sendo coletado...</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={priceHistory} margin={{ top: 5, right: 45, left: 0, bottom: 5 }}>
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    domain={[20, 80]}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => `${value}%`}
+                    orientation="right"
+                    width={35}
+                    ticks={[30, 50, 70]}
+                  />
+                  <ReferenceLine 
+                    y={50} 
+                    stroke="hsl(var(--muted-foreground))" 
+                    strokeDasharray="3 3" 
+                    strokeOpacity={0.5}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: number, name: string) => [
+                      `${value}%`, 
+                      name === 'yes' ? 'Sim' : 'Não'
+                    ]}
+                    labelFormatter={(_, payload) => {
+                      if (payload && payload[0]) {
+                        return payload[0].payload.fullDate;
+                      }
+                      return '';
+                    }}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="yes"
+                    stroke="hsl(var(--yes))"
+                    strokeWidth={1.5}
+                    dot={false}
+                    activeDot={{ r: 3, fill: 'hsl(var(--yes))' }}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="no"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={1.5}
+                    dot={false}
+                    activeDot={{ r: 3, fill: 'hsl(var(--muted-foreground))' }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>

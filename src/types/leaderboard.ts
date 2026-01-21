@@ -21,6 +21,7 @@ export interface UserProfile {
   best_trade_profit: number;
   created_at: string;
   updated_at: string;
+  is_copy_trader?: boolean;
 }
 
 // Legacy type aliases for backward compatibility

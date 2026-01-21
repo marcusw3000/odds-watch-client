@@ -2156,6 +2156,7 @@ export type Database = {
           current_streak: number | null
           display_name: string | null
           id: string | null
+          is_copy_trader: boolean | null
           is_public: boolean | null
           roi_percent: number | null
           show_profit: boolean | null
@@ -2177,6 +2178,7 @@ export type Database = {
           current_streak?: number | null
           display_name?: string | null
           id?: string | null
+          is_copy_trader?: boolean | null
           is_public?: boolean | null
           roi_percent?: number | null
           show_profit?: boolean | null
@@ -2198,6 +2200,7 @@ export type Database = {
           current_streak?: number | null
           display_name?: string | null
           id?: string | null
+          is_copy_trader?: boolean | null
           is_public?: boolean | null
           roi_percent?: number | null
           show_profit?: boolean | null

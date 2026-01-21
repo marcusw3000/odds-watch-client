@@ -2047,13 +2047,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_user_contracts_market"
-            columns: ["market_id"]
-            isOneToOne: false
-            referencedRelation: "markets"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_user_contracts_user"
             columns: ["user_id"]
             isOneToOne: false

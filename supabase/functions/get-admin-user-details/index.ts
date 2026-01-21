@@ -129,7 +129,7 @@ serve(async (req) => {
 
     // Fetch recent ledger entries (last 50)
     const { data: ledgerEntries } = await supabaseAdmin
-      .from("ledger")
+      .from("ledger_entries")
       .select("*")
       .eq("user_id", user_id)
       .order("created_at", { ascending: false })
@@ -157,18 +157,18 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    // Calculate stats
+    // Calculate stats - status values are: OPEN, HALTED, PENDING, SETTLED (uppercase enum)
     const contractStats = contracts ? {
       total: contracts.length,
       active: contracts.filter((c: any) => 
-        c.markets?.status === 'active' || c.markets?.status === 'halted'
+        c.markets?.status === 'OPEN' || c.markets?.status === 'HALTED'
       ).length,
       won: contracts.filter((c: any) => 
-        c.markets?.status === 'settled' && 
+        c.markets?.status === 'SETTLED' && 
         c.markets?.result?.toUpperCase() === c.position?.toUpperCase()
       ).length,
       lost: contracts.filter((c: any) => 
-        c.markets?.status === 'settled' && 
+        c.markets?.status === 'SETTLED' && 
         c.markets?.result?.toUpperCase() !== c.position?.toUpperCase()
       ).length,
     } : { total: 0, active: 0, won: 0, lost: 0 };

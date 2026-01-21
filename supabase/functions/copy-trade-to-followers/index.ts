@@ -230,14 +230,7 @@ Deno.serve(async (req) => {
         })
         .eq("id", subscription.id);
 
-      // Update trader stats
-      await supabaseAdmin
-        .from("copy_traders")
-        .update({
-          total_trades_copied: copyTrader.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", copyTrader.id);
+      // Note: trader stats are updated after the loop to avoid race conditions
 
       // Create notification for the follower
       await supabaseAdmin.from("notifications").insert({

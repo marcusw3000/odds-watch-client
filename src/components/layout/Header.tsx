@@ -77,7 +77,7 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-1 min-h-[40px]">
           {navItems.map((item) => (
             <Button
               key={item.path}

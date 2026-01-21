@@ -60,11 +60,18 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Skip to content link for keyboard navigation */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"
+      >
+        Pular para o conteúdo
+      </a>
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
+            <TrendingUp className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
           </div>
           <span className="text-xl font-bold tracking-tight">
             Predict<span className="text-gradient-primary">Market</span>

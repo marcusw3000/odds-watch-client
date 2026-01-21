@@ -48,14 +48,14 @@ export function PublicTradeHistory({ userId, profile, isOwnProfile }: PublicTrad
           shares,
           total_amount,
           created_at,
-          market:markets(id, title, status, result)
+          market:markets!fk_transactions_market(id, title, status, result)
         `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      return (data || []) as PublicTrade[];
+      return (data || []) as unknown as PublicTrade[];
     },
     enabled: canSeeTrades,
   });

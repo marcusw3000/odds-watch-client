@@ -87,10 +87,10 @@ export const FavoriteButton = memo(function FavoriteButton({
       <Heart
         className={cn(
           iconSizes[size],
-          'transition-transform duration-200',
+          'transition-all duration-200',
           isFav && 'fill-current scale-110',
           !isFav && 'hover:scale-110',
-          justFavorited && 'animate-heartbeat'
+          justFavorited && 'animate-heartbeat scale-125'
         )}
       />
     </Button>

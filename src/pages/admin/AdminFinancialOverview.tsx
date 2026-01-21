@@ -180,7 +180,7 @@ export function AdminFinancialOverview() {
           <CardHeader>
             <CardTitle>Receita por Dia (14 dias)</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[300px]" style={{ contain: 'layout style' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueByDay}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -209,7 +209,7 @@ export function AdminFinancialOverview() {
           <CardHeader>
             <CardTitle>Receita por Tipo</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[300px]" style={{ contain: 'layout style' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

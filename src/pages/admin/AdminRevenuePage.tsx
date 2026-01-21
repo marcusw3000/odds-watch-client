@@ -204,7 +204,7 @@ export function AdminRevenuePage() {
         <CardHeader>
           <CardTitle>Receita por Dia</CardTitle>
         </CardHeader>
-        <CardContent className="h-[400px]">
+        <CardContent className="h-[400px]" style={{ contain: 'layout style' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />

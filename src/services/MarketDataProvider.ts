@@ -559,7 +559,7 @@ export const MarketDataProvider = {
     // Get transactions - use explicit FK to avoid PGRST201 ambiguity error
     const transactionsResult = await supabase
       .from('transactions')
-      .select('*, markets!fk_transactions_market(title)')
+      .select('*, markets!transactions_market_id_fkey(title)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);

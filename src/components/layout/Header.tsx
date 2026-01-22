@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, RefreshCw, Briefcase, Lightbulb, Headphones, Users } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, Briefcase, Lightbulb, Headphones, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Componente interno para o ícone com indicador de sync
+function BalanceIcon({ isLoading }: { isLoading: boolean }) {
+  return (
+    <div className="relative">
+      <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      {isLoading && (
+        <span 
+          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse" 
+          aria-label="Atualizando saldo"
+        />
+      )}
+    </div>
+  );
+}
 
 interface HeaderProps {
   balance?: number;
@@ -108,15 +123,8 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
           {user && (
             <>
               <div className="flex items-center gap-1 rounded-lg bg-secondary pl-4 pr-1 py-1">
-                {isBalanceLoading ? (
-                  <RefreshCw className="h-4 w-4 text-primary animate-spin" />
-                ) : (
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span className={cn(
-                  "font-mono font-semibold text-foreground mr-1 transition-opacity duration-200",
-                  isBalanceLoading && "opacity-60"
-                )}>
+                <BalanceIcon isLoading={isBalanceLoading} />
+                <span className="font-mono font-semibold text-foreground mr-1">
                   {formatCurrency(balance)}
                 </span>
                 <Button 
@@ -229,18 +237,11 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
             {user && (
               <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
                 <div className="flex items-center gap-2">
-                  {isBalanceLoading ? (
-                    <RefreshCw className="h-4 w-4 text-primary animate-spin" />
-                  ) : (
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                  )}
+                  <BalanceIcon isLoading={isBalanceLoading} />
                   <span className="text-sm text-muted-foreground">Saldo</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={cn(
-                    "font-mono font-semibold transition-opacity duration-200",
-                    isBalanceLoading && "opacity-60"
-                  )}>
+                  <span className="font-mono font-semibold">
                     {formatCurrency(balance)}
                   </span>
                   <Button 

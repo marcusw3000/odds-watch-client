@@ -405,7 +405,7 @@ export function MarketsPage() {
       ) : null}
 
       {/* Markets Grid */}
-      <section className="min-h-[600px]">
+      <section className="min-h-[600px]" style={{ contain: 'layout' }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Todos os mercados</h2>
           <span className="text-sm text-muted-foreground tabular-nums">

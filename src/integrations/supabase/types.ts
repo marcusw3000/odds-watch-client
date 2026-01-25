@@ -2295,6 +2295,16 @@ export type Database = {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
       }
+      atomic_execute_multi_trade: {
+        Args: {
+          p_market_id: string
+          p_max_cost: number
+          p_option_id: string
+          p_shares: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       atomic_execute_sell: {
         Args: {
           p_contract_id: string
@@ -2328,6 +2338,14 @@ export type Database = {
       atomic_withdraw_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
+      }
+      calculate_multi_lmsr_cost: {
+        Args: { b: number; shares: number[] }
+        Returns: number
+      }
+      calculate_multi_lmsr_prices: {
+        Args: { b: number; shares: number[] }
+        Returns: number[]
       }
       check_and_grant_achievements: {
         Args: { p_user_id: string }

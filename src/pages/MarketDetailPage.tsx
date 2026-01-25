@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
 import { useDeepLink } from '@/hooks/useDeepLink';
 import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
+import { supabase } from '@/integrations/supabase/client';
 
 export function MarketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -668,9 +669,22 @@ export function MarketDetailPage() {
           userBalance={userBalance}
           onClose={() => setSelectedOption(null)}
           onConfirm={async (optionId, shares, maxCost) => {
-            // TODO: Implement multi-option purchase via edge function
-            console.log('Multi-option purchase:', { optionId, shares, maxCost });
-            throw new Error('Multi-option trading coming soon');
+            const { data, error } = await supabase.functions.invoke('execute-multi-trade', {
+              body: { marketId: event.id, optionId, shares, maxCost }
+            });
+            
+            if (error || !data?.success) {
+              throw new Error(data?.message || 'Erro ao executar compra');
+            }
+            
+            // Atualizar saldo local e refresh portfolio
+            setUserBalance(prev => prev - data.quote.cost);
+            triggerPortfolioRefresh();
+            
+            toast({
+              title: "Compra realizada!",
+              description: `Você comprou ${shares} contratos.`,
+            });
           }}
           onRefreshPrice={handleRefreshPrice}
         />

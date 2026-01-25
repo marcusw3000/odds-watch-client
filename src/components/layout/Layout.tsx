@@ -5,23 +5,41 @@ import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
+import { useCachedBalance } from '@/hooks/useCachedBalance';
 
 export function Layout() {
   const location = useLocation();
-  const [userBalance, setUserBalance] = useState(0);
-  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+  const { cachedBalance, updateCache } = useCachedBalance();
+  
+  // Usar valor cacheado como valor inicial (stale-while-revalidate)
+  const [userBalance, setUserBalance] = useState(cachedBalance ?? 0);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(cachedBalance === null);
 
   const fetchBalance = useCallback(async (showLoading = false) => {
-    if (showLoading) setIsBalanceLoading(true);
+    // Só mostrar loading se não temos cache
+    if (showLoading && cachedBalance === null) {
+      setIsBalanceLoading(true);
+    }
+    
     try {
       const portfolio = await MarketDataProvider.getUserPortfolio();
       setUserBalance(portfolio.balance);
+      updateCache(portfolio.balance); // Salvar no cache
     } catch (err) {
       console.error('Error fetching balance:', err);
+      // Em caso de erro, manter valor do cache se disponível
     } finally {
       setIsBalanceLoading(false);
     }
-  }, []);
+  }, [cachedBalance, updateCache]);
+
+  // Usar valor cacheado imediatamente quando disponível
+  useEffect(() => {
+    if (cachedBalance !== null) {
+      setUserBalance(cachedBalance);
+      setIsBalanceLoading(false);
+    }
+  }, [cachedBalance]);
 
   useEffect(() => {
     fetchBalance();

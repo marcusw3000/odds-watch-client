@@ -5,60 +5,41 @@ import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
-import { useCachedBalance } from '@/hooks/useCachedBalance';
 
 export function Layout() {
   const location = useLocation();
-  const { cachedBalance, updateCache } = useCachedBalance();
-  
-  // Usar valor cacheado como valor inicial (stale-while-revalidate)
-  const [userBalance, setUserBalance] = useState(cachedBalance ?? 0);
-  const [isBalanceLoading, setIsBalanceLoading] = useState(cachedBalance === null);
+  const [userBalance, setUserBalance] = useState(0);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(true);
 
-  const fetchBalance = useCallback(async (showLoading = false) => {
-    // Só mostrar loading se não temos cache
-    if (showLoading && cachedBalance === null) {
+  const fetchBalance = useCallback(async (showLoading = true) => {
+    if (showLoading) {
       setIsBalanceLoading(true);
     }
     
     try {
       const portfolio = await MarketDataProvider.getUserPortfolio();
       setUserBalance(portfolio.balance);
-      updateCache(portfolio.balance); // Salvar no cache
     } catch (err) {
       console.error('Error fetching balance:', err);
-      // Em caso de erro, manter valor do cache se disponível
     } finally {
       setIsBalanceLoading(false);
     }
-  }, [cachedBalance, updateCache]);
-
-  // Usar valor cacheado imediatamente quando disponível
-  useEffect(() => {
-    if (cachedBalance !== null) {
-      setUserBalance(cachedBalance);
-      setIsBalanceLoading(false);
-    }
-  }, [cachedBalance]);
+  }, []);
 
   useEffect(() => {
     fetchBalance();
-
-    // Atualiza balance periodicamente (15s é suficiente para boa UX)
     const interval = setInterval(() => fetchBalance(false), 15000);
     return () => clearInterval(interval);
   }, [fetchBalance]);
 
-  // Listen for portfolio refresh events (triggered after purchases, sales, etc.)
   const handlePortfolioRefresh = useCallback(() => {
-    fetchBalance(true); // Show loading indicator on manual refresh
+    fetchBalance(true);
   }, [fetchBalance]);
 
   usePortfolioRefreshListener(handlePortfolioRefresh);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Skip link para acessibilidade */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Layout } from "./components/layout/Layout";
 import { supabase } from "@/integrations/supabase/client";
+import { useWebVitals } from "@/hooks/useWebVitals";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -160,10 +161,17 @@ function OAuthCallbackHandler({ children }: { children: React.ReactNode }) {
 // Import connection status
 import { ConnectionStatus } from "@/components/ui/connection-status";
 
+// Component to initialize Web Vitals tracking
+function WebVitalsTracker() {
+  useWebVitals();
+  return null;
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <WebVitalsTracker />
         <Toaster />
         <Sonner />
         <ConnectionStatus />

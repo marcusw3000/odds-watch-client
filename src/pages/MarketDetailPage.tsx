@@ -691,15 +691,18 @@ export function MarketDetailPage() {
         </div>
       </div>
 
-      {/* Trading Modal - Binary */}
-      {selectedOutcome && event && event.marketType === 'BINARY' && (
+      {/* Trading Modal - Binary (also allows selling binary contracts in MULTIPLE markets) */}
+      {selectedOutcome && event && (event.marketType === 'BINARY' || tradingMode === 'sell') && (
         <TradingModal
           event={event}
           userBalance={userBalance}
-          userContracts={userContracts}
+          userContracts={userContracts.filter(c => c.position !== 'OPTION')}
           initialMode={tradingMode}
           initialOutcome={selectedOutcome}
-          onClose={() => setSelectedOutcome(null)}
+          onClose={() => {
+            setSelectedOutcome(null);
+            setTradingMode('buy');
+          }}
           onBuyConfirm={handleConfirmPurchase}
           onSellConfirm={handleConfirmSell}
           onRefreshPrice={handleRefreshPrice}

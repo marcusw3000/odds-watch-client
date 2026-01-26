@@ -108,8 +108,8 @@ Deno.serve(async (req) => {
     const { data: auditLogs } = await adminClient
       .from('admin_audit_logs')
       .select('*')
-      .eq('target_id', eventId)
-      .eq('target_type', 'market')
+      .eq('entity_id', eventId)
+      .eq('entity', 'markets')
       .order('created_at', { ascending: false })
       .limit(50);
 

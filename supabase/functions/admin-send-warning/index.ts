@@ -148,13 +148,14 @@ serve(async (req) => {
     const { error: auditError } = await supabaseAdmin
       .from("admin_audit_logs")
       .insert({
-        admin_user_id: actorUserId,
-        action_type: "WARNING_SENT",
-        target_user_id: user_id,
-        details: {
+        actor_user_id: actorUserId,
+        action: "WARNING_SENT",
+        entity: "notifications",
+        entity_id: notification.id,
+        after_data: {
           message: message.trim(),
           category,
-          notification_id: notification.id,
+          target_user_id: user_id,
           user_display_name: targetProfile.display_name,
         },
       });

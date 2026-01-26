@@ -233,11 +233,11 @@ Deno.serve(async (req) => {
 
     // Log audit entry
     await adminClient.from('admin_audit_logs').insert({
-      admin_id: userId,
+      actor_user_id: userId,
       action: 'market_created',
-      target_type: 'market',
-      target_id: newEvent.id,
-      details: {
+      entity: 'markets',
+      entity_id: newEvent.id,
+      after_data: {
         market_title: title,
         category,
         market_type: marketType,

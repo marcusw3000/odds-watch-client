@@ -177,6 +177,40 @@ export function getSellQuote(
 }
 
 /**
+ * Calculate maximum shares buyable for a given budget using binary search
+ * This accounts for the increasing price curve of LMSR
+ */
+export function getSharesForCost(
+  state: LMSRState,
+  outcome: 'YES' | 'NO',
+  maxCost: number,
+  tolerance: number = 0.01
+): number {
+  if (maxCost <= 0) return 0;
+  
+  // Binary search for the number of shares
+  let low = 0;
+  let high = Math.ceil(maxCost * 10); // Upper bound estimate
+  let bestShares = 0;
+  
+  while (high - low > 0.5) {
+    const mid = Math.floor((low + high) / 2);
+    if (mid <= 0) break;
+    
+    const cost = getCostToBuy(state, outcome, mid);
+    
+    if (cost <= maxCost + tolerance) {
+      bestShares = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  
+  return Math.max(0, bestShares);
+}
+
+/**
  * Initialize LMSR state with target initial prices
  * @param initialYesProb Target initial YES probability (0-100)
  * @param liquidity Liquidity parameter (higher = more stable)

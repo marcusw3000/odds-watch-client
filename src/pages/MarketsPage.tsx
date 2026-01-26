@@ -27,11 +27,11 @@ import { cn } from '@/lib/utils';
 
 interface LayoutContext {
   userBalance: number;
-  setUserBalance: (balance: number) => void;
+  setUserBalance: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export function MarketsPage() {
-  const { userBalance } = useOutletContext<LayoutContext>();
+  const { userBalance, setUserBalance } = useOutletContext<LayoutContext>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,9 +181,13 @@ export function MarketsPage() {
     );
 
     if (result.success) {
+      // Atualização otimista do saldo - imediata!
+      const actualCost = result.quote?.cost || maxCost;
+      setUserBalance(prev => prev - actualCost);
+      
       toast({
         title: 'Compra realizada!',
-        description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
+        description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${actualCost.toFixed(2)}.`,
       });
       handleCloseModal();
       // Trigger market and portfolio refresh for other open tabs/components
@@ -201,9 +205,13 @@ export function MarketsPage() {
     const result = await MarketDataProvider.sellContract(contractId, minValue);
 
     if (result.success) {
+      // Atualização otimista do saldo - adiciona valor da venda
+      const saleValue = result.saleValue || 0;
+      setUserBalance(prev => prev + saleValue);
+      
       toast({
         title: 'Venda realizada!',
-        description: `Você vendeu seus contratos por R$${result.saleValue?.toFixed(2)}.`,
+        description: `Você vendeu seus contratos por R$${saleValue.toFixed(2)}.`,
       });
       handleCloseModal();
       window.dispatchEvent(new Event('market-update'));

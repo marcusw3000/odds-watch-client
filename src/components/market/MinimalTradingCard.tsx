@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
-import { getQuote as getLMSRQuote, getSellQuote as getLMSRSellQuote, TradeQuote } from '@/services/LMSRCalculator';
+import { getQuote as getLMSRQuote, getSellQuote as getLMSRSellQuote, getSharesForCost, TradeQuote } from '@/services/LMSRCalculator';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -115,14 +115,17 @@ export function MinimalTradingCard({
   const noPrice = Math.round(event.outcomes.NO.price);
   const currentPrice = activeOutcome === 'YES' ? yesPrice : noPrice;
 
-  // Calculate shares from amount
+  // Calculate shares from amount - using LMSR for accurate calculation
   const amountNum = parseFloat(amount) || 0;
   const sharesFromAmount = useMemo(() => {
-    if (mode === 'buy') {
-      return amountNum > 0 ? Math.floor(amountNum / (currentPrice / 100)) : 0;
+    if (mode === 'sell') {
+      return amountNum; // For sell, amount IS contracts
     }
-    return amountNum; // For sell, amount IS contracts
-  }, [amountNum, currentPrice, mode]);
+    
+    // For buy, use LMSR to find how many shares we can afford
+    if (amountNum <= 0 || !event.lmsr) return 0;
+    return getSharesForCost(event.lmsr, activeOutcome, amountNum);
+  }, [amountNum, mode, event.lmsr, activeOutcome]);
 
   // Potential win (R$1 per winning contract)
   const potentialWin = useMemo(() => {

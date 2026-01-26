@@ -20,12 +20,14 @@ interface CardStyleSimpleProps {
   event: MarketEvent;
   onBuy: (eventId: string, outcome: 'YES' | 'NO') => void;
   onViewDetails?: (eventId: string) => void;
+  onMouseEnter?: () => void;
 }
 
 export const CardStyleSimple = memo(function CardStyleSimple({
   event,
   onBuy,
   onViewDetails,
+  onMouseEnter,
 }: CardStyleSimpleProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
@@ -49,7 +51,10 @@ export const CardStyleSimple = memo(function CardStyleSimple({
   return (
     <div 
       className={cn(gridClasses.container, "group")}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        onMouseEnter?.();
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Status indicator border */}

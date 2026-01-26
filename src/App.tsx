@@ -71,7 +71,16 @@ const AdminLoadingFallback = () => (
   </div>
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30s before considering stale
+      gcTime: 5 * 60 * 1000, // 5min in cache (formerly cacheTime)
+      refetchOnWindowFocus: false, // Don't refetch on tab focus
+      retry: 1, // Only retry once on failure
+    },
+  },
+});
 
 // Component to handle OAuth callback tokens (supports both PKCE and implicit flows)
 function OAuthCallbackHandler({ children }: { children: React.ReactNode }) {

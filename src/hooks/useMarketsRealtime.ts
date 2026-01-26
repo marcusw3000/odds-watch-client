@@ -1,9 +1,21 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MarketEvent, DbMarket, MarketStatus, SettlementType, SettlementConfig } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { getPriceYes, getPriceNo, LMSRState } from '@/services/LMSRCalculator';
 import { useToast } from '@/hooks/use-toast';
+
+// Throttle helper to limit update frequency
+function throttle<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+  let lastCall = 0;
+  return ((...args: unknown[]) => {
+    const now = Date.now();
+    if (now - lastCall >= delay) {
+      lastCall = now;
+      fn(...args);
+    }
+  }) as T;
+}
 
 // Transform DB payload to frontend MarketEvent
 function transformPayloadToEvent(payload: Record<string, unknown>): MarketEvent {
@@ -81,6 +93,23 @@ export function useMarketsRealtime() {
     // Initial load
     fetchEvents();
 
+    // Throttled update handler (max 1 update per second per market)
+    const pendingUpdates = new Map<string, Record<string, unknown>>();
+    
+    const processUpdates = throttle(() => {
+      if (pendingUpdates.size === 0) return;
+      
+      const updates = new Map(pendingUpdates);
+      pendingUpdates.clear();
+      
+      setEvents((prev) =>
+        prev.map((e) => {
+          const update = updates.get(e.id);
+          return update ? transformPayloadToEvent(update) : e;
+        })
+      );
+    }, 1000);
+
     // Subscribe to realtime changes on markets table
     const channel = supabase
       .channel('markets-realtime')
@@ -92,11 +121,10 @@ export function useMarketsRealtime() {
           table: 'markets',
         },
         (payload) => {
-          // Update only the market that changed
-          const updatedEvent = transformPayloadToEvent(payload.new as Record<string, unknown>);
-          setEvents((prev) =>
-            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
-          );
+          // Queue update and process throttled
+          const newData = payload.new as Record<string, unknown>;
+          pendingUpdates.set(newData.id as string, newData);
+          processUpdates();
         }
       )
       .on(

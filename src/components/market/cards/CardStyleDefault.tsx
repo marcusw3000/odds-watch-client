@@ -15,12 +15,14 @@ interface CardStyleDefaultProps {
   event: MarketEvent;
   onBuy: (eventId: string, outcome: 'YES' | 'NO') => void;
   onViewDetails?: (eventId: string) => void;
+  onMouseEnter?: () => void;
 }
 
 export const CardStyleDefault = memo(function CardStyleDefault({
   event,
   onBuy,
   onViewDetails,
+  onMouseEnter,
 }: CardStyleDefaultProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
@@ -43,7 +45,10 @@ export const CardStyleDefault = memo(function CardStyleDefault({
   return (
     <div 
       className={cn(gridClasses.container, "group")}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        onMouseEnter?.();
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Status indicator border */}

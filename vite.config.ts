@@ -18,4 +18,30 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ["react", "react-dom", "@tanstack/react-query"],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-charts': ['recharts'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+          ],
+        },
+      },
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 500,
+    // Enable minification
+    minify: 'esbuild',
+    // Target modern browsers for smaller bundle
+    target: 'es2020',
+  },
 }));

@@ -5,6 +5,15 @@ import { MarketStatus } from './market';
 // Re-export MarketStatus for backwards compatibility
 export type EventStatus = MarketStatus;
 
+// Liquidity Configuration
+export type LiquidityLevel = 'low' | 'medium' | 'high';
+
+export const LIQUIDITY_CONFIG = {
+  low: { b: 100, label: 'Baixa', description: 'Preços sensíveis, ideal para nichos', impact: '±15-20%' },
+  medium: { b: 300, label: 'Média', description: 'Equilíbrio entre sensibilidade e estabilidade', impact: '±5-8%' },
+  high: { b: 500, label: 'Alta', description: 'Preços estáveis, ideal para alto volume', impact: '±3-5%' },
+} as const;
+
 // Resolution Source Types
 export type ResolutionSourceType = 'API' | 'DATASET' | 'MANUAL';
 

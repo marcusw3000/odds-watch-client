@@ -13,7 +13,10 @@ import {
   ExternalLink,
   Loader2,
   X,
-  Star
+  Star,
+  Droplets,
+  Droplet,
+  Waves
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +54,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { ExportMenu } from '@/components/admin/ExportMenu';
 import { 
@@ -63,7 +67,7 @@ import {
 } from '@/hooks/useAdminEvents';
 import { usePagination } from '@/hooks/usePagination';
 import { useFavoriteEvents } from '@/hooks/useFavoriteEvents';
-import { EVENT_CATEGORIES } from '@/types/admin';
+import { EVENT_CATEGORIES, LIQUIDITY_CONFIG } from '@/types/admin';
 import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/types/market';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -269,6 +273,35 @@ export function AdminEventsPage() {
     );
   };
 
+  const getLiquidityBadge = (lmsrB: number) => {
+    let level: 'low' | 'medium' | 'high' = 'medium';
+    let Icon = Droplets;
+    
+    if (lmsrB <= 100) {
+      level = 'low';
+      Icon = Droplet;
+    } else if (lmsrB >= 500) {
+      level = 'high';
+      Icon = Waves;
+    }
+    
+    const config = LIQUIDITY_CONFIG[level];
+    
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-muted-foreground hover:text-foreground transition-colors cursor-help">
+            <Icon className="h-3 w-3" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Liquidez {config.label} (b={lmsrB})</p>
+          <p className="text-xs text-muted-foreground">{config.impact} por R$100</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   // Calculate pagination values based on total count
   const totalPages = Math.ceil(totalCount / pagination.pageSize);
   const startItem = totalCount === 0 ? 0 : pagination.offset + 1;
@@ -433,9 +466,14 @@ export function AdminEventsPage() {
                     {getStatusBadge(event.status)}
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm font-mono">
-                      {Math.round(event.current_yes_price * 100)}% / {Math.round(event.current_no_price * 100)}%
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-mono">
+                        {Math.round(event.current_yes_price * 100)}% / {Math.round(event.current_no_price * 100)}%
+                      </span>
+                      <TooltipProvider>
+                        {getLiquidityBadge(event.lmsr_b || 100)}
+                      </TooltipProvider>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm">

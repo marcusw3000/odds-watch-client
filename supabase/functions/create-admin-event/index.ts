@@ -90,9 +90,10 @@ Deno.serve(async (req) => {
       marketType = 'BINARY',
       recurrenceType,
       options,
+      liquidity = 'medium',
     } = body;
 
-    logStep(functionName, 'Creating event', { title, category, marketType });
+    logStep(functionName, 'Creating event', { title, category, marketType, liquidity });
 
     // Validate required fields
     if (!title || !description || !category || !closeDate || !settlementDate) {
@@ -129,8 +130,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Default liquidity parameter
-    const lmsrB = 100;
+    // Configurable liquidity parameter (Kalshi/Polymarket style)
+    const liquidityMap: Record<string, number> = { low: 100, medium: 300, high: 500 };
+    const lmsrB = liquidityMap[liquidity] || 300;
+
+    logStep(functionName, 'Liquidity configured', { level: liquidity, lmsr_b: lmsrB });
 
     // For BINARY markets
     let initialYesPrice = 0.5;
@@ -243,6 +247,8 @@ Deno.serve(async (req) => {
         market_type: marketType,
         options_count: marketType === 'MULTIPLE' ? options?.length : 2,
         initial_yes_price: marketType === 'BINARY' ? initialYesPrice : null,
+        liquidity_level: liquidity,
+        lmsr_b: lmsrB,
         admin_name: adminName,
       },
     });

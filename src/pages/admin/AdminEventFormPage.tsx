@@ -25,11 +25,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminEvent, useCreateEvent, useUpdateEvent, AdminEvent } from '@/hooks/useAdminEvents';
 import { 
   EVENT_CATEGORIES, 
-  ResolutionSourceType 
+  ResolutionSourceType,
+  LiquidityLevel,
+  LIQUIDITY_CONFIG
 } from '@/types/admin';
 import { ImageEditor } from '@/components/admin/ImageEditor';
 import { TagsInput } from '@/components/admin/TagsInput';
 import { CardStyleSelector } from '@/components/admin/CardStyleSelector';
+import { LiquiditySelector } from '@/components/admin/LiquiditySelector';
 import { MultiOptionEditor, MarketOption } from '@/components/admin/MultiOptionEditor';
 import { CardStyleType } from '@/types/cardStyles';
 import { MarketType } from '@/types/marketOption';
@@ -86,6 +89,9 @@ export function AdminEventFormPage() {
 
   // Recurrence type
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
+
+  // Liquidity level (new markets only)
+  const [liquidityLevel, setLiquidityLevel] = useState<LiquidityLevel>('medium');
 
   // Tags state
   const [tags, setTags] = useState<string[]>([]);
@@ -248,6 +254,7 @@ export function AdminEventFormPage() {
           cardStyle,
           marketType,
           recurrenceType: recurrenceType !== 'none' ? recurrenceType : undefined,
+          liquidity: liquidityLevel,
           options: marketType === 'MULTIPLE' ? options.map(o => ({
             label: o.label,
             description: o.description,
@@ -641,7 +648,16 @@ export function AdminEventFormPage() {
           </CardContent>
         </Card>
 
-        {/* Block D - Card Appearance */}
+        {/* Block D - Liquidity (new markets only) */}
+        {!isEditing && (
+          <LiquiditySelector
+            value={liquidityLevel}
+            onChange={setLiquidityLevel}
+            initialPrice={oddsYes}
+          />
+        )}
+
+        {/* Block E - Card Appearance */}
         <CardStyleSelector
           value={cardStyle}
           onChange={setCardStyle}

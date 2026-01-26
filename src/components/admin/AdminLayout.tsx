@@ -22,12 +22,16 @@ import {
   Lightbulb,
   Headphones,
   Copy,
-  Settings
+  Settings,
+  Server,
+  Command
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { AdminNotificationBell } from './AdminNotificationBell';
+import { ThemeToggle } from './ThemeToggle';
+import { AdminCommandPalette, useCommandPalette } from './AdminCommandPalette';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -47,11 +51,11 @@ const navItems = [
   { path: '/admin/reports', label: 'Denúncias', icon: Flag },
   { path: '/admin/support', label: 'Suporte', icon: Headphones },
   { section: 'Sistema' },
+  { path: '/admin/system', label: 'Monitoramento', icon: Server },
   { path: '/admin/audit-logs', label: 'Logs de Auditoria', icon: ClipboardList },
   { path: '/admin/users', label: 'Usuários', icon: Users },
   { path: '/admin/market-events', label: 'Eventos de Mercado', icon: Activity },
   { path: '/admin/referrals', label: 'Indicações', icon: Gift },
-  
 ];
 
 export function AdminLayout() {
@@ -59,6 +63,7 @@ export function AdminLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, isAdmin, loading, signOut } = useAuth();
+  const { open: commandPaletteOpen, setOpen: setCommandPaletteOpen } = useCommandPalette();
 
   useEffect(() => {
     // Wait for loading to complete
@@ -99,6 +104,9 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
+      {/* Command Palette */}
+      <AdminCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+      
       {/* Sidebar */}
       <aside
         className={cn(
@@ -114,6 +122,7 @@ export function AdminLayout() {
             </span>
           )}
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <AdminNotificationBell />
             <Button
               variant="ghost"
@@ -167,12 +176,23 @@ export function AdminLayout() {
         {/* Footer */}
         <div className="p-3 border-t border-border">
           {sidebarOpen && (
-            <div className="px-3 py-2 mb-2">
-              <p className="text-xs text-muted-foreground">Logado como</p>
-              <p className="text-sm font-medium truncate font-mono">
-                {user.email ? `${user.email.charAt(0)}***@${user.email.split('@')[1]?.substring(0, 3)}***` : 'Admin'}
-              </p>
-            </div>
+            <>
+              <div className="px-3 py-2 mb-2">
+                <p className="text-xs text-muted-foreground">Logado como</p>
+                <p className="text-sm font-medium truncate font-mono">
+                  {user.email ? `${user.email.charAt(0)}***@${user.email.split('@')[1]?.substring(0, 3)}***` : 'Admin'}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 text-xs text-muted-foreground mb-2"
+                onClick={() => setCommandPaletteOpen(true)}
+              >
+                <Command className="h-3 w-3" />
+                <span>Cmd+K</span>
+              </Button>
+            </>
           )}
           <Button
             variant="ghost"

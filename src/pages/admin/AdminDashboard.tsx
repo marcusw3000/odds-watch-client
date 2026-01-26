@@ -11,7 +11,8 @@ import {
   Loader2,
   DollarSign,
   Users,
-  Wallet
+  Wallet,
+  BarChart3
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,52 +25,51 @@ import {
 } from '@/hooks/useAdminEvents';
 import { useAdminDashboardMetrics } from '@/hooks/useAdminDashboardMetrics';
 import { DataIntegrityCard } from '@/components/admin/DataIntegrityCard';
+import { MetricCard } from '@/components/admin/MetricCard';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-function formatCurrency(value: number) {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export function AdminDashboard() {
   const { data: metrics, isLoading: metricsLoading } = useAdminMetrics();
   const { data: dashboardMetrics, isLoading: dashboardMetricsLoading } = useAdminDashboardMetrics();
   const { data: expiringEvents = [], isLoading: expiringLoading } = useExpiringEvents(7);
   const { data: recentEvents = [], isLoading: recentLoading } = useRecentEvents(5);
-  const metricCards = [
+  
+  const eventMetricCards = [
     { 
       label: 'Total de Eventos', 
       value: metrics?.totalEvents ?? 0, 
       icon: Calendar,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      iconColor: 'text-primary',
+      iconBgColor: 'bg-primary/10',
     },
     { 
       label: 'Eventos Abertos', 
       value: metrics?.openEvents ?? 0, 
       icon: Play,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
+      iconColor: 'text-emerald-600',
+      iconBgColor: 'bg-emerald-500/10',
     },
     { 
       label: 'Eventos Pausados', 
       value: metrics?.pausedEvents ?? 0, 
       icon: Pause,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
+      iconColor: 'text-amber-600',
+      iconBgColor: 'bg-amber-500/10',
     },
     { 
       label: 'Aguardando Liquidação', 
       value: metrics?.awaitingSettlement ?? 0, 
       icon: Scale,
-      color: 'text-accent-foreground',
-      bgColor: 'bg-accent',
+      iconColor: 'text-blue-600',
+      iconBgColor: 'bg-blue-500/10',
     },
     { 
       label: 'Eventos Liquidados', 
       value: metrics?.settledEvents ?? 0, 
       icon: CheckCircle2,
-      color: 'text-muted-foreground',
-      bgColor: 'bg-muted',
+      iconColor: 'text-muted-foreground',
+      iconBgColor: 'bg-muted',
     },
   ];
 
@@ -95,113 +95,93 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      {/* Metrics Cards */}
+      {/* Data Integrity - Top */}
+      <DataIntegrityCard />
+
+      {/* Event Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {metricCards.map((card) => (
-          <Card key={card.label}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${card.bgColor}`}>
-                  <card.icon className={`h-5 w-5 ${card.color}`} />
-                </div>
-                <div>
-                  {metricsLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <p className="text-2xl font-bold">{card.value}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">{card.label}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {eventMetricCards.map((card) => (
+          <MetricCard
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            icon={card.icon}
+            iconColor={card.iconColor}
+            iconBgColor={card.iconBgColor}
+            loading={metricsLoading}
+          />
         ))}
       </div>
 
-      {/* Financial Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-emerald-500/10">
-                <DollarSign className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                {dashboardMetricsLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <p className="text-xl font-bold font-mono">R$ {formatCurrency(dashboardMetrics?.totalVolume ?? 0)}</p>
-                )}
-                <p className="text-xs text-muted-foreground">Volume Total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Financial Metrics with Comparatives */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <MetricCard
+          label="Volume Total"
+          value={dashboardMetrics?.totalVolume ?? 0}
+          previousValue={dashboardMetrics?.totalVolumePrev}
+          changePercent={dashboardMetrics?.totalVolumeChange}
+          icon={DollarSign}
+          iconColor="text-emerald-600"
+          iconBgColor="bg-emerald-500/10"
+          loading={dashboardMetricsLoading}
+          format="currency"
+          tooltipPrevLabel="Período anterior"
+        />
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-amber-500/10">
-                <TrendingUp className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                {dashboardMetricsLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <p className="text-xl font-bold font-mono">R$ {formatCurrency(dashboardMetrics?.pendingRevenue ?? 0)}</p>
-                )}
-                <p className="text-xs text-muted-foreground">Receita Pendente</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          label="Receita Pendente"
+          value={dashboardMetrics?.pendingRevenue ?? 0}
+          icon={TrendingUp}
+          iconColor="text-amber-600"
+          iconBgColor="bg-amber-500/10"
+          loading={dashboardMetricsLoading}
+          format="currency"
+        />
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-blue-500/10">
-                <Users className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                {dashboardMetricsLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <p className="text-xl font-bold">{dashboardMetrics?.activeUsers7d ?? 0}</p>
-                )}
-                <p className="text-xs text-muted-foreground">Usuários Ativos (7d)</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          label="Usuários Ativos (7d)"
+          value={dashboardMetrics?.activeUsers7d ?? 0}
+          previousValue={dashboardMetrics?.activeUsers7dPrev}
+          changePercent={dashboardMetrics?.activeUsers7dChange}
+          icon={Users}
+          iconColor="text-blue-600"
+          iconBgColor="bg-blue-500/10"
+          loading={dashboardMetricsLoading}
+          tooltipPrevLabel="7 dias anteriores"
+        />
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-violet-500/10">
-                <Wallet className="h-5 w-5 text-violet-500" />
-              </div>
-              <div>
-                {dashboardMetricsLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <p className="text-xl font-bold font-mono">R$ {formatCurrency(dashboardMetrics?.depositsToday ?? 0)}</p>
-                )}
-                <p className="text-xs text-muted-foreground">Depósitos Hoje</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          label="Depósitos Hoje"
+          value={dashboardMetrics?.depositsToday ?? 0}
+          previousValue={dashboardMetrics?.depositsTodayPrev}
+          changePercent={dashboardMetrics?.depositsTodayChange}
+          icon={Wallet}
+          iconColor="text-violet-600"
+          iconBgColor="bg-violet-500/10"
+          loading={dashboardMetricsLoading}
+          format="currency"
+          tooltipPrevLabel="Ontem"
+        />
+
+        <MetricCard
+          label="Trades Hoje"
+          value={dashboardMetrics?.tradesHoje ?? 0}
+          previousValue={dashboardMetrics?.tradesHojePrev}
+          changePercent={dashboardMetrics?.tradesHojeChange}
+          icon={BarChart3}
+          iconColor="text-pink-600"
+          iconBgColor="bg-pink-500/10"
+          loading={dashboardMetricsLoading}
+          tooltipPrevLabel="Ontem"
+        />
       </div>
-
-      {/* Data Integrity Check */}
-      <DataIntegrityCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expiring Soon */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-warning" />
+              <Clock className="h-5 w-5 text-amber-500" />
               Próximos da Expiração
             </CardTitle>
             <Link to="/admin/events">

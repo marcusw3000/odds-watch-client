@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -12,7 +12,8 @@ import {
   MoreHorizontal,
   ExternalLink,
   Loader2,
-  X
+  X,
+  Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { TablePagination } from '@/components/ui/table-pagination';
+import { ExportMenu } from '@/components/admin/ExportMenu';
 import { 
   useAdminEvents, 
   useUpdateEventStatus, 
@@ -60,12 +62,14 @@ import {
   AdminEvent 
 } from '@/hooks/useAdminEvents';
 import { usePagination } from '@/hooks/usePagination';
+import { useFavoriteEvents } from '@/hooks/useFavoriteEvents';
 import { EVENT_CATEGORIES } from '@/types/admin';
 import { MarketStatus, MARKET_STATUS_LABELS, MARKET_STATUS_VARIANTS } from '@/types/market';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
+import { cn } from '@/lib/utils';
 
 export function AdminEventsPage() {
   const navigate = useNavigate();
@@ -114,9 +118,41 @@ export function AdminEventsPage() {
   const deleteMutation = useDeleteEvent();
   const bulkUpdateMutation = useBulkUpdateStatus();
   const bulkDeleteMutation = useBulkDeleteEvents();
+  const { toggleFavorite, isFavorite, favoritesList } = useFavoriteEvents();
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
   const events = data?.events || [];
   const totalCount = data?.totalCount || 0;
+
+  // Sort events: favorites first
+  const sortedEvents = useMemo(() => {
+    if (!events.length) return events;
+    
+    let filtered = showOnlyFavorites 
+      ? events.filter(e => isFavorite(e.id))
+      : events;
+    
+    return [...filtered].sort((a, b) => {
+      const aFav = isFavorite(a.id);
+      const bFav = isFavorite(b.id);
+      if (aFav && !bFav) return -1;
+      if (!aFav && bFav) return 1;
+      return 0;
+    });
+  }, [events, isFavorite, showOnlyFavorites]);
+
+  // Export data preparation
+  const exportData = useMemo(() => {
+    return sortedEvents.map(event => ({
+      Título: event.title,
+      Categoria: event.category,
+      Status: MARKET_STATUS_LABELS[event.status] || event.status,
+      'Odds SIM': `${Math.round(event.current_yes_price * 100)}%`,
+      'Odds NÃO': `${Math.round(event.current_no_price * 100)}%`,
+      Expiração: event.close_date ? format(new Date(event.close_date), "dd/MM/yyyy", { locale: ptBR }) : '-',
+      Atualizado: format(new Date(event.updated_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+    }));
+  }, [sortedEvents]);
 
   // Selection helpers
   const toggleSelect = (id: string) => {
@@ -248,12 +284,19 @@ export function AdminEventsPage() {
             Gerencie todos os eventos do mercado preditivo
           </p>
         </div>
-        <Link to="/admin/events/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Evento
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportMenu 
+            data={exportData} 
+            filename="eventos-admin" 
+            title="Relatório de Eventos"
+          />
+          <Link to="/admin/events/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Evento
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -294,6 +337,15 @@ export function AdminEventsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant={showOnlyFavorites ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+          className="gap-2"
+        >
+          <Star className={cn("h-4 w-4", showOnlyFavorites && "fill-current")} />
+          {favoritesList.length > 0 && <span>({favoritesList.length})</span>}
+        </Button>
       </div>
 
       {/* Error State */}
@@ -332,24 +384,39 @@ export function AdminEventsPage() {
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : events.length === 0 ? (
+            ) : sortedEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                  Nenhum evento encontrado
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  {showOnlyFavorites ? 'Nenhum favorito encontrado' : 'Nenhum evento encontrado'}
                 </TableCell>
               </TableRow>
             ) : (
-              events.map((event) => (
+              sortedEvents.map((event) => (
                 <TableRow 
                   key={event.id}
-                  className={selectedEvents.has(event.id) ? 'bg-muted/50' : ''}
+                  className={cn(
+                    selectedEvents.has(event.id) && 'bg-muted/50',
+                    isFavorite(event.id) && 'bg-amber-500/5'
+                  )}
                 >
                   <TableCell>
-                    <Checkbox
-                      checked={selectedEvents.has(event.id)}
-                      onCheckedChange={() => toggleSelect(event.id)}
-                      aria-label={`Selecionar ${event.title}`}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedEvents.has(event.id)}
+                        onCheckedChange={() => toggleSelect(event.id)}
+                        aria-label={`Selecionar ${event.title}`}
+                      />
+                      <button
+                        onClick={() => toggleFavorite(event.id)}
+                        className="p-1 hover:bg-muted rounded transition-colors"
+                        aria-label={isFavorite(event.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                      >
+                        <Star className={cn(
+                          "h-4 w-4",
+                          isFavorite(event.id) ? "fill-amber-500 text-amber-500" : "text-muted-foreground"
+                        )} />
+                      </button>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Link 

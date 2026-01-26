@@ -53,6 +53,7 @@ const AdminSuggestionsPage = lazy(() => import("./pages/admin/AdminSuggestionsPa
 const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
 const AdminCopyTradeSettingsPage = lazy(() => import("./pages/admin/AdminCopyTradeSettingsPage"));
 const AdminCopyTradersPage = lazy(() => import("./pages/admin/AdminCopyTradersPage"));
+const AdminSystemPage = lazy(() => import("./pages/admin/AdminSystemPage").then(m => ({ default: m.AdminSystemPage })));
 
 // Loading fallback for lazy-loaded components
 const PageLoadingFallback = () => (
@@ -232,6 +233,7 @@ const App = () => (
               <Route path="support" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSupportPage /></Suspense>} />
               <Route path="copy-trade-settings" element={<Suspense fallback={<AdminLoadingFallback />}><AdminCopyTradeSettingsPage /></Suspense>} />
               <Route path="copy-traders" element={<Suspense fallback={<AdminLoadingFallback />}><AdminCopyTradersPage /></Suspense>} />
+              <Route path="system" element={<Suspense fallback={<AdminLoadingFallback />}><AdminSystemPage /></Suspense>} />
             </Route>
             
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

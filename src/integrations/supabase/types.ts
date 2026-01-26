@@ -697,6 +697,48 @@ export type Database = {
         }
         Relationships: []
       }
+      event_templates: {
+        Row: {
+          card_style: string | null
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          recurrence_type: string | null
+          resolution: Json | null
+          tags: string[] | null
+          title_pattern: string
+        }
+        Insert: {
+          card_style?: string | null
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          recurrence_type?: string | null
+          resolution?: Json | null
+          tags?: string[] | null
+          title_pattern: string
+        }
+        Update: {
+          card_style?: string | null
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          recurrence_type?: string | null
+          resolution?: Json | null
+          tags?: string[] | null
+          title_pattern?: string
+        }
+        Relationships: []
+      }
       fee_policy_snapshots: {
         Row: {
           applied_flat: number | null

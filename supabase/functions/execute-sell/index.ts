@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     // Get contract to get shares count (if not provided) and validate ownership
     const { data: contract, error: contractError } = await supabaseAdmin
       .from("user_contracts")
-      .select("id, shares, position, market_id, markets!user_contracts_market_id_fkey(title)")
+      .select("id, shares, position, market_id, option_id, markets!user_contracts_market_id_fkey(title)")
       .eq("id", contractId)
       .eq("user_id", userId)
       .single();
@@ -137,18 +137,25 @@ Deno.serve(async (req) => {
 
     const sharesToSell = requestedShares || contract.shares;
 
+    const isMultiOption = contract.position === 'OPTION' && contract.option_id != null;
+    
     console.log('[EXECUTE-SELL] Request:', {
       userId,
       contractId,
       shares: sharesToSell,
       minValue: minValue || 0,
       position: contract.position,
+      isMultiOption,
+      optionId: contract.option_id,
     });
 
-    // Execute atomic sell using the database function
-    // This prevents race conditions by using row-level locks
+    // Execute atomic sell using the appropriate database function
+    // Multi-option markets use atomic_execute_multi_sell
+    // Binary markets use atomic_execute_sell
+    const rpcName = isMultiOption ? "atomic_execute_multi_sell" : "atomic_execute_sell";
+    
     const { data: result, error: sellError } = await supabaseAdmin.rpc(
-      "atomic_execute_sell",
+      rpcName,
       {
         p_user_id: userId,
         p_contract_id: contractId,
@@ -158,7 +165,7 @@ Deno.serve(async (req) => {
     );
 
     if (sellError) {
-      console.error("[EXECUTE-SELL] Atomic sell error:", sellError);
+      console.error(`[EXECUTE-SELL] ${rpcName} error:`, sellError);
       return new Response(
         JSON.stringify({ success: false, message: "Erro ao executar operação" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -150,12 +150,14 @@ serve(async (req) => {
     const { error: auditError } = await supabaseAdmin
       .from("admin_audit_logs")
       .insert({
-        admin_user_id: actorUserId,
-        action_type: action === "block" ? "USER_BLOCKED" : "USER_UNBLOCKED",
-        target_user_id: user_id,
-        details: {
+        actor_user_id: actorUserId,
+        action: action === "block" ? "USER_BLOCKED" : "USER_UNBLOCKED",
+        entity: "profiles",
+        entity_id: user_id,
+        before_data: { is_blocked: targetProfile.is_blocked },
+        after_data: {
+          is_blocked: action === "block",
           reason: reason || null,
-          previous_blocked: targetProfile.is_blocked,
           user_display_name: targetProfile.display_name,
         },
       });

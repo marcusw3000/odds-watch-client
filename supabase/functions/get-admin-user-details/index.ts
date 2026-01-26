@@ -152,8 +152,8 @@ serve(async (req) => {
     // Fetch admin audit logs for this user
     const { data: auditLogs } = await supabaseAdmin
       .from("admin_audit_logs")
-      .select("id, action_type, details, created_at, admin_user_id")
-      .eq("target_user_id", user_id)
+      .select("id, action, entity, entity_id, before_data, after_data, created_at, actor_user_id")
+      .eq("entity_id", user_id)
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -236,9 +236,12 @@ serve(async (req) => {
         referralStats: referralStatsComputed,
         auditLogs: (auditLogs || []).map((log: any) => ({
           id: log.id,
-          action_type: log.action_type,
-          details: log.details,
+          action: log.action,
+          entity: log.entity,
+          before_data: log.before_data,
+          after_data: log.after_data,
           created_at: log.created_at,
+          actor_user_id: log.actor_user_id,
         })),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

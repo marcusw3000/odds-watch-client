@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Lock, TrendingUp } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { MarketEvent, MarketOption } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -14,7 +14,7 @@ import {
 interface MultiOptionTradingPanelProps {
   event: MarketEvent;
   canTrade: boolean;
-  onBuyOption: (option: MarketOption) => void;
+  onBuyOption: (option: MarketOption, side: 'YES' | 'NO') => void;
 }
 
 export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
@@ -61,6 +61,8 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
         const isWinner = isSettled && winningOptionId === option.id;
         const colors = optionColors[index % optionColors.length];
         const potentialReturn = (100 / option.currentPrice).toFixed(2);
+        // NO price = 100% - YES price (since buying NO means buying all other options)
+        const noPrice = 100 - option.currentPrice;
         
         return (
           <div 
@@ -124,35 +126,64 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
                 </div>
               </div>
 
-              {/* Buy button or lock */}
-              <div className="shrink-0">
+              {/* Buy buttons (YES and NO) or lock */}
+              <div className="shrink-0 flex gap-1.5">
                 {canTrade ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          "h-10 px-4 font-bold",
-                          "hover:bg-primary/10 hover:text-primary hover:border-primary"
-                        )}
-                        onClick={() => onBuyOption(option)}
-                      >
-                        {option.currentPrice}¢
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <div className="text-center">
-                        <p className="font-medium">Comprar {option.label}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          R$1 → R${potentialReturn} se vencer
-                        </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-9 px-3 font-bold text-yes border-yes/30",
+                            "hover:bg-yes/10 hover:border-yes"
+                          )}
+                          onClick={() => onBuyOption(option, 'YES')}
+                        >
+                          SIM {option.currentPrice}¢
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <div className="text-center">
+                          <p className="font-medium">Comprar SIM em {option.label}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            R$1 → R${potentialReturn} se vencer
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-9 px-3 font-bold text-no border-no/30",
+                            "hover:bg-no/10 hover:border-no"
+                          )}
+                          onClick={() => onBuyOption(option, 'NO')}
+                        >
+                          NÃO {noPrice}¢
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <div className="text-center">
+                          <p className="font-medium">Comprar NÃO em {option.label}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Ganha se qualquer outra opção vencer
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
                 ) : (
-                  <div className="h-10 w-14 rounded-md border border-border bg-muted/50 flex items-center justify-center">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
+                  <div className="h-9 w-20 rounded-md border border-border bg-muted/50 flex items-center justify-center">
+                    {isWinner ? (
+                      <span className="text-yes text-sm font-bold">✓</span>
+                    ) : (
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                    )}
                   </div>
                 )}
               </div>
@@ -165,10 +196,10 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
       <div className="p-4 rounded-lg bg-secondary text-sm space-y-2 mt-4">
         <p className="font-medium">Como funciona?</p>
         <ul className="space-y-1 text-muted-foreground text-xs">
-          <li>• Escolha a opção que você acredita que vai vencer</li>
+          <li>• <strong className="text-yes">SIM</strong>: Aposta que essa opção vai vencer</li>
+          <li>• <strong className="text-no">NÃO</strong>: Aposta que essa opção <em>não</em> vai vencer (qualquer outra ganha)</li>
           <li>• Contrato da opção vencedora paga <span className="font-semibold text-foreground">R${event.contractUnitCost.toFixed(2)}</span></li>
-          <li>• Contratos das outras opções pagam R$0,00</li>
-          <li>• Os preços somam 100% (menos taxas)</li>
+          <li>• Os preços SIM somam 100% (menos taxas)</li>
         </ul>
       </div>
     </div>

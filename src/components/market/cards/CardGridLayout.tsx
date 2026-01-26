@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils';
+import { MarketOption } from '@/types/market';
+import { Trophy } from 'lucide-react';
 
 // Grid structure constants for market cards
 export const CARD_GRID = {
@@ -62,6 +64,50 @@ export function OptionRow({ label, price, isWinner, variant }: OptionRowProps) {
       )}>
         {price}%
       </span>
+    </div>
+  );
+}
+
+// Leader option row for multi-option markets on homepage
+interface LeaderOptionRowProps {
+  option: MarketOption;
+  totalOptions: number;
+  isSettled?: boolean;
+  isWinner?: boolean;
+}
+
+export function LeaderOptionRow({ option, totalOptions, isSettled, isWinner }: LeaderOptionRowProps) {
+  const othersCount = totalOptions - 1;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Trophy className={cn(
+            "h-3.5 w-3.5 flex-shrink-0",
+            isWinner ? "text-yes" : "text-amber-500"
+          )} />
+          <span className={cn(
+            "text-xs font-medium truncate",
+            isWinner && "text-yes"
+          )}>
+            {option.label}
+          </span>
+          {isWinner && (
+            <span className="text-yes text-[10px]">✓</span>
+          )}
+        </div>
+        <span className={cn(
+          "text-sm font-bold tabular-nums",
+          isWinner ? "text-yes" : "text-primary"
+        )}>
+          {option.currentPrice}%
+        </span>
+      </div>
+      {othersCount > 0 && !isSettled && (
+        <span className="text-[10px] text-muted-foreground">
+          +{othersCount} {othersCount === 1 ? 'outra opção' : 'outras opções'}
+        </span>
+      )}
     </div>
   );
 }

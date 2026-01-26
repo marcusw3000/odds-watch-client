@@ -61,6 +61,7 @@ export function MarketDetailPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
   const [selectedOption, setSelectedOption] = useState<MarketOption | null>(null);
+  const [optionSide, setOptionSide] = useState<'YES' | 'NO'>('YES');
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const [tradingMode, setTradingMode] = useState<'buy' | 'sell'>('buy');
   const [showMultiSellModal, setShowMultiSellModal] = useState(false);
@@ -516,12 +517,13 @@ export function MarketDetailPage() {
                     <MultiOptionTradingPanel
                       event={event}
                       canTrade={statusInfo.canTrade}
-                      onBuyOption={(option) => {
+                      onBuyOption={(option, side) => {
                         if (!user) {
                           navigate('/auth', { state: { returnTo: `/market/${id}` } });
                           return;
                         }
                         setSelectedOption(option);
+                        setOptionSide(side);
                       }}
                     />
                   ) : (
@@ -714,9 +716,24 @@ export function MarketDetailPage() {
         <MultiOptionPurchaseModal
           event={event}
           selectedOption={selectedOption}
+          side={optionSide}
           userBalance={userBalance}
-          onClose={() => setSelectedOption(null)}
-          onConfirm={async (optionId, shares, maxCost) => {
+          onClose={() => {
+            setSelectedOption(null);
+            setOptionSide('YES');
+          }}
+          onConfirm={async (optionId, shares, maxCost, side) => {
+            // For now, only YES side is fully implemented
+            // NO side (buying all other options) will be implemented in a future update
+            if (side === 'NO') {
+              toast({
+                title: "Em breve",
+                description: "Comprar NÃO em múltiplas opções estará disponível em breve.",
+                variant: "default",
+              });
+              return;
+            }
+            
             const { data, error } = await supabase.functions.invoke('execute-multi-trade', {
               body: { marketId: event.id, optionId, shares, maxCost }
             });

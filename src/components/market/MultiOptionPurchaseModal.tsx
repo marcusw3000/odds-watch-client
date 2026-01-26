@@ -34,9 +34,10 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 interface MultiOptionPurchaseModalProps {
   event: MarketEvent;
   selectedOption: MarketOption;
+  side: 'YES' | 'NO';
   userBalance: number;
   onClose: () => void;
-  onConfirm: (optionId: string, shares: number, maxCost: number) => Promise<void>;
+  onConfirm: (optionId: string, shares: number, maxCost: number, side: 'YES' | 'NO') => Promise<void>;
   onRefreshPrice: () => Promise<MarketEvent | null>;
 }
 
@@ -58,6 +59,7 @@ const PRICE_VALIDITY_SECONDS = 15;
 export function MultiOptionPurchaseModal({
   event,
   selectedOption,
+  side,
   userBalance,
   onClose,
   onConfirm,
@@ -78,8 +80,14 @@ export function MultiOptionPurchaseModal({
 
   const sharesNum = parseFloat(shares) || 0;
   const debouncedShares = useDebouncedValue(sharesNum, 300);
-  const currentPrice = selectedOption.currentPrice;
+  const currentPrice = side === 'YES' ? selectedOption.currentPrice : (100 - selectedOption.currentPrice);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Other options for NO side (buying all others)
+  const otherOptions = useMemo(() => 
+    (event.options || []).filter(opt => opt.id !== selectedOption.id),
+    [event.options, selectedOption.id]
+  );
 
   // Calculate quote using LMSR multi-option formula (client-side calculation)
   // This matches the backend atomic_execute_multi_trade function
@@ -221,7 +229,7 @@ export function MultiOptionPurchaseModal({
       const potentialProfit = sharesNum - totalCost;
       const maxCostWithSlippage = quote.cost * (1 + slippageTolerance);
 
-      await onConfirm(selectedOption.id, sharesNum, maxCostWithSlippage);
+      await onConfirm(selectedOption.id, sharesNum, maxCostWithSlippage, side);
       
       setSuccessData({
         shares: sharesNum,
@@ -245,10 +253,10 @@ export function MultiOptionPurchaseModal({
 
   const quickShares = [10, 25, 50, 100];
 
-  // All other options for context
-  const otherOptions = useMemo(() => 
-    (event.options || []).filter(opt => opt.id !== selectedOption.id).slice(0, 3),
-    [event.options, selectedOption.id]
+  // For context display (show first 3 other options)
+  const displayOtherOptions = useMemo(() => 
+    otherOptions.slice(0, 3),
+    [otherOptions]
   );
 
   if (successData) {
@@ -289,15 +297,21 @@ export function MultiOptionPurchaseModal({
                   {selectedOption.label.charAt(0)}
                 </div>
               )}
-              <span className="px-3 py-1.5 rounded-lg font-bold text-lg bg-primary/20 text-primary">
-                {selectedOption.label}
-              </span>
+              <div className="flex flex-col">
+                <span className={cn(
+                  "px-3 py-1.5 rounded-lg font-bold text-lg",
+                  side === 'YES' ? "bg-yes/20 text-yes" : "bg-no/20 text-no"
+                )}>
+                  {side === 'YES' ? 'SIM' : 'NÃO'} {selectedOption.label}
+                </span>
+              </div>
             </div>
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground mb-1">Preço atual</p>
             <span className={cn(
-              "text-2xl font-bold text-primary",
+              "text-2xl font-bold",
+              side === 'YES' ? "text-yes" : "text-no",
               isRefreshing && "animate-pulse"
             )}>
               {currentPrice}¢
@@ -305,18 +319,18 @@ export function MultiOptionPurchaseModal({
           </div>
         </div>
 
-        {/* Other options context */}
-        {otherOptions.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Outras opções:</p>
+        {/* Other options context - only for NO side */}
+        {side === 'NO' && displayOtherOptions.length > 0 && (
+          <div className="space-y-2 p-3 rounded-lg bg-yes/5 border border-yes/20">
+            <p className="text-xs text-muted-foreground">Você ganha se qualquer uma vencer:</p>
             <div className="flex gap-2 flex-wrap">
-              {otherOptions.map(opt => (
+              {displayOtherOptions.map(opt => (
                 <div 
                   key={opt.id}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 text-xs"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yes/10 text-xs"
                 >
-                  <span className="text-muted-foreground">{opt.label}</span>
-                  <span className="font-medium">{opt.currentPrice}¢</span>
+                  <span className="text-yes font-medium">{opt.label}</span>
+                  <span className="text-muted-foreground">{opt.currentPrice}¢</span>
                 </div>
               ))}
             </div>

@@ -270,7 +270,8 @@ export function MultiOptionPurchaseModal({
       <PurchaseSuccessModal
         eventTitle={event.title}
         eventId={event.id}
-        outcome={selectedOption.label as 'YES' | 'NO'}
+        outcome="YES"
+        optionLabel={selectedOption.label}
         shares={successData.shares}
         totalCost={successData.totalCost}
         potentialProfit={successData.potentialProfit}

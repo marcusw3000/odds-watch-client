@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { format, differenceInDays } from 'date-fns';
@@ -22,6 +22,7 @@ import { OddsBadge } from '@/components/market/OddsBadge';
 import { CommentSection } from '@/components/market/CommentSection';
 import { TradingModal } from '@/components/market/TradingModal';
 import { MultiOptionPurchaseModal } from '@/components/market/MultiOptionPurchaseModal';
+import { MultiOptionSellModal } from '@/components/market/MultiOptionSellModal';
 import { MultiOptionTradingPanel } from '@/components/market/MultiOptionTradingPanel';
 import { OddsChart } from '@/components/market/OddsChart';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
@@ -62,6 +63,7 @@ export function MarketDetailPage() {
   const [selectedOption, setSelectedOption] = useState<MarketOption | null>(null);
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const [tradingMode, setTradingMode] = useState<'buy' | 'sell'>('buy');
+  const [showMultiSellModal, setShowMultiSellModal] = useState(false);
   
   const statusInfo = useMarketStatus(event);
 
@@ -600,39 +602,82 @@ export function MarketDetailPage() {
                   )}
 
                   {/* User Position & Sell Button */}
-                  {userHasPosition && (
-                    <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-3">
-                      <p className="text-sm font-medium">Sua posição</p>
-                      <div className="flex gap-2 text-sm">
-                        {userContracts.map((contract) => (
-                          <div 
-                            key={contract.id}
-                            className={cn(
-                              "flex-1 px-3 py-2 rounded-lg text-center",
-                              contract.outcome === 'YES' 
-                                ? "bg-yes/10 text-yes" 
-                                : "bg-no/10 text-no"
-                            )}
-                          >
-                            <span className="font-bold">{contract.quantity}</span>
-                            <span className="ml-1">{contract.outcome === 'YES' ? 'SIM' : 'NÃO'}</span>
-                          </div>
-                        ))}
+                  {userHasPosition && (() => {
+                    const binaryContracts = userContracts.filter(c => c.position !== 'OPTION');
+                    const optionContracts = userContracts.filter(c => c.position === 'OPTION');
+                    
+                    return (
+                      <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-3">
+                        <p className="text-sm font-medium">Sua posição</p>
+                        
+                        {/* Binary contracts (YES/NO) */}
+                        {binaryContracts.length > 0 && (
+                          <>
+                            <div className="flex gap-2 text-sm">
+                              {binaryContracts.map((contract) => (
+                                <div 
+                                  key={contract.id}
+                                  className={cn(
+                                    "flex-1 px-3 py-2 rounded-lg text-center",
+                                    contract.outcome === 'YES' 
+                                      ? "bg-yes/10 text-yes" 
+                                      : "bg-no/10 text-no"
+                                  )}
+                                >
+                                  <span className="font-bold">{contract.quantity}</span>
+                                  <span className="ml-1">{contract.outcome === 'YES' ? 'SIM' : 'NÃO'}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full"
+                              onClick={() => {
+                                setTradingMode('sell');
+                                setSelectedOutcome(binaryContracts[0]?.outcome || 'YES');
+                              }}
+                            >
+                              Vender Contratos
+                            </Button>
+                          </>
+                        )}
+                        
+                        {/* Multi-option contracts */}
+                        {optionContracts.length > 0 && (
+                          <>
+                            <div className="space-y-2">
+                              {optionContracts.map((contract) => {
+                                const option = event.options?.find(o => o.id === contract.optionId);
+                                return (
+                                  <div key={contract.id} className="flex items-center gap-2 text-sm">
+                                    <div className="flex-1 px-3 py-2 rounded-lg bg-primary/10 text-primary flex items-center gap-2">
+                                      {option?.imageUrl && (
+                                        <div 
+                                          className="w-5 h-5 rounded-full bg-cover bg-center flex-shrink-0"
+                                          style={{ backgroundImage: `url(${optimizeImageUrl(option.imageUrl, { width: 40 })})` }}
+                                        />
+                                      )}
+                                      <span className="font-bold">{contract.quantity}</span>
+                                      <span>{option?.label || 'Opção'}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full"
+                              onClick={() => setShowMultiSellModal(true)}
+                            >
+                              Vender Contratos
+                            </Button>
+                          </>
+                        )}
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => {
-                          // Open trading modal in sell mode with first contract's outcome
-                          setTradingMode('sell');
-                          setSelectedOutcome(userContracts[0]?.outcome || 'YES');
-                        }}
-                      >
-                        Vender Contratos
-                      </Button>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Balance */}
                   <div className="pt-4 border-t border-border text-center">
@@ -685,6 +730,39 @@ export function MarketDetailPage() {
               title: "Compra realizada!",
               description: `Você comprou ${shares} contratos.`,
             });
+          }}
+          onRefreshPrice={handleRefreshPrice}
+        />
+      )}
+
+      {/* Sell Modal - Multi-Option */}
+      {showMultiSellModal && event && event.marketType === 'MULTIPLE' && (
+        <MultiOptionSellModal
+          event={event}
+          userContracts={userContracts.filter(c => c.position === 'OPTION')}
+          open={showMultiSellModal}
+          onOpenChange={setShowMultiSellModal}
+          onConfirm={async (contractId, shares, minValue) => {
+            const result = await MarketDataProvider.sellContract(contractId, minValue);
+            
+            if (result.success) {
+              toast({
+                title: 'Venda realizada!',
+                description: `Você vendeu ${shares} contratos por R$${result.saleValue?.toFixed(2)}.`,
+              });
+              
+              // Refresh data
+              const [portfolio, updatedEvent] = await Promise.all([
+                MarketDataProvider.getUserPortfolio(),
+                MarketDataProvider.getEventById(id!),
+              ]);
+              setUserBalance(portfolio.balance);
+              setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
+              if (updatedEvent) setEvent(updatedEvent);
+              triggerPortfolioRefresh();
+            } else {
+              throw new Error(result.message);
+            }
           }}
           onRefreshPrice={handleRefreshPrice}
         />

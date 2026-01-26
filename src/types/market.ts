@@ -173,6 +173,8 @@ export interface UserContract {
   eventId: string;
   eventTitle: string;
   outcome: 'YES' | 'NO';
+  position?: 'YES' | 'NO' | 'OPTION';  // Actual position type
+  optionId?: string;                    // For multi-option contracts
   quantity: number;
   priceAtPurchase: number;
   purchasedAt: Date;

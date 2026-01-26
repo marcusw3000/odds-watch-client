@@ -697,6 +697,39 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_volume_snapshots: {
+        Row: {
+          active_markets_count: number
+          created_at: string | null
+          daily_trades_count: number
+          daily_volume: number
+          id: string
+          snapshot_date: string
+          total_platform_volume: number
+          total_trades_count: number
+        }
+        Insert: {
+          active_markets_count?: number
+          created_at?: string | null
+          daily_trades_count?: number
+          daily_volume?: number
+          id?: string
+          snapshot_date: string
+          total_platform_volume?: number
+          total_trades_count?: number
+        }
+        Update: {
+          active_markets_count?: number
+          created_at?: string | null
+          daily_trades_count?: number
+          daily_volume?: number
+          id?: string
+          snapshot_date?: string
+          total_platform_volume?: number
+          total_trades_count?: number
+        }
+        Relationships: []
+      }
       event_templates: {
         Row: {
           card_style: string | null

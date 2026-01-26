@@ -81,30 +81,73 @@ export function MultiOptionPurchaseModal({
   const currentPrice = selectedOption.currentPrice;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Calculate quote based on current price (simplified for now)
-  // In production, this would call an edge function with LMSR multi-option calculator
+  // Calculate quote using LMSR multi-option formula (client-side calculation)
+  // This matches the backend atomic_execute_multi_trade function
   useEffect(() => {
     if (debouncedShares <= 0) {
       setQuote(null);
       return;
     }
 
-    // Simplified quote calculation
-    // In production: call MarketDataProvider.getMultiOptionQuote(event.id, selectedOption.id, debouncedShares)
-    const estimatedCost = debouncedShares * (currentPrice / 100);
-    const priceImpact = (debouncedShares / 100) * 2; // Simplified impact calculation
+    const options = event.options || [];
+    const lmsrB = event.lmsr?.b || 100;
+    
+    // Get current shares from options
+    const currentShares = options.map(opt => opt.shares || 0);
+    const optionIndex = options.findIndex(opt => opt.id === selectedOption.id);
+    
+    if (optionIndex === -1) {
+      setQuote(null);
+      return;
+    }
+
+    // LMSR cost function: C(q) = b * ln(Σ e^(qi/b))
+    // Using log-sum-exp trick for numerical stability
+    const costFunction = (shares: number[]): number => {
+      if (shares.length === 0) return 0;
+      const scaledShares = shares.map(q => q / lmsrB);
+      const maxVal = Math.max(...scaledShares);
+      const sumExp = scaledShares.reduce((sum, x) => sum + Math.exp(x - maxVal), 0);
+      return lmsrB * (maxVal + Math.log(sumExp));
+    };
+
+    // Calculate prices from shares
+    const getPrices = (shares: number[]): number[] => {
+      if (shares.length === 0) return [];
+      if (shares.length === 1) return [100];
+      const scaledShares = shares.map(q => q / lmsrB);
+      const maxVal = Math.max(...scaledShares);
+      const expValues = scaledShares.map(x => Math.exp(x - maxVal));
+      const sumExp = expValues.reduce((sum, x) => sum + x, 0);
+      return expValues.map(exp => Math.max(1, Math.min(99, Math.round((exp / sumExp) * 100))));
+    };
+
+    const currentCost = costFunction(currentShares);
+    
+    // Calculate new shares after buying
+    const newShares = [...currentShares];
+    newShares[optionIndex] += debouncedShares;
+    
+    const newCost = costFunction(newShares);
+    const tradeCost = newCost - currentCost;
+    const avgPrice = (tradeCost / debouncedShares) * 100;
+    
+    const currentPrices = getPrices(currentShares);
+    const newPrices = getPrices(newShares);
+    
+    const currentOptionPrice = currentPrices[optionIndex] || currentPrice;
+    const newOptionPrice = newPrices[optionIndex] || currentPrice;
+    const priceImpact = currentOptionPrice > 0 
+      ? ((newOptionPrice - currentOptionPrice) / currentOptionPrice) * 100 
+      : 0;
     
     setQuote({
-      cost: estimatedCost,
-      avgPrice: currentPrice,
+      cost: tradeCost,
+      avgPrice: Math.round(avgPrice),
       priceImpact,
-      newPrices: (event.options || []).map(opt => 
-        opt.id === selectedOption.id 
-          ? Math.min(99, opt.currentPrice + priceImpact)
-          : Math.max(1, opt.currentPrice - priceImpact / ((event.options?.length || 2) - 1))
-      ),
+      newPrices,
     });
-  }, [debouncedShares, currentPrice, event.options, selectedOption.id]);
+  }, [debouncedShares, currentPrice, event.options, event.lmsr, selectedOption.id]);
 
   // Timer countdown
   useEffect(() => {

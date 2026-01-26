@@ -16,11 +16,27 @@ export interface AdminDashboardMetrics {
   tradesHojePrev: number;
   tradesHojeChange: number;
   ticketMedio: number;
+  hasHistoricalData: boolean;
+}
+
+interface DailyVolumeSnapshot {
+  id: string;
+  snapshot_date: string;
+  total_platform_volume: number;
+  total_trades_count: number;
+  active_markets_count: number;
+  daily_volume: number;
+  daily_trades_count: number;
+  created_at: string;
 }
 
 function calcChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return ((current - previous) / previous) * 100;
+}
+
+function formatDateForQuery(date: Date): string {
+  return date.toISOString().split('T')[0];
 }
 
 export function useAdminDashboardMetrics() {
@@ -34,19 +50,39 @@ export function useAdminDashboardMetrics() {
 
       const totalVolume = volumeData?.reduce((sum, m) => sum + (m.total_volume || 0), 0) || 0;
 
-      // Today's dates
+      // Date calculations
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
-      // 7 days ago and 14 days ago
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+      // Fetch yesterday's snapshot for volume comparison
+      const { data: yesterdaySnapshot } = await supabase
+        .from('daily_volume_snapshots')
+        .select('*')
+        .eq('snapshot_date', formatDateForQuery(yesterday))
+        .single() as { data: DailyVolumeSnapshot | null; error: unknown };
+
+      // Fetch snapshot from 7 days ago for weekly comparison
+      const { data: weekAgoSnapshot } = await supabase
+        .from('daily_volume_snapshots')
+        .select('*')
+        .eq('snapshot_date', formatDateForQuery(sevenDaysAgo))
+        .single() as { data: DailyVolumeSnapshot | null; error: unknown };
+
+      // Calculate volume comparison from real historical data
+      const hasHistoricalData = !!yesterdaySnapshot;
+      const totalVolumePrev = yesterdaySnapshot?.total_platform_volume ?? totalVolume;
+      const totalVolumeChange = hasHistoricalData 
+        ? calcChange(totalVolume, totalVolumePrev)
+        : 0;
 
       // Fetch today's deposits
       const { data: depositsData } = await supabase
@@ -114,28 +150,18 @@ export function useAdminDashboardMetrics() {
 
       const tradesHoje = tradesTodayData?.length || 0;
 
-      // Fetch trades yesterday
-      const { data: tradesYesterdayData } = await supabase
-        .from('transactions')
-        .select('id')
-        .gte('created_at', yesterday.toISOString())
-        .lt('created_at', today.toISOString());
-
-      const tradesHojePrev = tradesYesterdayData?.length || 0;
+      // Use historical snapshot for trades comparison if available
+      const tradesHojePrev = yesterdaySnapshot?.daily_trades_count ?? 0;
 
       // Calculate ticket medio (average deposit amount)
       const ticketMedio = depositsData && depositsData.length > 0 
         ? depositsToday / depositsData.length 
         : 0;
 
-      // For volume change, we'll use a simplified approach
-      // Compare total volume to what we'd expect based on recent growth
-      const totalVolumePrev = totalVolume * 0.95; // Approximate previous volume
-
       return {
         totalVolume,
         totalVolumePrev,
-        totalVolumeChange: calcChange(totalVolume, totalVolumePrev),
+        totalVolumeChange,
         pendingRevenue,
         activeUsers7d,
         activeUsers7dPrev,
@@ -147,6 +173,7 @@ export function useAdminDashboardMetrics() {
         tradesHojePrev,
         tradesHojeChange: calcChange(tradesHoje, tradesHojePrev),
         ticketMedio,
+        hasHistoricalData,
       };
     },
     refetchInterval: 60000, // Refresh every minute

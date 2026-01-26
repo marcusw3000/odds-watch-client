@@ -1,206 +1,258 @@
 
-## Suavização de Preços com Liquidez Configurável (Estilo Kalshi/Polymarket)
+# Plano de Otimização de Performance
 
-### Problema Identificado
+## Diagnóstico Atual
 
-Atualmente, quando um mercado é criado e alguém compra contratos, o preço balança drasticamente:
+O projeto já possui uma base sólida de otimizações:
 
-| Mercado | lmsr_b | YES shares | NO shares | Preço YES |
-|---------|--------|------------|-----------|-----------|
-| Teste LMSR | 100 | 727 | 99 | **99.81%** |
-| iabadabadu | 100 | 662 | 0 | **99.87%** |
-
-Com `lmsr_b = 100`, uma compra de ~R$100 já move o preço de 50% para extremos.
-
-### Como Kalshi e Polymarket Resolvem
-
-1. **Parâmetro de Liquidez Maior**: Kalshi usa valores de `b` entre 250-1000 dependendo do volume esperado
-2. **Liquidez Dinâmica (LS-LMSR)**: O parâmetro `b` aumenta automaticamente com o volume de trades
-3. **Virtual Shares**: Inicializar mercados com "shares virtuais" nos dois lados para ancorar o preço
-
-### Solução Proposta
-
-Implementar um sistema híbrido com 3 níveis de liquidez configuráveis pelo admin:
-
-```text
-+------------------------+--------+------------------+----------------------+
-| Nível                  | lmsr_b | Impacto R$100    | Uso Recomendado      |
-+------------------------+--------+------------------+----------------------+
-| Baixa (sensível)       | 100    | ±15-20%          | Mercados de nicho    |
-| Média (padrão)         | 300    | ±5-8%            | Mercados regulares   |
-| Alta (estável)         | 500    | ±3-5%            | Mercados populares   |
-+------------------------+--------+------------------+----------------------+
-```
+| Categoria | Status Atual |
+|-----------|--------------|
+| Code Splitting | Lazy loading de todas as rotas |
+| Memoization | `memo()` em componentes críticos (cards, badges) |
+| Image Optimization | WebP + quality 60 para Supabase Storage |
+| Layout Stability | `contain: layout` em containers principais |
+| Chart Performance | Animações SVG desabilitadas |
+| Realtime Updates | Supabase Realtime para markets |
 
 ---
 
-### Arquitetura da Implementação
+## Oportunidades de Melhoria
 
-```text
-+-------------------------+     +-------------------------+
-|  AdminEventFormPage.tsx |     |  create-admin-event.ts  |
-|  (Selector de Liquidez) | --> |  (Recebe lmsr_b)        |
-+-------------------------+     +-------------------------+
-           |                              |
-           v                              v
-+-------------------------+     +-------------------------+
-|  Preview de Impacto     |     |  markets table          |
-|  (Simulação visual)     |     |  (lmsr_b configurável)  |
-+-------------------------+     +-------------------------+
-```
+### 1. Bundle Optimization (Impacto: Alto)
 
----
+**Problema:** Algumas dependências pesadas são carregadas no bundle principal.
 
-### Fase 1: Adicionar Seletor de Liquidez no Formulário Admin
-
-Adicionar um novo campo no formulário de criação de eventos para selecionar o nível de liquidez:
-
-**Arquivo:** `src/pages/admin/AdminEventFormPage.tsx`
-
-- Adicionar estado `liquidityLevel` com opções: `low`, `medium`, `high`
-- Mapear para valores de `lmsr_b`: 100, 300, 500
-- Mostrar tooltip explicativo sobre o impacto
-
-**UI proposta:**
-```text
-┌─────────────────────────────────────────────────────┐
-│ Liquidez do Mercado                                 │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐                │
-│ │  Baixa  │ │ ● Média │ │  Alta   │                │
-│ │  (100)  │ │  (300)  │ │  (500)  │                │
-│ └─────────┘ └─────────┘ └─────────┘                │
-│                                                     │
-│ ⓘ Média: Uma compra de R$100 move o preço ~6%      │
-│    Ideal para mercados com volume moderado          │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-### Fase 2: Preview de Impacto de Preço
-
-Adicionar componente visual que mostra o impacto simulado:
-
-**Novo componente:** `src/components/admin/LiquidityPreview.tsx`
-
-Exibe uma simulação interativa mostrando:
-- Preço inicial configurado (ex: 50%)
-- Preço após compra hipotética de R$100
-- Visualização gráfica da "curva" de liquidez
-
----
-
-### Fase 3: Atualizar Edge Function
-
-**Arquivo:** `supabase/functions/create-admin-event/index.ts`
-
-Modificar para aceitar o parâmetro `liquidity` ou `lmsr_b` no payload:
+**Ações:**
+- Configurar chunking manual no Vite para separar vendors
+- Lazy load de `recharts` apenas nas páginas que usam gráficos
+- Tree-shaking mais agressivo para `lucide-react` (importar ícones individualmente já está correto, mas verificar tree-shaking)
 
 ```typescript
-// Antes (fixo)
-const lmsrB = 100;
-
-// Depois (configurável)
-const liquidityMap = { low: 100, medium: 300, high: 500 };
-const lmsrB = liquidityMap[body.liquidity] || 300; // Default: medium
-```
-
----
-
-### Fase 4: Atualizar Edge Function de Update
-
-**Arquivo:** `supabase/functions/update-admin-event/index.ts`
-
-Permitir que admins ajustem a liquidez de mercados existentes (com aviso sobre impacto em trades futuros).
-
----
-
-### Fase 5: Adicionar Indicador Visual nos Cards
-
-Mostrar o nível de liquidez nos cards do admin para contexto:
-
-**Arquivo:** `src/pages/admin/AdminEventsPage.tsx`
-
-Badge indicando: "🌊 Alta liquidez" ou "💧 Baixa liquidez"
-
----
-
-### Arquivos a Modificar
-
-| Ação | Arquivo |
-|------|---------|
-| **Modificar** | `src/pages/admin/AdminEventFormPage.tsx` |
-| **Criar** | `src/components/admin/LiquidityPreview.tsx` |
-| **Modificar** | `supabase/functions/create-admin-event/index.ts` |
-| **Modificar** | `supabase/functions/update-admin-event/index.ts` |
-| **Modificar** | `src/pages/admin/AdminEventsPage.tsx` |
-| **Modificar** | `src/hooks/useAdminEvents.ts` (tipos) |
-
----
-
-### Detalhes Técnicos
-
-**Fórmula do Impacto de Preço:**
-
-Para simular o impacto de uma compra de R$X no formulário:
-
-```typescript
-function simulatePriceImpact(
-  initialPrice: number, // 0.5 = 50%
-  buyAmount: number,    // R$100
-  lmsrB: number         // 100, 300, ou 500
-): number {
-  const state: LMSRState = {
-    b: lmsrB,
-    qYes: lmsrB * Math.log(initialPrice / (1 - initialPrice)),
-    qNo: 0,
-  };
-  
-  const shares = getSharesForCost(state, 'YES', buyAmount);
-  const newState = executeBuy(state, 'YES', shares);
-  const newPrice = getPriceYes(newState);
-  
-  return newPrice - (initialPrice * 100);
+// vite.config.ts - Adicionar build optimization
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+        'vendor-query': ['@tanstack/react-query'],
+        'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', ...],
+        'vendor-charts': ['recharts'],
+        'vendor-supabase': ['@supabase/supabase-js'],
+      }
+    }
+  }
 }
 ```
 
-**Exemplos de Impacto (compra de R$100 em mercado 50/50):**
-
-| lmsr_b | Shares compradas | Novo preço YES | Variação |
-|--------|------------------|----------------|----------|
-| 100    | ~143 shares      | 78%            | +28%     |
-| 300    | ~189 shares      | 62%            | +12%     |
-| 500    | ~208 shares      | 57%            | +7%      |
-
 ---
 
-### Tipos TypeScript
+### 2. React Query Optimization (Impacto: Alto)
+
+**Problema:** Configuração padrão do QueryClient sem otimizações.
+
+**Ações:**
+- Configurar `staleTime` e `gcTime` globais
+- Adicionar `refetchOnWindowFocus: false` para dados que não mudam frequentemente
+- Implementar `placeholderData` para transições suaves
 
 ```typescript
-// Em types/admin.ts ou similar
-export type LiquidityLevel = 'low' | 'medium' | 'high';
+// Antes (App.tsx)
+const queryClient = new QueryClient();
 
-export const LIQUIDITY_CONFIG = {
-  low: { b: 100, label: 'Baixa', description: 'Preços sensíveis, ideal para nichos' },
-  medium: { b: 300, label: 'Média', description: 'Equilíbrio entre sensibilidade e estabilidade' },
-  high: { b: 500, label: 'Alta', description: 'Preços estáveis, ideal para alto volume' },
-} as const;
+// Depois
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30s antes de considerar stale
+      gcTime: 5 * 60 * 1000, // 5min no cache
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 ```
 
 ---
 
-### Considerações Importantes
+### 3. Font Loading Optimization (Impacto: Médio)
 
-1. **Trade-off de Liquidez**: Maior `b` = preços mais estáveis, mas menor reação a novas informações
-2. **Subsídio da Plataforma**: O "custo" da liquidez é arcado pela plataforma (perda máxima = b * ln(2) para mercados binários)
-3. **Migração**: Mercados existentes manterão `lmsr_b = 100` a menos que sejam editados
-4. **Default Recomendado**: Mudar de `100` para `300` como padrão para novos mercados
+**Problema:** Fontes carregadas via CSS `@import` bloqueiam renderização.
+
+**Ações:**
+- Mover para `<link rel="preload">` no `index.html`
+- Adicionar `font-display: swap`
+- Preconnect já existe, mas pode ser otimizado
+
+```html
+<!-- index.html -->
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+```
 
 ---
 
-### Benefícios
+### 4. Virtualização para Listas Grandes (Impacto: Médio)
 
-- Preços mais estáveis em novos mercados
-- Admin tem controle sobre a "profundidade" de cada mercado
-- Melhor experiência para usuários (menos oscilações bruscas)
-- Alinhamento com práticas de Kalshi e Polymarket
+**Problema:** Com muitos mercados, todos os DOM nodes são renderizados.
+
+**Ações:**
+- Implementar `react-window` ou `@tanstack/react-virtual` para grids grandes (>50 items)
+- Manter infinite scroll atual para casos normais
+
+**Arquivo:** `src/pages/MarketsPage.tsx`
+
+```typescript
+// Adicionar virtualização condicional
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+// Usar quando gridEvents.length > 50
+const rowVirtualizer = useVirtualizer({
+  count: gridEvents.length,
+  getScrollElement: () => parentRef.current,
+  estimateSize: () => 280,
+});
+```
+
+---
+
+### 5. Prefetch de Dados Críticos (Impacto: Médio)
+
+**Problema:** Dados carregados após navegação, causando delay.
+
+**Ações:**
+- Prefetch de detalhes do mercado no hover do card
+- Prefetch de portfolio ao logar
+- Prefetch de categorias no mount inicial
+
+```typescript
+// Em CompactMarketCard.tsx
+const queryClient = useQueryClient();
+
+const handleMouseEnter = () => {
+  queryClient.prefetchQuery({
+    queryKey: ['market', event.id],
+    queryFn: () => MarketDataProvider.getEventById(event.id),
+    staleTime: 60000,
+  });
+};
+```
+
+---
+
+### 6. Image Loading Optimization (Impacto: Médio)
+
+**Problema:** Imagens carregadas mesmo fora da viewport.
+
+**Ações:**
+- Adicionar `loading="lazy"` em imagens de cards
+- Usar `IntersectionObserver` para lazy load de imagens em background
+- Implementar placeholder blur para imagens
+
+**Arquivo:** `src/components/market/cards/CardStyleDefault.tsx`
+
+```typescript
+// Adicionar loading lazy e fadeIn após load
+<img 
+  loading="lazy"
+  decoding="async"
+  src={optimizeImageUrl(event.imageUrl, { width: 80 })}
+  className="transition-opacity duration-300"
+/>
+```
+
+---
+
+### 7. Debounce e Throttle de Atualizações (Impacto: Baixo)
+
+**Problema:** Atualizações realtime podem causar re-renders excessivos.
+
+**Ações:**
+- Throttle de atualizações de preços (max 1/segundo por mercado)
+- Debounce de search input (já implementado)
+- Batch de atualizações de múltiplos mercados
+
+**Arquivo:** `src/hooks/useMarketsRealtime.ts`
+
+```typescript
+// Adicionar throttle para updates
+import { throttle } from 'lodash';
+
+const throttledUpdate = throttle((payload) => {
+  setEvents((prev) =>
+    prev.map((e) => (e.id === payload.id ? transformPayload(payload) : e))
+  );
+}, 1000);
+```
+
+---
+
+### 8. Service Worker para Cache Offline (Impacto: Baixo)
+
+**Problema:** Sem cache offline para assets estáticos.
+
+**Ações:**
+- Implementar Workbox para PWA
+- Cache de assets estáticos (JS, CSS, imagens)
+- Cache de dados de mercados (stale-while-revalidate)
+
+---
+
+### 9. Memoização Adicional (Impacto: Baixo)
+
+**Problema:** Alguns cálculos repetidos em cada render.
+
+**Ações:**
+- Memoizar `CategoryFilter` counts
+- Memoizar transformações de dados em hooks
+
+```typescript
+// Em CategoryFilter.tsx
+const sortedCategories = useMemo(() => 
+  categories.sort((a, b) => (categoryCounts[b] || 0) - (categoryCounts[a] || 0)),
+  [categories, categoryCounts]
+);
+```
+
+---
+
+## Arquivos a Modificar
+
+| Prioridade | Arquivo | Mudança |
+|------------|---------|---------|
+| Alta | `vite.config.ts` | Manual chunks, build optimization |
+| Alta | `src/App.tsx` | QueryClient config |
+| Média | `index.html` | Font preload |
+| Média | `src/pages/MarketsPage.tsx` | Virtualização condicional |
+| Média | `src/components/market/cards/*.tsx` | Image lazy loading |
+| Baixa | `src/hooks/useMarketsRealtime.ts` | Throttle updates |
+
+---
+
+## Métricas Esperadas
+
+| Métrica | Atual (estimado) | Após Otimização |
+|---------|------------------|-----------------|
+| LCP | ~1.5s | <1.2s |
+| FID | ~50ms | <30ms |
+| CLS | 0 | 0 (manter) |
+| Bundle Size | ~400KB | ~300KB |
+| TTI | ~2s | <1.5s |
+
+---
+
+## Dependências Necessárias
+
+```bash
+# Opcional para virtualização
+npm install @tanstack/react-virtual
+
+# Opcional para PWA
+npm install vite-plugin-pwa workbox-window
+```
+
+---
+
+## Implementação Sugerida
+
+1. **Fase 1 (Quick Wins):** QueryClient config, Font loading, Vite chunks
+2. **Fase 2 (Core):** Virtualização, Prefetch, Image lazy
+3. **Fase 3 (Polish):** Service Worker, Throttle, Memoização extra

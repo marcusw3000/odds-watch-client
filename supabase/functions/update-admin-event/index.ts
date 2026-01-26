@@ -278,6 +278,7 @@ Deno.serve(async (req) => {
         cardStyle,
         reason: updateReason,
         options,
+        liquidity,
       } = body;
 
       // Get current event for comparison
@@ -320,6 +321,18 @@ Deno.serve(async (req) => {
       if (cardStyle !== undefined) updateData.card_style = cardStyle;
       if (settlementType !== undefined) updateData.settlement_type = settlementType;
       if (resolution !== undefined) updateData.resolution = resolution;
+
+      // Handle liquidity update (only if no trades yet)
+      if (liquidity !== undefined) {
+        const liquidityMap: Record<string, number> = { low: 100, medium: 300, high: 500 };
+        const newLmsrB = liquidityMap[liquidity];
+        if (newLmsrB && currentEvent.total_volume === 0) {
+          updateData.lmsr_b = newLmsrB;
+          logStep(functionName, 'Liquidity updated', { from: currentEvent.lmsr_b, to: newLmsrB });
+        } else if (currentEvent.total_volume > 0) {
+          logStep(functionName, 'Liquidity update skipped - trades exist', { volume: currentEvent.total_volume });
+        }
+      }
 
       // Handle price update for BINARY markets
       if (yesPrice !== undefined && currentEvent.market_type === 'BINARY') {

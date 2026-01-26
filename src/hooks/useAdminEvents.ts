@@ -27,6 +27,7 @@ export interface AdminEvent {
   settlement_type: string;
   resolution: Record<string, unknown> | null;
   options_exclusive: boolean;
+  lmsr_b: number;
 }
 
 export interface AdminAuditLog {
@@ -236,6 +237,7 @@ export interface CreateEventData {
   cardStyle?: 'default' | 'buttons' | 'simple' | 'minimal';
   marketType?: 'BINARY' | 'MULTIPLE';
   recurrenceType?: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
+  liquidity?: 'low' | 'medium' | 'high';
   options?: Array<{
     label: string;
     description?: string;

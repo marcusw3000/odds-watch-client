@@ -20,12 +20,14 @@ interface CardStyleButtonsProps {
   event: MarketEvent;
   onBuy: (eventId: string, outcome: 'YES' | 'NO') => void;
   onViewDetails?: (eventId: string) => void;
+  onMouseEnter?: () => void;
 }
 
 export const CardStyleButtons = memo(function CardStyleButtons({
   event,
   onBuy,
   onViewDetails,
+  onMouseEnter,
 }: CardStyleButtonsProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
@@ -49,7 +51,10 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   return (
     <div 
       className={cn(gridClasses.container, "group")}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        onMouseEnter?.();
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Status indicator border */}

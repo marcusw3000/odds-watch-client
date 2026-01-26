@@ -15,12 +15,14 @@ interface CardStyleMinimalProps {
   event: MarketEvent;
   onBuy: (eventId: string, outcome: 'YES' | 'NO') => void;
   onViewDetails?: (eventId: string) => void;
+  onMouseEnter?: () => void;
 }
 
 export const CardStyleMinimal = memo(function CardStyleMinimal({
   event,
   onBuy,
   onViewDetails,
+  onMouseEnter,
 }: CardStyleMinimalProps) {
   const statusInfo = useMarketStatus(event);
   const [isHovered, setIsHovered] = useState(false);
@@ -44,7 +46,10 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
   return (
     <div 
       className={cn(gridClasses.container, "group")}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        onMouseEnter?.();
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Status indicator border */}

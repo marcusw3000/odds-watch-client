@@ -746,6 +746,9 @@ export function MarketDetailPage() {
             setUserBalance(prev => prev - data.quote.cost);
             triggerPortfolioRefresh();
             
+            // Refresh market data to update option prices/shares for next trade
+            handleRefreshPrice();
+            
             toast({
               title: "Compra realizada!",
               description: `Você comprou ${shares} contratos.`,

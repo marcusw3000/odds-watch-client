@@ -239,9 +239,15 @@ export function MultiOptionPurchaseModal({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '';
       
-      if (errorMessage.includes('preço mudou') || errorMessage.includes('slippage')) {
+      // Catch slippage/price change errors and auto-refresh
+      if (
+        errorMessage.includes('preço mudou') || 
+        errorMessage.includes('slippage') ||
+        errorMessage.includes('Preço excedeu') ||
+        errorMessage.includes('custo máximo')
+      ) {
         setSlippageDetected(true);
-        setError('O preço mudou desde sua cotação. O preço foi atualizado automaticamente.');
+        setError('O preço mudou desde sua cotação. Atualizando preços...');
         handleRefreshPrice();
       } else {
         setError(errorMessage || 'Erro ao processar compra. Tente novamente.');

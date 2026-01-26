@@ -1,5 +1,5 @@
-import { memo, useState } from 'react';
-import { TrendingUp, Lock } from 'lucide-react';
+import { memo, useState, useMemo } from 'react';
+import { TrendingUp, Lock, ChevronRight } from 'lucide-react';
 import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { RecurrenceLabel } from '@/components/market/RecurrenceLabel';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { gridClasses, getCategoryIcon, OptionRow } from './CardGridLayout';
+import { gridClasses, getCategoryIcon, OptionRow, LeaderOptionRow } from './CardGridLayout';
 import {
   Tooltip,
   TooltipContent,
@@ -36,6 +36,15 @@ export const CardStyleButtons = memo(function CardStyleButtons({
   const noPrice = event.outcomes.NO.price;
   const isSettled = statusInfo.status === 'SETTLED';
   const resultIsYes = event.result === 'YES';
+  const isMultiple = event.marketType === 'MULTIPLE';
+
+  // For multi-option markets, find the leader option
+  const leaderOption = useMemo(() => {
+    if (!isMultiple || !event.options?.length) return null;
+    return [...event.options].sort((a, b) => b.currentPrice - a.currentPrice)[0];
+  }, [isMultiple, event.options]);
+
+  const leaderIsWinner = isSettled && leaderOption && event.result === leaderOption.id;
 
   return (
     <div 
@@ -97,23 +106,43 @@ export const CardStyleButtons = memo(function CardStyleButtons({
 
       {/* Zone 3: Options */}
       <div className={gridClasses.options}>
-        <OptionRow 
-          label="Sim" 
-          price={yesPrice} 
-          isWinner={isSettled && resultIsYes}
-          variant="yes"
-        />
-        <OptionRow 
-          label="Não" 
-          price={noPrice} 
-          isWinner={isSettled && !resultIsYes}
-          variant="no"
-        />
+        {isMultiple && leaderOption ? (
+          <LeaderOptionRow 
+            option={leaderOption} 
+            totalOptions={event.options!.length}
+            isSettled={isSettled}
+            isWinner={leaderIsWinner}
+          />
+        ) : (
+          <>
+            <OptionRow 
+              label="Sim" 
+              price={yesPrice} 
+              isWinner={isSettled && resultIsYes}
+              variant="yes"
+            />
+            <OptionRow 
+              label="Não" 
+              price={noPrice} 
+              isWinner={isSettled && !resultIsYes}
+              variant="no"
+            />
+          </>
+        )}
       </div>
 
       {/* Zone 4: Buttons */}
       <div className={gridClasses.buttons}>
-        {statusInfo.canTrade ? (
+        {isMultiple ? (
+          <Button
+            className="w-full h-10 font-bold"
+            variant="outline"
+            onClick={() => onViewDetails?.(event.id)}
+          >
+            Ver {event.options?.length || 0} opções
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : statusInfo.canTrade ? (
           <>
             <Tooltip>
               <TooltipTrigger asChild>

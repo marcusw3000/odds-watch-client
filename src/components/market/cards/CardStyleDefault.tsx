@@ -1,5 +1,5 @@
-import { memo, useState } from 'react';
-import { TrendingUp, Lock } from 'lucide-react';
+import { memo, useState, useMemo } from 'react';
+import { TrendingUp, Lock, ChevronRight } from 'lucide-react';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
@@ -9,7 +9,7 @@ import { FavoriteButton } from '@/components/market/FavoriteButton';
 import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { gridClasses, getCategoryIcon, OptionRow } from './CardGridLayout';
+import { gridClasses, getCategoryIcon, OptionRow, LeaderOptionRow } from './CardGridLayout';
 
 interface CardStyleDefaultProps {
   event: MarketEvent;
@@ -29,6 +29,16 @@ export const CardStyleDefault = memo(function CardStyleDefault({
   const hasImage = Boolean(event.imageUrl);
   const isSettled = statusInfo.status === 'SETTLED';
   const resultIsYes = event.result === 'YES';
+  const isMultiple = event.marketType === 'MULTIPLE';
+
+  // For multi-option markets, find the leader option
+  const leaderOption = useMemo(() => {
+    if (!isMultiple || !event.options?.length) return null;
+    return [...event.options].sort((a, b) => b.currentPrice - a.currentPrice)[0];
+  }, [isMultiple, event.options]);
+
+  // Check if leader option is the winner
+  const leaderIsWinner = isSettled && leaderOption && event.result === leaderOption.id;
 
   return (
     <div 
@@ -98,23 +108,43 @@ export const CardStyleDefault = memo(function CardStyleDefault({
 
       {/* Zone 3: Options */}
       <div className={gridClasses.options}>
-        <OptionRow 
-          label="Sim" 
-          price={event.outcomes.YES.price} 
-          isWinner={isSettled && resultIsYes}
-          variant="yes"
-        />
-        <OptionRow 
-          label="Não" 
-          price={event.outcomes.NO.price} 
-          isWinner={isSettled && !resultIsYes}
-          variant="no"
-        />
+        {isMultiple && leaderOption ? (
+          <LeaderOptionRow 
+            option={leaderOption} 
+            totalOptions={event.options!.length}
+            isSettled={isSettled}
+            isWinner={leaderIsWinner}
+          />
+        ) : (
+          <>
+            <OptionRow 
+              label="Sim" 
+              price={event.outcomes.YES.price} 
+              isWinner={isSettled && resultIsYes}
+              variant="yes"
+            />
+            <OptionRow 
+              label="Não" 
+              price={event.outcomes.NO.price} 
+              isWinner={isSettled && !resultIsYes}
+              variant="no"
+            />
+          </>
+        )}
       </div>
 
       {/* Zone 4: Buttons */}
       <div className={gridClasses.buttons}>
-        {statusInfo.canTrade ? (
+        {isMultiple ? (
+          <Button
+            className="w-full h-10 font-bold"
+            variant="outline"
+            onClick={() => onViewDetails?.(event.id)}
+          >
+            Ver {event.options?.length || 0} opções
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : statusInfo.canTrade ? (
           <>
             <Button
               className="flex-1 h-10 bg-yes/10 hover:bg-yes/20 text-yes border border-yes/30 font-bold"

@@ -1,6 +1,6 @@
-import { memo, useMemo, useEffect, useState } from 'react';
+import { memo, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { usePriceHistoryContext, PriceHistoryPoint } from '@/hooks/usePriceHistoryBatch';
 
 interface PriceSparklineProps {
   eventId: string;
@@ -8,11 +8,8 @@ interface PriceSparklineProps {
   className?: string;
   width?: number;
   height?: number;
-}
-
-interface PriceHistoryPoint {
-  yes_price: number;
-  recorded_at: string;
+  /** Optional direct data - if provided, skips context lookup */
+  historyData?: PriceHistoryPoint[];
 }
 
 export const PriceSparkline = memo(function PriceSparkline({
@@ -21,28 +18,11 @@ export const PriceSparkline = memo(function PriceSparkline({
   className,
   width = 48,
   height = 18,
+  historyData: directData,
 }: PriceSparklineProps) {
-  const [historyData, setHistoryData] = useState<PriceHistoryPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch real price history
-  useEffect(() => {
-    const fetchHistory = async () => {
-      const { data, error } = await supabase
-        .from('market_price_history')
-        .select('yes_price, recorded_at')
-        .eq('market_id', eventId)
-        .order('recorded_at', { ascending: true })
-        .limit(20); // Last 20 points for sparkline
-
-      if (!error && data && data.length > 0) {
-        setHistoryData(data);
-      }
-      setIsLoading(false);
-    };
-
-    fetchHistory();
-  }, [eventId]);
+  // Get data from context if not passed directly
+  const contextData = usePriceHistoryContext();
+  const historyData = directData || contextData?.[eventId] || [];
 
   const { points, isUp } = useMemo(() => {
     // Use real data if available, otherwise generate deterministic fallback
@@ -85,15 +65,6 @@ export const PriceSparkline = memo(function PriceSparkline({
       isUp: data[data.length - 1] > data[0],
     };
   }, [eventId, currentPrice, width, height, historyData]);
-
-  if (isLoading) {
-    return (
-      <div 
-        className={cn("flex-shrink-0 bg-muted/50 rounded animate-pulse", className)}
-        style={{ width, height }}
-      />
-    );
-  }
 
   return (
     <svg 

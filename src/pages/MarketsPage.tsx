@@ -23,6 +23,7 @@ import { useMarketFilters, MarketFilters } from '@/hooks/useMarketFilters';
 import { useInfiniteMarkets } from '@/hooks/useInfiniteMarkets';
 import { useViewportSkeletons } from '@/hooks/useViewportSkeletons';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { usePriceHistoryBatch, PriceHistoryContext } from '@/hooks/usePriceHistoryBatch';
 import { cn } from '@/lib/utils';
 
 interface LayoutContext {
@@ -305,6 +306,13 @@ export function MarketsPage() {
     pageSize: 12,
   });
 
+  // Batch fetch price history for all visible markets - eliminates N+1 queries
+  const visibleMarketIds = useMemo(() => 
+    displayedEvents.map(e => e.id),
+    [displayedEvents]
+  );
+  const { data: priceHistoryMap } = usePriceHistoryBatch(visibleMarketIds);
+
   const currentTrendingEvent = trendingEvents[trendingIndex] || trendingEvents[0];
 
   // Clear handlers for empty state
@@ -440,21 +448,23 @@ export function MarketsPage() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {displayedEvents.map((event, index) => (
-                <div
-                  key={event.id}
-                  className={index < 12 ? "animate-fade-in" : ""}
-                  style={index < 12 ? { animationDelay: `${(index % 12) * 30}ms` } : undefined}
-                >
-                  <CompactMarketCard
-                    event={event}
-                    onBuy={handleBuy}
-                    onViewDetails={handleViewDetails}
-                  />
-                </div>
-              ))}
-            </div>
+            <PriceHistoryContext.Provider value={priceHistoryMap || null}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {displayedEvents.map((event, index) => (
+                  <div
+                    key={event.id}
+                    className={index < 12 ? "animate-fade-in" : ""}
+                    style={index < 12 ? { animationDelay: `${(index % 12) * 30}ms` } : undefined}
+                  >
+                    <CompactMarketCard
+                      event={event}
+                      onBuy={handleBuy}
+                      onViewDetails={handleViewDetails}
+                    />
+                  </div>
+                ))}
+              </div>
+            </PriceHistoryContext.Provider>
             
             {/* Infinite scroll sentinel */}
             <div ref={loadMoreRef} className="flex justify-center py-8">

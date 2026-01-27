@@ -46,11 +46,9 @@ export function useAuth() {
       }
     );
 
-    // Check for existing session with small delay
-    // to allow OAuthCallbackHandler to process tokens first
+    // Check for existing session immediately
+    // PKCE flow handles token processing automatically
     const checkSession = async () => {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
       if (!mounted) return;
       
       const { data: { session } } = await supabase.auth.getSession();

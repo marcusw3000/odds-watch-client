@@ -64,14 +64,17 @@ export const CardStyleDefault = memo(function CardStyleDefault({
           !statusInfo.canTrade && "grayscale"
         )}>
           {hasImage ? (
-            <div 
+            <img 
+              src={optimizeImageUrl(event.imageUrl, { width: 80 })}
+              loading="lazy"
+              decoding="async"
+              alt=""
               className={cn(
-                "absolute inset-0 bg-cover transition-transform duration-300 ease-out",
+                "absolute inset-0 w-full h-full object-cover transition-transform duration-300 ease-out",
                 statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
-                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 80 })})`,
-                backgroundPosition: event.imagePosition 
+                objectPosition: event.imagePosition 
                   ? `${event.imagePosition.x}% ${event.imagePosition.y}%` 
                   : 'center',
                 transform: statusInfo.canTrade && isHovered 

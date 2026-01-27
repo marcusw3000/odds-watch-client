@@ -1,40 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
+import { queryKeys } from '@/lib/queryKeys';
 
 export function Layout() {
   const location = useLocation();
-  const [userBalance, setUserBalance] = useState(0);
-  const [isBalanceLoading, setIsBalanceLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchBalance = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setIsBalanceLoading(true);
-    }
-    
-    try {
+  // Use React Query for balance - eliminates waterfall and adds caching
+  const { data: userBalance = 0, isLoading: isBalanceLoading } = useQuery({
+    queryKey: queryKeys.portfolio.balance,
+    queryFn: async () => {
       const portfolio = await MarketDataProvider.getUserPortfolio();
-      setUserBalance(portfolio.balance);
-    } catch (err) {
-      console.error('Error fetching balance:', err);
-    } finally {
-      setIsBalanceLoading(false);
-    }
-  }, []);
+      return portfolio.balance;
+    },
+    staleTime: 10000, // 10 seconds before considered stale
+    refetchInterval: 15000, // Polling every 15 seconds
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => {
-    fetchBalance();
-    const interval = setInterval(() => fetchBalance(false), 15000);
-    return () => clearInterval(interval);
-  }, [fetchBalance]);
+  // Optimistic setter for balance - updates cache directly
+  const setUserBalance = useCallback((value: number | ((prev: number) => number)) => {
+    queryClient.setQueryData(queryKeys.portfolio.balance, (prev: number = 0) => {
+      return typeof value === 'function' ? value(prev) : value;
+    });
+  }, [queryClient]);
 
   const handlePortfolioRefresh = useCallback(() => {
-    fetchBalance(true);
-  }, [fetchBalance]);
+    queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.balance });
+  }, [queryClient]);
 
   usePortfolioRefreshListener(handlePortfolioRefresh);
 

@@ -1,14 +1,17 @@
-import { memo, useState, useMemo } from 'react';
+import { memo, useState, useMemo, lazy, Suspense } from 'react';
 import { TrendingUp, ChevronLeft, ChevronRight, Plus, Lock, CheckCircle2, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { MarketEvent } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { useMarketStatus, getStatusColor } from '@/hooks/useMarketStatus';
 import { MarketStatusBadge } from '@/components/market/MarketStatusBadge';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Lazy load the chart component to reduce initial bundle
+const TrendingPriceChart = lazy(() => import('./TrendingPriceChart'));
 
 interface TrendingMarketCardProps {
   event: MarketEvent;
@@ -355,69 +358,13 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
                 <p className="text-xs opacity-70">Gráfico aparece após o primeiro trade</p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={priceHistory} margin={{ top: 5, right: 45, left: 0, bottom: 5 }}>
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis 
-                    domain={[20, 80]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    tickFormatter={(value) => `${value}%`}
-                    orientation="right"
-                    width={35}
-                    ticks={[30, 50, 70]}
-                  />
-                  <ReferenceLine 
-                    y={50} 
-                    stroke="hsl(var(--muted-foreground))" 
-                    strokeDasharray="3 3" 
-                    strokeOpacity={0.5}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                    formatter={(value: number, name: string) => [
-                      `${value}%`, 
-                      name === 'yes' ? 'Sim' : 'Não'
-                    ]}
-                    labelFormatter={(_, payload) => {
-                      if (payload && payload[0]) {
-                        return payload[0].payload.fullDate;
-                      }
-                      return '';
-                    }}
-                  />
-                  <Line
-                    type="linear"
-                    dataKey="yes"
-                    stroke="hsl(var(--yes))"
-                    strokeWidth={1.5}
-                    dot={false}
-                    activeDot={{ r: 3, fill: 'hsl(var(--yes))' }}
-                    isAnimationActive={false}
-                  />
-                  <Line
-                    type="linear"
-                    dataKey="no"
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeWidth={1.5}
-                    dot={false}
-                    activeDot={{ r: 3, fill: 'hsl(var(--muted-foreground))' }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<Skeleton className="h-[180px] w-full rounded-lg" />}>
+                <TrendingPriceChart 
+                  data={priceHistory} 
+                  isSettled={isSettled}
+                  resultIsYes={resultIsYes}
+                />
+              </Suspense>
             )}
           </div>
         </div>

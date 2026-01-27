@@ -16,7 +16,11 @@ export const queryKeys = {
   savedCards: () => ['saved-cards'] as const,
   
   // Portfolio
-  portfolio: (userId?: string) => ['portfolio', userId] as const,
+  portfolio: {
+    balance: ['portfolio', 'balance'] as const,
+    user: (userId?: string) => ['portfolio', userId] as const,
+    contracts: (userId?: string) => ['portfolio', 'contracts', userId] as const,
+  },
   contracts: (userId?: string) => ['contracts', userId] as const,
   
   // Markets

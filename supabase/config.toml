@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.get-users-display-info-batch]
 verify_jwt = false
+
+[functions.auto-expire-markets]
+verify_jwt = false

@@ -445,11 +445,11 @@ Deno.serve(async (req) => {
 
 ## Checklist Final
 
-- [ ] P0.1 - Edge Function auto-expire-markets
-- [ ] P0.2 - Integrar check-economic-events no cron
-- [ ] P0.3 - Processar payouts automaticamente
-- [ ] P1.4 - Corrigir RLS daily_volume_snapshots
-- [ ] P1.5 - Ativar leaked password protection
+- [x] P0.1 - Edge Function auto-expire-markets ✅
+- [x] P0.2 - Integrar check-economic-events no cron ✅
+- [x] P0.3 - Processar payouts automaticamente ✅
+- [x] P1.4 - Corrigir RLS daily_volume_snapshots ✅
+- [ ] P1.5 - Ativar leaked password protection (⚠️ Ação manual no Dashboard Supabase)
 - [ ] P2.6 - Edge Function submit-contestation + Admin UI
 - [ ] P2.7 - Implementar compra NÃO em múltiplos
 - [ ] P2.8 - Migrar comentários para DB real

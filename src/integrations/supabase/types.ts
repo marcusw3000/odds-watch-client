@@ -2424,6 +2424,16 @@ export type Database = {
         }
         Returns: Json
       }
+      atomic_execute_multi_trade_batch: {
+        Args: {
+          p_exclude_option_id: string
+          p_market_id: string
+          p_max_slippage?: number
+          p_total_cost: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       atomic_execute_sell: {
         Args: {
           p_contract_id: string

@@ -10,6 +10,7 @@ import { ReportCommentDialog } from './ReportCommentDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CommentSectionProps {
   marketId: string;
@@ -43,6 +44,45 @@ export function CommentSection({ marketId }: CommentSectionProps) {
   useEffect(() => {
     loadComments();
   }, [loadComments]);
+
+  // Realtime subscription for new comments
+  useEffect(() => {
+    const channel = supabase
+      .channel(`comments:${marketId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'comments', 
+          filter: `market_id=eq.${marketId}` 
+        },
+        (payload) => {
+          // Reload comments when a new comment is added by another user
+          if (payload.new && (payload.new as { user_id: string }).user_id !== user?.id) {
+            loadComments();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: 'DELETE', 
+          schema: 'public', 
+          table: 'comments', 
+          filter: `market_id=eq.${marketId}` 
+        },
+        () => {
+          // Reload comments when a comment is deleted
+          loadComments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [marketId, user?.id, loadComments]);
 
   const handleSubmitComment = async () => {
     if (!newComment.trim() || isSubmitting) return;

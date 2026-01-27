@@ -83,8 +83,7 @@ function transformDbMarket(
   };
 }
 
-// Mock comments (will be moved to Supabase later)
-const mockComments: Record<string, Comment[]> = {};
+// Note: Comments are now fetched directly via CommentService in CommentSection.tsx
 
 // Mock markets for development
 const mockMarkets: MarketEvent[] = [
@@ -408,10 +407,7 @@ export const MarketDataProvider = {
     }));
   },
 
-  // Busca comentários do evento
-  async getEventComments(eventId: string): Promise<Comment[]> {
-    return mockComments[eventId] || [];
-  },
+  // Note: getEventComments removed - comments are fetched via CommentService directly
 
   // Busca mercados para autocomplete
   async searchEvents(query: string): Promise<MarketEvent[]> {

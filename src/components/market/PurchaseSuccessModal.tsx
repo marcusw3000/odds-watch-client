@@ -214,9 +214,14 @@ export function PurchaseSuccessModal({
                 
                 {/* Outcome Badge */}
                 <div className="flex items-center gap-3">
-                  {isMultiOption ? (
-                    <span className="px-4 py-2 rounded-lg font-bold text-lg bg-primary/20 text-primary border border-primary/30">
-                      {optionLabel}
+                {isMultiOption ? (
+                    <span className={cn(
+                      "px-4 py-2 rounded-lg font-bold text-lg",
+                      isYes 
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                        : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    )}>
+                      {isYes ? '' : 'NÃO '}{optionLabel}
                     </span>
                   ) : (
                     <span className={cn(

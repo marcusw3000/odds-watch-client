@@ -722,15 +722,15 @@ export function MarketDetailPage() {
             setSelectedOption(null);
             setOptionSide('YES');
           }}
-          onConfirm={async (optionId, shares, maxCost, side) => {
+           onConfirm={async (optionId, shares, maxCostOrTotalCost, side, slippageTolerance) => {
             if (side === 'NO') {
               // NO side: buy all other options proportionally via batch endpoint
               const { data, error } = await supabase.functions.invoke('execute-multi-trade-batch', {
                 body: { 
                   marketId: event.id, 
                   excludeOptionId: optionId, 
-                  totalCost: maxCost,
-                  maxSlippage: 0.05
+                   totalCost: maxCostOrTotalCost,
+                   maxSlippage: slippageTolerance
                 }
               });
               
@@ -752,7 +752,7 @@ export function MarketDetailPage() {
             
             // YES side: buy single option
             const { data, error } = await supabase.functions.invoke('execute-multi-trade', {
-              body: { marketId: event.id, optionId, shares, maxCost }
+               body: { marketId: event.id, optionId, shares, maxCost: maxCostOrTotalCost }
             });
             
             if (error || !data?.success) {

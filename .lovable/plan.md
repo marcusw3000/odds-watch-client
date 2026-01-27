@@ -1,259 +1,236 @@
 
-## Histórico de Preços Real para Mercados
+# Plano de Otimização de LCP (8416ms → <2500ms)
 
-### Problema Identificado
+## Diagnóstico do Problema
 
-Atualmente, o sistema exibe "Mercado recente - Histórico sendo coletado..." para mercados com menos de 3 dias, mas **não há coleta real de histórico**. Os dados de preço nos gráficos são gerados com mock determinístico no frontend.
+O LCP de 8416ms é classificado como **"poor"** pelo Google (bom: <2.5s, precisa melhorar: 2.5-4s, ruim: >4s). 
 
-### Situação Atual
+### Gargalos Identificados
 
-| Componente | Comportamento |
-|------------|---------------|
-| `TrendingMarketCard` | Mock com seeded random baseado em `event.id` |
-| `MarketDataProvider.getOddsHistory()` | Mock com `Math.random()` |
-| `PriceSparkline` | Mock com seeded random |
-| **Tabela de histórico** | ❌ Não existe |
-
-### Dados Disponíveis
-
-A tabela `transactions` já possui `price_per_share` em cada trade, que pode ser usado para derivar o histórico real:
-
-```
-market_id: 260e14e8-...
-position: YES
-price_per_share: 0.9025  ← Preço no momento do trade
-created_at: 2026-01-26 01:10:24
-```
+| Gargalo | Impacto | Causa |
+|---------|---------|-------|
+| **N+1 Queries no PriceSparkline** | Alto | Cada card dispara query individual para `market_price_history` |
+| **Auth check síncrono** | Alto | 150ms delay artificial + RPC `has_role` bloqueante |
+| **Layout.tsx waterfall** | Médio | `getUserPortfolio()` + balance fetch sequenciais |
+| **TrendingMarketCard Recharts** | Médio | Biblioteca pesada carregada mesmo sem dados |
+| **Imagens sem lazy loading nativo** | Médio | Background-image não usa loading="lazy" |
 
 ---
 
-### Solução Proposta: Sistema de Histórico de Preços Real
+## Fase 1: Eliminar N+1 Queries (Impacto: Muito Alto)
 
-#### Arquitetura
-
-```text
-┌─────────────────────┐     ┌─────────────────────┐
-│  execute-trade      │     │  update-admin-event │
-│  execute-sell       │────▶│  (ao alterar preços)│
-└─────────────────────┘     └─────────────────────┘
-           │                          │
-           ▼                          ▼
-┌─────────────────────────────────────────────────┐
-│           market_price_history                  │
-│  (market_id, yes_price, no_price, recorded_at)  │
-└─────────────────────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────────────────────┐
-│  MarketDataProvider.getOddsHistory()            │
-│  (busca dados reais + fallback para mock)       │
-└─────────────────────────────────────────────────┘
+### Problema
+Cada `PriceSparkline` no grid faz uma query separada:
+```typescript
+// PriceSparkline.tsx - linha 29-44
+useEffect(() => {
+  const fetchHistory = async () => {
+    await supabase.from('market_price_history')...
+  };
+  fetchHistory();
+}, [eventId]);
 ```
 
----
+Com 8 mercados visíveis = 8 queries paralelas + overhead.
 
-### Fase 1: Criar Tabela de Histórico de Preços
+### Solução
+Criar um hook centralizado que faz **batch fetch** de todos os sparklines de uma vez.
 
-**Nova tabela:** `market_price_history`
-
-```sql
-CREATE TABLE market_price_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  market_id UUID NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
-  yes_price NUMERIC(10, 4) NOT NULL,
-  no_price NUMERIC(10, 4) NOT NULL,
-  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  source TEXT DEFAULT 'trade' -- 'trade', 'snapshot', 'initial'
-);
-
--- Índice para queries rápidas
-CREATE INDEX idx_market_price_history_market_date 
-  ON market_price_history(market_id, recorded_at DESC);
-
--- RLS policies
-ALTER TABLE market_price_history ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can read price history" 
-  ON market_price_history FOR SELECT USING (true);
-```
-
----
-
-### Fase 2: Trigger Automático Após Cada Trade
-
-**Database Trigger** para capturar preço após cada transação:
-
-```sql
-CREATE OR REPLACE FUNCTION record_price_after_trade()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Apenas para BUY/SELL (não PAYOUT/DEPOSIT)
-  IF NEW.type IN ('BUY', 'SELL') AND NEW.market_id IS NOT NULL THEN
-    INSERT INTO market_price_history (market_id, yes_price, no_price, source)
-    SELECT 
-      NEW.market_id,
-      current_yes_price,
-      current_no_price,
-      'trade'
-    FROM markets 
-    WHERE id = NEW.market_id;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_record_price_after_trade
-  AFTER INSERT ON transactions
-  FOR EACH ROW
-  EXECUTE FUNCTION record_price_after_trade();
-```
-
----
-
-### Fase 3: Snapshot Inicial ao Criar Mercado
-
-**Modificar Edge Function:** `create-admin-event`
-
-Adicionar registro do preço inicial (50/50) ao criar um mercado:
+**Novo arquivo:** `src/hooks/usePriceHistoryBatch.ts`
 
 ```typescript
-// Após inserir o mercado
-await supabaseAdmin
-  .from('market_price_history')
-  .insert({
-    market_id: newMarket.id,
-    yes_price: 0.5,
-    no_price: 0.5,
-    source: 'initial',
+// Hook que faz prefetch de histórico para múltiplos mercados
+export function usePriceHistoryBatch(marketIds: string[]) {
+  return useQuery({
+    queryKey: ['price-history-batch', marketIds.sort().join(',')],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('market_price_history')
+        .select('market_id, yes_price, recorded_at')
+        .in('market_id', marketIds)
+        .order('recorded_at', { ascending: true });
+      
+      // Agrupar por market_id
+      const grouped: Record<string, PricePoint[]> = {};
+      data?.forEach(row => {
+        if (!grouped[row.market_id]) grouped[row.market_id] = [];
+        grouped[row.market_id].push(row);
+      });
+      return grouped;
+    },
+    staleTime: 60000,
+    enabled: marketIds.length > 0,
   });
-```
-
----
-
-### Fase 4: Atualizar MarketDataProvider
-
-**Arquivo:** `src/services/MarketDataProvider.ts`
-
-Modificar `getOddsHistory()` para buscar dados reais:
-
-```typescript
-async getOddsHistory(eventId: string): Promise<OddsHistoryPoint[]> {
-  // Buscar histórico real do banco
-  const { data, error } = await supabase
-    .from('market_price_history')
-    .select('yes_price, no_price, recorded_at')
-    .eq('market_id', eventId)
-    .order('recorded_at', { ascending: true })
-    .limit(200);
-
-  if (error || !data || data.length === 0) {
-    // Fallback para mock se não houver dados
-    return this.generateMockHistory(eventId);
-  }
-
-  // Agrupar por hora para reduzir pontos (smooth chart)
-  return this.aggregateByHour(data);
-}
-
-private aggregateByHour(data: PriceRecord[]): OddsHistoryPoint[] {
-  // Agrupa por hora, pega o último preço de cada hora
-  const grouped = new Map<string, PriceRecord>();
-  
-  data.forEach(record => {
-    const hourKey = format(new Date(record.recorded_at), 'yyyy-MM-dd HH:00');
-    grouped.set(hourKey, record); // Sobrescreve, mantendo o último
-  });
-
-  return Array.from(grouped.values()).map(r => ({
-    timestamp: new Date(r.recorded_at),
-    yesPrice: Math.round(r.yes_price * 100),
-    noPrice: Math.round(r.no_price * 100),
-  }));
 }
 ```
 
+**Modificar:** `MarketsPage.tsx`
+- Prefetch histórico para todos os mercados visíveis em uma query
+- Passar dados via Context para os PriceSparkline
+
+**Modificar:** `PriceSparkline.tsx`
+- Receber dados via props em vez de fazer fetch próprio
+- Remover useEffect com fetch individual
+
 ---
 
-### Fase 5: Backfill de Dados Históricos
+## Fase 2: Otimizar Auth Check (Impacto: Alto)
 
-**Edge Function:** `backfill-price-history`
+### Problema
+```typescript
+// useAuth.ts - linha 52
+await new Promise(resolve => setTimeout(resolve, 150)); // Delay artificial!
+```
 
-Popula histórico para mercados existentes a partir das transações:
+E depois ainda faz RPC síncrono para verificar admin role.
+
+### Solução
+
+**Modificar:** `src/hooks/useAuth.ts`
+
+1. Remover delay de 150ms - desnecessário com Supabase PKCE
+2. Fazer `has_role` RPC em paralelo com session check, não sequencial
+3. Usar cache do React Query para admin status
 
 ```typescript
-// Para cada mercado existente
-const { data: transactions } = await supabaseAdmin
-  .from('transactions')
-  .select('market_id, price_per_share, position, created_at')
-  .eq('market_id', marketId)
-  .in('type', ['BUY', 'SELL'])
-  .order('created_at', { ascending: true });
+// Antes: sequencial com delay
+await new Promise(resolve => setTimeout(resolve, 150));
+const session = await supabase.auth.getSession();
+if (session) await checkAdminRole(session.user.id); // Síncrono!
 
-// Recalcular preços YES/NO a partir dos trades
-// Inserir em market_price_history
+// Depois: paralelo sem delay
+const session = await supabase.auth.getSession();
+// Admin check é feito no onAuthStateChange com setTimeout(0)
+// Já está correto, só precisa remover o delay de 150ms
 ```
 
 ---
 
-### Fase 6: Remover Fallback de "Mercado Recente"
+## Fase 3: Otimizar Layout Waterfall (Impacto: Médio)
 
-**Arquivo:** `src/components/market/TrendingMarketCard.tsx`
+### Problema
+```typescript
+// Layout.tsx
+useEffect(() => {
+  fetchBalance(); // Dispara após mount
+  const interval = setInterval(() => fetchBalance(false), 15000);
+}, [fetchBalance]);
+```
 
-Remover a lógica de 3 dias e sempre exibir o gráfico:
+O balance é buscado **depois** que o Layout monta, causando cascade.
+
+### Solução
+
+**Modificar:** `src/components/layout/Layout.tsx`
+
+1. Usar React Query para cache do balance
+2. Mostrar skeleton/placeholder imediato para o header
+3. Prefetch balance durante loading da app
 
 ```typescript
-// Antes
-const isRecentMarket = differenceInDays(new Date(), createdAt) < 3;
+// Usar React Query com suspense-like behavior
+const { data: userBalance, isLoading: isBalanceLoading } = useQuery({
+  queryKey: ['user-balance'],
+  queryFn: async () => {
+    const portfolio = await MarketDataProvider.getUserPortfolio();
+    return portfolio.balance;
+  },
+  staleTime: 10000,
+  refetchInterval: 15000,
+});
+```
 
-// Depois - verificar se tem dados reais
-const hasRealHistory = priceHistory.length > 1;
+---
+
+## Fase 4: Lazy Load Recharts (Impacto: Médio)
+
+### Problema
+O `TrendingMarketCard` importa Recharts no bundle principal mesmo que o chart não seja mostrado (mercados sem histórico).
+
+### Solução
+
+**Modificar:** `src/components/market/TrendingMarketCard.tsx`
+
+1. Lazy load do componente de chart
+2. Só carregar Recharts quando há dados
+
+```typescript
+// Lazy load chart component
+const LazyPriceChart = lazy(() => import('./TrendingPriceChart'));
 
 // No JSX
-{!hasRealHistory ? (
-  <div className="...">
-    <Clock className="..." />
-    <p>Aguardando primeiro trade...</p>
-  </div>
+{hasEnoughData ? (
+  <Suspense fallback={<ChartSkeleton />}>
+    <LazyPriceChart data={priceHistory} />
+  </Suspense>
 ) : (
-  <ResponsiveContainer>...</ResponsiveContainer>
+  <NoDataPlaceholder />
 )}
 ```
 
----
-
-### Arquivos a Modificar/Criar
-
-| Ação | Arquivo |
-|------|---------|
-| **Criar** | Migração SQL para `market_price_history` + trigger |
-| **Modificar** | `supabase/functions/create-admin-event/index.ts` |
-| **Modificar** | `src/services/MarketDataProvider.ts` |
-| **Modificar** | `src/components/market/TrendingMarketCard.tsx` |
-| **Modificar** | `src/components/market/PriceSparkline.tsx` |
-| **Criar** | `supabase/functions/backfill-price-history/index.ts` |
-| **Atualizar** | `src/integrations/supabase/types.ts` (após migração) |
+**Novo arquivo:** `src/components/market/TrendingPriceChart.tsx`
+- Extrair apenas a parte do Recharts para chunk separado
 
 ---
 
-### Benefícios
+## Fase 5: Imagens com Native Lazy Loading (Impacto: Baixo-Médio)
 
-- Gráficos com dados reais baseados em trades
-- Histórico persistido no banco para análises futuras
-- Sem delay artificial de 3 dias
-- Mercados novos mostram gráfico assim que houver 1 trade
-- Backfill permite recuperar histórico de mercados existentes
+### Problema
+Cards usam `background-image` CSS que não suporta lazy loading nativo.
+
+### Solução
+
+**Modificar:** `src/components/market/cards/CardStyleDefault.tsx` (e outros)
+
+Trocar `background-image` por `<img>` com `loading="lazy"`:
+
+```typescript
+// Antes
+<div style={{ backgroundImage: `url(${optimizeImageUrl(...)})` }} />
+
+// Depois
+<img 
+  src={optimizeImageUrl(event.imageUrl, { width: 80 })}
+  loading="lazy"
+  decoding="async"
+  alt=""
+  className="absolute inset-0 w-full h-full object-cover"
+/>
+```
 
 ---
 
-### Detalhes Técnicos
+## Arquivos a Modificar
 
-**Estimativa de volume de dados:**
-- ~1 registro por trade (atual: ~41 trades total)
-- Mercados ativos: ~6
-- Crescimento: ~100 registros/dia estimado
-- Índice em `(market_id, recorded_at)` garante queries < 10ms
+| Prioridade | Arquivo | Mudança |
+|------------|---------|---------|
+| Alta | `src/hooks/usePriceHistoryBatch.ts` | Criar hook de batch fetch |
+| Alta | `src/pages/MarketsPage.tsx` | Integrar batch fetch |
+| Alta | `src/components/market/PriceSparkline.tsx` | Receber dados via props |
+| Alta | `src/hooks/useAuth.ts` | Remover delay de 150ms |
+| Média | `src/components/layout/Layout.tsx` | Usar React Query para balance |
+| Média | `src/components/market/TrendingMarketCard.tsx` | Lazy load Recharts |
+| Média | `src/components/market/TrendingPriceChart.tsx` | Criar componente separado |
+| Baixa | `src/components/market/cards/*.tsx` | Usar `<img loading="lazy">` |
 
-**Agregação de pontos:**
-- Raw data: 1 ponto por trade
-- Chart display: agregar por hora ou dia dependendo do período
-- Sparkline: últimos 7 pontos (1 por dia ou mais recentes)
+---
+
+## Métricas Esperadas
+
+| Métrica | Atual | Após Otimização |
+|---------|-------|-----------------|
+| LCP | 8416ms | <2500ms |
+| Queries iniciais | 8+ (N+1) | 2 (batch) |
+| Auth delay | 150ms | 0ms |
+| Bundle (charts) | Síncrono | Lazy |
+
+---
+
+## Ordem de Implementação
+
+1. **Batch fetch para sparklines** - Maior impacto, elimina N+1
+2. **Remover delay de auth** - Quick fix, 150ms imediato
+3. **React Query para balance** - Elimina waterfall
+4. **Lazy load Recharts** - Reduz bundle inicial
+5. **Native img lazy loading** - Polish final
+

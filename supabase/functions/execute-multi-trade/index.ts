@@ -10,6 +10,7 @@ interface MultiTradeRequest {
   optionId: string;
   shares: number;
   maxCost?: number;
+  side?: 'YES' | 'NO';  // YES = bet option wins, NO = bet option loses
 }
 
 Deno.serve(async (req) => {
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
     }
 
     const body: MultiTradeRequest = await req.json();
-    const { marketId, optionId, shares, maxCost } = body;
+    const { marketId, optionId, shares, maxCost, side = 'YES' } = body;
 
     // Validation
     if (!marketId || !optionId || !shares || shares <= 0) {
@@ -77,9 +78,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Choose the appropriate function based on side (YES or NO)
+    const functionName = side === 'NO' 
+      ? "atomic_execute_multi_no_trade" 
+      : "atomic_execute_multi_trade";
+
     // Execute atomic trade
     const { data: result, error: tradeError } = await supabaseAdmin.rpc(
-      "atomic_execute_multi_trade",
+      functionName,
       {
         p_user_id: user.id,
         p_market_id: marketId,
@@ -90,7 +96,7 @@ Deno.serve(async (req) => {
     );
 
     if (tradeError) {
-      console.error("Multi trade error:", tradeError);
+      console.error(`Multi trade error (${side}):`, tradeError);
       return new Response(
         JSON.stringify({ success: false, message: "Erro ao executar operação", error: tradeError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -106,12 +112,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Multi-option trade executed: user=${user.id}, market=${marketId}, option=${optionId}, shares=${shares}, cost=${result.trade_cost}`);
+    const contractType = result.contract_type || side;
+    const messagePrefix = contractType === 'NO' ? 'NÃO' : 'SIM';
+    
+    console.log(`Multi-option ${contractType} trade executed: user=${user.id}, market=${marketId}, option=${optionId}, shares=${shares}, cost=${result.trade_cost}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Compra realizada com sucesso!",
+        message: `Compra ${messagePrefix} realizada com sucesso!`,
         contract: {
           id: result.contract_id,
           marketId: marketId,
@@ -120,6 +129,7 @@ Deno.serve(async (req) => {
           priceAtPurchase: Math.round((result.price_per_share || 0) * 100),
           purchasedAt: new Date().toISOString(),
           status: "ACTIVE",
+          contractType: contractType,
         },
         quote: {
           cost: result.trade_cost,
@@ -128,6 +138,7 @@ Deno.serve(async (req) => {
         },
         newBalance: result.new_balance,
         transactionId: result.transaction_id,
+        contractType: contractType,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

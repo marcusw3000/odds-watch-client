@@ -723,17 +723,34 @@ export function MarketDetailPage() {
             setOptionSide('YES');
           }}
           onConfirm={async (optionId, shares, maxCost, side) => {
-            // For now, only YES side is fully implemented
-            // NO side (buying all other options) will be implemented in a future update
             if (side === 'NO') {
+              // NO side: buy all other options proportionally via batch endpoint
+              const { data, error } = await supabase.functions.invoke('execute-multi-trade-batch', {
+                body: { 
+                  marketId: event.id, 
+                  excludeOptionId: optionId, 
+                  totalCost: maxCost,
+                  maxSlippage: 0.05
+                }
+              });
+              
+              if (error || !data?.success) {
+                throw new Error(data?.message || 'Erro ao executar compra NÃO');
+              }
+              
+              setUserBalance(data.newBalance);
+              triggerPortfolioRefresh();
+              handleRefreshPrice();
+              
+              const contractCount = data.contracts?.length || 0;
               toast({
-                title: "Em breve",
-                description: "Comprar NÃO em múltiplas opções estará disponível em breve.",
-                variant: "default",
+                title: "Compra NÃO realizada!",
+                description: `Você comprou contratos em ${contractCount} opções por R$${data.totalCost?.toFixed(2)}.`,
               });
               return;
             }
             
+            // YES side: buy single option
             const { data, error } = await supabase.functions.invoke('execute-multi-trade', {
               body: { marketId: event.id, optionId, shares, maxCost }
             });
@@ -742,11 +759,8 @@ export function MarketDetailPage() {
               throw new Error(data?.message || 'Erro ao executar compra');
             }
             
-            // Atualizar saldo local e refresh portfolio
             setUserBalance(prev => prev - data.quote.cost);
             triggerPortfolioRefresh();
-            
-            // Refresh market data to update option prices/shares for next trade
             handleRefreshPrice();
             
             toast({

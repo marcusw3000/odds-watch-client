@@ -83,20 +83,38 @@ export function MultiOptionPurchaseModal({
   const currentPrice = side === 'YES' ? selectedOption.currentPrice : (100 - selectedOption.currentPrice);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
-  // Other options for NO side (buying all others)
+  // Other options context (only for NO side explanation text)
   const otherOptions = useMemo(() => 
     (event.options || []).filter(opt => opt.id !== selectedOption.id),
     [event.options, selectedOption.id]
   );
 
-  // Calculate quote using LMSR multi-option formula (client-side calculation)
-  // This matches the backend atomic_execute_multi_trade function
+  // For NO contracts (Kalshi-style), we use a simple price calculation
+  // Price NO = 100% - Price YES
+  // This creates a single contract that pays if the option DOES NOT win
+  
+  // Calculate quote - for YES use LMSR, for NO use simple price calculation
   useEffect(() => {
     if (debouncedShares <= 0) {
       setQuote(null);
       return;
     }
 
+    if (side === 'NO') {
+      // Kalshi-style NO contract: simple price = 1 - YES price
+      const noPrice = (100 - selectedOption.currentPrice) / 100;
+      const cost = debouncedShares * noPrice;
+      
+      setQuote({
+        cost,
+        avgPrice: Math.round(noPrice * 100),
+        priceImpact: 0, // NO contracts don't move the market
+        newPrices: [], // Prices don't change for NO contracts
+      });
+      return;
+    }
+
+    // YES contracts use LMSR calculation
     const options = event.options || [];
     const lmsrB = event.lmsr?.b || 100;
     
@@ -259,11 +277,8 @@ export function MultiOptionPurchaseModal({
 
   const quickShares = [10, 25, 50, 100];
 
-  // For context display (show first 3 other options)
-  const displayOtherOptions = useMemo(() => 
-    otherOptions.slice(0, 3),
-    [otherOptions]
-  );
+  // For context display (show first 3 other options) - only used in NO explanation
+  // Note: displayOtherOptions removed as otherOptions is used directly in the JSX
 
   if (successData) {
     return (
@@ -326,21 +341,19 @@ export function MultiOptionPurchaseModal({
           </div>
         </div>
 
-        {/* Other options context - only for NO side */}
-        {side === 'NO' && displayOtherOptions.length > 0 && (
-          <div className="space-y-2 p-3 rounded-lg bg-yes/5 border border-yes/20">
-            <p className="text-xs text-muted-foreground">Você ganha se qualquer uma vencer:</p>
-            <div className="flex gap-2 flex-wrap">
-              {displayOtherOptions.map(opt => (
-                <div 
-                  key={opt.id}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yes/10 text-xs"
-                >
-                  <span className="text-yes font-medium">{opt.label}</span>
-                  <span className="text-muted-foreground">{opt.currentPrice}¢</span>
-                </div>
-              ))}
-            </div>
+        {/* Explanation for NO contracts */}
+        {side === 'NO' && (
+          <div className="space-y-2 p-3 rounded-lg bg-no/10 border border-no/20">
+            <p className="text-xs font-medium text-no">Contrato NÃO (Kalshi-style)</p>
+            <p className="text-xs text-muted-foreground">
+              Você ganha R$1 por contrato se <span className="font-medium">{selectedOption.label}</span> <strong>NÃO</strong> vencer.
+              {otherOptions.length > 0 && (
+                <span> Ou seja, se qualquer outra opção vencer ({otherOptions.slice(0, 3).map(o => o.label).join(', ')}{otherOptions.length > 3 ? '...' : ''}).</span>
+              )}
+            </p>
+            <p className="text-xs text-no">
+              ⚠️ Se {selectedOption.label} vencer, você perde 100% do investimento.
+            </p>
           </div>
         )}
 
@@ -459,14 +472,17 @@ export function MultiOptionPurchaseModal({
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
-                  Retorno se {selectedOption.label} vencer
+                  {side === 'YES' 
+                    ? `Retorno se ${selectedOption.label} vencer`
+                    : `Retorno se ${selectedOption.label} NÃO vencer`
+                  }
                 </span>
                 <span className="font-mono">
                   R${potentialReturn.toFixed(2)} (+{roi.toFixed(2)}%)
                 </span>
               </div>
 
-              {Math.abs(quote.priceImpact) > 0.5 && (
+              {side === 'YES' && Math.abs(quote.priceImpact) > 0.5 && (
                 <div className={cn(
                   "flex items-center gap-2 p-2 rounded-md",
                   Math.abs(quote.priceImpact) > 5 
@@ -481,7 +497,10 @@ export function MultiOptionPurchaseModal({
               )}
 
               <p className="text-xs text-muted-foreground">
-                Se {selectedOption.label} vencer, cada contrato paga R$1,00
+                {side === 'YES'
+                  ? `Se ${selectedOption.label} vencer, cada contrato paga R$1,00`
+                  : `Se ${selectedOption.label} NÃO vencer, cada contrato paga R$1,00`
+                }
               </p>
 
               <div className="flex items-center justify-center">

@@ -580,6 +580,7 @@ export const MarketDataProvider = {
       outcome: c.position === 'OPTION' ? 'YES' : c.position as 'YES' | 'NO',
       position: c.position as 'YES' | 'NO' | 'OPTION',
       optionId: c.option_id || undefined,
+      contractType: c.contract_type as 'YES' | 'NO' || 'YES',  // Kalshi-style contract type
       quantity: c.shares,
       priceAtPurchase: c.average_price * 100,
       purchasedAt: new Date(c.created_at),

@@ -175,6 +175,7 @@ export interface UserContract {
   outcome: 'YES' | 'NO';
   position?: 'YES' | 'NO' | 'OPTION';  // Actual position type
   optionId?: string;                    // For multi-option contracts
+  contractType?: 'YES' | 'NO';          // Kalshi-style: YES = bet wins, NO = bet loses
   quantity: number;
   priceAtPurchase: number;
   purchasedAt: Date;

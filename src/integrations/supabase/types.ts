@@ -2057,6 +2057,7 @@ export type Database = {
       user_contracts: {
         Row: {
           average_price: number
+          contract_type: string
           created_at: string
           id: string
           market_id: string
@@ -2069,6 +2070,7 @@ export type Database = {
         }
         Insert: {
           average_price: number
+          contract_type?: string
           created_at?: string
           id?: string
           market_id: string
@@ -2081,6 +2083,7 @@ export type Database = {
         }
         Update: {
           average_price?: number
+          contract_type?: string
           created_at?: string
           id?: string
           market_id?: string
@@ -2404,6 +2407,25 @@ export type Database = {
       atomic_deposit_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
+      }
+      atomic_execute_multi_no_sell: {
+        Args: {
+          p_contract_id: string
+          p_min_value: number
+          p_shares: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      atomic_execute_multi_no_trade: {
+        Args: {
+          p_market_id: string
+          p_max_cost: number
+          p_option_id: string
+          p_shares: number
+          p_user_id: string
+        }
+        Returns: Json
       }
       atomic_execute_multi_sell: {
         Args: {

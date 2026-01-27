@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { TrendingUp, Clock, CheckCircle, XCircle, ArrowRightLeft, Share2, Loader2 } from 'lucide-react';
 import { UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SellModal } from '@/components/market/SellModal';
 import { SharePositionCard } from '@/components/social/SharePositionCard';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
@@ -114,6 +115,7 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
       <div className="space-y-3">
         {filteredContracts.map((contract) => {
           const isYes = contract.outcome === 'YES';
+          const isNoContract = contract.contractType === 'NO';  // Kalshi-style NO contract
           const purchasePrice = (contract.priceAtPurchase / 100) * contract.quantity;
           const potentialPayout = contract.quantity;
           
@@ -135,15 +137,25 @@ export function ContractsList({ contracts, type, onContractSold }: ContractsList
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span
                       className={cn(
                         "px-2 py-0.5 rounded text-xs font-bold",
-                        isYes ? "bg-yes-muted text-yes" : "bg-no-muted text-no"
+                        isNoContract 
+                          ? "bg-no-muted text-no"  // NO contract styling
+                          : isYes 
+                            ? "bg-yes-muted text-yes" 
+                            : "bg-no-muted text-no"
                       )}
                     >
-                      {contract.outcome === 'YES' ? 'SIM' : 'NÃO'}
+                      {isNoContract ? 'NÃO' : (contract.outcome === 'YES' ? 'SIM' : 'NÃO')}
                     </span>
+                    {/* Show Kalshi-style NO badge for multi-option contracts */}
+                    {isNoContract && contract.position === 'OPTION' && (
+                      <Badge variant="outline" className="text-xs border-no/50 text-no">
+                        Kalshi
+                      </Badge>
+                    )}
                     {contract.status === 'ACTIVE' ? (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />

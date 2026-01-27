@@ -723,49 +723,27 @@ export function MarketDetailPage() {
             setOptionSide('YES');
           }}
           onConfirm={async (optionId, shares, maxCost, side) => {
-            if (side === 'NO') {
-              // NO side: buy all other options proportionally via batch endpoint
-              const { data, error } = await supabase.functions.invoke('execute-multi-trade-batch', {
-                body: { 
-                  marketId: event.id, 
-                  excludeOptionId: optionId, 
-                  totalCost: maxCost,
-                  maxSlippage: 0.05
-                }
-              });
-              
-              if (error || !data?.success) {
-                throw new Error(data?.message || 'Erro ao executar compra NÃO');
-              }
-              
-              setUserBalance(data.newBalance);
-              triggerPortfolioRefresh();
-              handleRefreshPrice();
-              
-              const contractCount = data.contracts?.length || 0;
-              toast({
-                title: "Compra NÃO realizada!",
-                description: `Você comprou contratos em ${contractCount} opções por R$${data.totalCost?.toFixed(2)}.`,
-              });
-              return;
-            }
-            
-            // YES side: buy single option
+            // Kalshi-style: Both YES and NO trades use the same endpoint with side parameter
             const { data, error } = await supabase.functions.invoke('execute-multi-trade', {
-              body: { marketId: event.id, optionId, shares, maxCost }
+              body: { marketId: event.id, optionId, shares, maxCost, side }
             });
             
             if (error || !data?.success) {
               throw new Error(data?.message || 'Erro ao executar compra');
             }
             
-            setUserBalance(prev => prev - data.quote.cost);
+            setUserBalance(data.newBalance ?? (userBalance - data.quote.cost));
             triggerPortfolioRefresh();
             handleRefreshPrice();
             
+            // Refresh contracts
+            const portfolio = await MarketDataProvider.getUserPortfolio();
+            setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
+            
+            const sideLabel = side === 'NO' ? 'NÃO' : 'SIM';
             toast({
-              title: "Compra realizada!",
-              description: `Você comprou ${shares} contratos.`,
+              title: `Compra ${sideLabel} realizada!`,
+              description: `Você comprou ${shares} contratos ${sideLabel} por R$${data.quote?.cost?.toFixed(2) || maxCost.toFixed(2)}.`,
             });
           }}
           onRefreshPrice={handleRefreshPrice}

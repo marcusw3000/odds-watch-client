@@ -97,59 +97,23 @@ Deno.serve(async (req) => {
     );
 
     if (tradeError) {
-      console.error("Multi trade batch error:", {
-        error: tradeError.message,
-        details: tradeError.details,
-        hint: tradeError.hint,
-        code: tradeError.code,
-        userId: user.id,
-        marketId,
-        excludeOptionId,
-        totalCost,
-        maxSlippage,
-      });
+      console.error("Multi trade batch error:", tradeError);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: tradeError.message || "Erro ao executar operação",
-          details: tradeError.details,
-          hint: tradeError.hint,
-        }),
+        JSON.stringify({ success: false, message: "Erro ao executar operação", error: tradeError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!result || !result.success) {
       const errorMessage = result?.error || "Erro desconhecido";
-      console.error("Multi trade batch failed:", {
-        error: errorMessage,
-        partialContracts: result?.partial_contracts,
-        partialCost: result?.partial_cost,
-        userId: user.id,
-        marketId,
-        totalCost,
-      });
+      console.error("Multi trade batch failed:", errorMessage);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: errorMessage,
-          partialContracts: result?.partial_contracts,
-          partialCost: result?.partial_cost,
-        }),
+        JSON.stringify({ success: false, message: errorMessage }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Multi-option NO trade executed successfully:", {
-      userId: user.id,
-      marketId,
-      excludedOptionId: excludeOptionId,
-      requestedCost: totalCost,
-      actualCost: result.total_cost,
-      optionsBought: result.options_bought,
-      optionsSkipped: result.options_skipped,
-      newBalance: result.new_balance,
-    });
+    console.log(`Multi-option NO trade executed: user=${user.id}, market=${marketId}, excluded=${excludeOptionId}, cost=${result.total_cost}, contracts=${result.contracts?.length || 0}`);
 
     return new Response(
       JSON.stringify({

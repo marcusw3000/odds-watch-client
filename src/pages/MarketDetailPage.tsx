@@ -722,15 +722,15 @@ export function MarketDetailPage() {
             setSelectedOption(null);
             setOptionSide('YES');
           }}
-           onConfirm={async (optionId, shares, maxCostOrTotalCost, side, slippageTolerance) => {
+          onConfirm={async (optionId, shares, maxCost, side) => {
             if (side === 'NO') {
               // NO side: buy all other options proportionally via batch endpoint
               const { data, error } = await supabase.functions.invoke('execute-multi-trade-batch', {
                 body: { 
                   marketId: event.id, 
                   excludeOptionId: optionId, 
-                   totalCost: maxCostOrTotalCost,
-                   maxSlippage: slippageTolerance
+                  totalCost: maxCost,
+                  maxSlippage: 0.05
                 }
               });
               
@@ -742,19 +742,17 @@ export function MarketDetailPage() {
               triggerPortfolioRefresh();
               handleRefreshPrice();
               
-              // Return data to modal for success screen instead of just toast
-              const excludedOption = event.options?.find(o => o.id === optionId);
-              return {
-                contracts: data.contracts,
-                totalCost: data.totalCost,
-                newBalance: data.newBalance,
-                excludedOptionLabel: excludedOption?.label || '',
-              };
+              const contractCount = data.contracts?.length || 0;
+              toast({
+                title: "Compra NÃO realizada!",
+                description: `Você comprou contratos em ${contractCount} opções por R$${data.totalCost?.toFixed(2)}.`,
+              });
+              return;
             }
             
             // YES side: buy single option
             const { data, error } = await supabase.functions.invoke('execute-multi-trade', {
-               body: { marketId: event.id, optionId, shares, maxCost: maxCostOrTotalCost }
+              body: { marketId: event.id, optionId, shares, maxCost }
             });
             
             if (error || !data?.success) {

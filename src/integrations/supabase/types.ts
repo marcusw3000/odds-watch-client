@@ -2476,15 +2476,6 @@ export type Database = {
         Args: { b: number; shares: number[] }
         Returns: number[]
       }
-      calculate_shares_for_budget: {
-        Args: {
-          p_all_shares: number[]
-          p_b: number
-          p_budget: number
-          p_option_index: number
-        }
-        Returns: number
-      }
       check_and_grant_achievements: {
         Args: { p_user_id: string }
         Returns: undefined

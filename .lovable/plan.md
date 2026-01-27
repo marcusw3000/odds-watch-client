@@ -1,181 +1,218 @@
 
-# Plano: Adicionar Tela de Resumo de Operação para Compra NÃO
+# Sprint 3: Multi-option NÃO Trades + Comentários Realtime
 
-## Problema Identificado
-Atualmente, a compra de **NÃO** em mercados múltiplos:
-1. Executa corretamente a operação via `execute-multi-trade-batch`
-2. Mostra apenas um toast simples ("Compra NÃO realizada!")
-3. **NÃO exibe** o modal de sucesso (`PurchaseSuccessModal`) com resumo detalhado
+## Visão Geral
 
-Já a compra de **SIM**:
-1. Mostra o modal de sucesso com confetti
-2. Exibe contratos, valor investido, lucro potencial
-3. Permite compartilhar a posição
+Este sprint implementa duas funcionalidades importantes:
+1. **P2.7** - Compra de "NÃO" em mercados de múltiplas opções
+2. **P2.8** - Migração de comentários de mocks para banco de dados real com realtime
 
-## Causa Raiz
-No `MarketDetailPage.tsx` (linhas 725-750), após a chamada bem-sucedida da compra NÃO, o código faz `return` imediatamente após o toast, impedindo que os dados retornem ao `MultiOptionPurchaseModal` para configurar o `successData`.
+---
 
-## Solução Proposta
+## P2.7 - Compra de NÃO em Mercados Múltiplos
 
-### 1. Modificar o fluxo de confirmação no `MarketDetailPage.tsx`
-Em vez de fazer `return` após o toast, **retornar os dados da API** para que o modal possa processá-los e exibir a tela de sucesso.
+### Problema Atual
+Quando o usuário clica em "NÃO" para uma opção em um mercado de múltiplas opções (ex: "NÃO em Flamengo"), o sistema exibe "Em breve!" (linha 728-735 de `MarketDetailPage.tsx`).
+
+### Solução
+Comprar "NÃO" na opção X significa comprar "SIM" em **todas as outras opções** proporcionalmente ao preço de cada uma.
+
+**Exemplo:**
+- Mercado: "Quem será o campeão do Brasileirão?"
+- Opções: Flamengo (25¢), Palmeiras (22¢), São Paulo (15¢), Outros (38¢)
+- Usuário clica "NÃO" em Flamengo
+- Sistema compra SIM proporcional em Palmeiras, São Paulo e Outros
+
+### Arquivos a Modificar
+
+#### 1. Backend: Nova Edge Function `execute-multi-trade-batch`
+```
+supabase/functions/execute-multi-trade-batch/index.ts
+```
+- Recebe: `marketId`, `excludeOptionId`, `totalCost`
+- Calcula distribuição proporcional entre as outras opções
+- Executa trades atômicos para cada opção
+- Retorna array de contratos criados
+
+#### 2. Backend: Nova função SQL `atomic_execute_multi_trade_batch`
+Migração SQL para criar função que:
+- Recebe array de opções com shares
+- Executa todas as compras em uma única transação
+- Garante consistência ACID
+
+#### 3. Frontend: `MarketDetailPage.tsx`
+- Remover toast "Em breve!"
+- Chamar `execute-multi-trade-batch` quando side='NO'
+- Exibir sucesso com lista de contratos criados
+
+#### 4. Frontend: `MultiOptionPurchaseModal.tsx`
+- Calcular custo total para NO (soma dos custos das outras opções)
+- Exibir preview: "Você ganhará se qualquer uma vencer:"
+- Mostrar distribuição proporcional
+
+### Fluxo de Dados
 
 ```text
-// Atual (linha 750):
-return;  // Impede o fluxo de sucesso
-
-// Proposto:
-// Não faz return - deixa os dados voltarem ao modal
+Usuário clica "NÃO em Flamengo" com R$10
+                    ↓
+MultiOptionPurchaseModal calcula distribuição:
+  - Palmeiras: R$2.93 (22/75 do restante)
+  - São Paulo: R$2.00 (15/75)
+  - Outros: R$5.07 (38/75)
+                    ↓
+execute-multi-trade-batch
+                    ↓
+atomic_execute_multi_trade_batch (SQL)
+  - Cria 3 contratos user_contracts
+  - Debita wallet
+  - Atualiza shares em market_options
+  - Registra transactions e ledger_entries
+                    ↓
+Retorna array de contratos criados
 ```
 
-### 2. Ajustar `MultiOptionPurchaseModal.tsx` para receber dados de sucesso da API
+---
 
-**Modificar a interface `onConfirm`** para que a função possa retornar dados de sucesso do batch:
+## P2.8 - Migração de Comentários para Banco de Dados
 
-```text
-// Modificar o tipo de retorno de onConfirm para:
-onConfirm: (...) => Promise<BatchTradeResult | void>
+### Problema Atual
+- `MarketDataProvider.ts` linha 87: `const mockComments: Record<string, Comment[]> = {};`
+- `getEventComments()` retorna array vazio (mock)
+- Tabela `comments` existe no banco com 7 registros reais
+- `CommentService.ts` já usa queries reais para CRUD, mas `MarketDataProvider` não usa
 
-// Onde BatchTradeResult contém:
-{
-  contracts: Array<{ option_id, option_label, shares, cost }>,
-  totalCost: number,
-  newBalance: number
-}
-```
+### Situação Atual (Já Funciona ✅)
+Analisando o código, descobri que:
+- `CommentSection.tsx` já usa `CommentService.getRootComments()` diretamente
+- `CommentService.ts` já faz queries reais na tabela `comments`
+- A função `getEventComments()` em `MarketDataProvider.ts` não é usada!
 
-### 3. Atualizar a lógica de sucesso para NÃO
+### O Que Falta
+1. **Remover código morto**: Excluir `mockComments` e `getEventComments()` de `MarketDataProvider.ts`
+2. **Adicionar Realtime**: Subscription para novos comentários aparecerem automaticamente
 
-No callback do `onConfirm` dentro do modal (para `side === 'NO'`):
+### Arquivos a Modificar
 
-```text
-const result = await onConfirm(selectedOption.id, 0, totalCost, 'NO', slippage);
+#### 1. `src/services/MarketDataProvider.ts`
+- Remover linha 87: `const mockComments`
+- Remover linhas 411-414: função `getEventComments()`
 
-// Exibir dados reais da API:
-setSuccessData({
-  shares: result.contracts.length,  // Número de opções compradas
-  totalCost: result.totalCost,      // Custo real debitado
-  potentialProfit: calculatePotentialProfit(result.contracts),
-});
-```
-
-### 4. Criar componente `MultiOptionSuccessModal` (opcional, mas recomendado)
-
-Para compras NÃO, o resumo deve mostrar informações diferentes:
-- **Opções compradas**: Lista das opções onde contratos foram criados
-- **Total investido**: Valor real debitado
-- **Contratos por opção**: Detalhamento de cada compra
-
-```text
-┌─────────────────────────────────────────┐
-│        Compra NÃO Confirmada! 🎉         │
-├─────────────────────────────────────────┤
-│  Você apostou CONTRA: "Opção X"         │
-│                                         │
-│  Contratos comprados:                   │
-│  ✓ Opção A: 12 contratos (R$8.40)       │
-│  ✓ Opção B: 8 contratos  (R$6.20)       │
-│  ✓ Opção C: 15 contratos (R$5.40)       │
-│                                         │
-│  ─────────────────────────────────────  │
-│  Total investido:        R$20.00        │
-│  Lucro potencial:        +R$15.00       │
-└─────────────────────────────────────────┘
-```
-
-## Arquivos a Modificar
-
-| Arquivo | Mudança |
-|---------|---------|
-| `MarketDetailPage.tsx` | Retornar dados da API em vez de `return` após sucesso |
-| `MultiOptionPurchaseModal.tsx` | Receber dados retornados e configurar `successData` com valores reais |
-| `PurchaseSuccessModal.tsx` | Adicionar suporte para lista de contratos (prop `contracts`) |
-
-## Detalhes Técnicos
-
-### Mudança no `MarketDetailPage.tsx`
-
+#### 2. `src/components/market/CommentSection.tsx`
+Adicionar subscription realtime:
 ```typescript
-// Linha ~725-750: Em vez de return, retornar os dados
-if (side === 'NO') {
-  const { data, error } = await supabase.functions.invoke(...);
-  // ... validações ...
-  
-  setUserBalance(data.newBalance);
-  triggerPortfolioRefresh();
-  handleRefreshPrice();
-  
-  // NOVO: Retornar dados para o modal processar
-  return {
-    contracts: data.contracts,
-    totalCost: data.totalCost,
-    excludedOptionLabel: selectedOption.label
+useEffect(() => {
+  const channel = supabase
+    .channel(`comments:${marketId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'comments', filter: `market_id=eq.${marketId}` },
+      (payload) => {
+        // Adicionar novo comentário à lista (se não for do próprio usuário)
+        if (payload.new.user_id !== user?.id) {
+          loadComments();
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
   };
+}, [marketId, user?.id]);
+```
+
+---
+
+## Cronograma de Implementação
+
+| Tarefa | Arquivos | Esforço |
+|--------|----------|---------|
+| 1. Edge Function execute-multi-trade-batch | `supabase/functions/execute-multi-trade-batch/index.ts` | 2h |
+| 2. SQL atomic_execute_multi_trade_batch | Migração | 1h |
+| 3. Atualizar MarketDetailPage para NO | `src/pages/MarketDetailPage.tsx` | 30min |
+| 4. Atualizar MultiOptionPurchaseModal | `src/components/market/MultiOptionPurchaseModal.tsx` | 1h |
+| 5. Remover mocks de comentários | `src/services/MarketDataProvider.ts` | 15min |
+| 6. Adicionar realtime aos comentários | `src/components/market/CommentSection.tsx` | 30min |
+| 7. Testes e validação | - | 1h |
+
+**Total estimado: ~6 horas**
+
+---
+
+## Seção Técnica
+
+### Edge Function: execute-multi-trade-batch
+
+```typescript
+interface MultiTradeBatchRequest {
+  marketId: string;
+  excludeOptionId: string;   // Opção que o usuário NÃO quer
+  totalCost: number;         // Valor total a investir
+  maxSlippage?: number;
 }
+
+// Lógica principal:
+// 1. Buscar todas as opções do mercado
+// 2. Filtrar a opção excluída
+// 3. Calcular distribuição proporcional por preço
+// 4. Chamar atomic_execute_multi_trade_batch
 ```
 
-### Mudança no `MultiOptionPurchaseModal.tsx`
+### SQL: atomic_execute_multi_trade_batch
+
+```sql
+CREATE OR REPLACE FUNCTION atomic_execute_multi_trade_batch(
+  p_user_id UUID,
+  p_market_id UUID,
+  p_trades JSONB  -- Array de {option_id, shares}
+) RETURNS JSONB AS $$
+DECLARE
+  v_trade JSONB;
+  v_total_cost NUMERIC := 0;
+  v_results JSONB := '[]'::JSONB;
+BEGIN
+  -- Validar saldo disponível
+  -- Loop por cada trade
+  FOR v_trade IN SELECT * FROM jsonb_array_elements(p_trades)
+  LOOP
+    -- Chamar atomic_execute_multi_trade para cada opção
+    -- Acumular resultados
+  END LOOP;
+  
+  RETURN jsonb_build_object(
+    'success', true,
+    'contracts', v_results,
+    'total_cost', v_total_cost
+  );
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Cálculo de Distribuição Proporcional
 
 ```typescript
-// Linha ~306-316
-onConfirm={async (totalCost, slippage) => {
-  setIsConfirming(true);
-  try {
-    const result = await onConfirm(selectedOption.id, 0, totalCost, 'NO', slippage);
-    
-    // Calcular lucro potencial: cada contrato vale R$1 se vencer
-    const totalShares = result?.contracts?.reduce((sum, c) => sum + c.shares, 0) || 0;
-    
-    setSuccessData({
-      shares: totalShares,
-      totalCost: result?.totalCost || totalCost,
-      potentialProfit: totalShares - (result?.totalCost || totalCost),
-      contracts: result?.contracts, // NOVO: para exibir detalhes
-      excludedOptionLabel: selectedOption.label, // NOVO
-    });
-  } catch (err) { ... }
-}}
+// Dado:
+// - excludeOption.currentPrice = 25 (Flamengo)
+// - otherOptions = [{id: 'palm', price: 22}, {id: 'sp', price: 15}, {id: 'outros', price: 38}]
+// - totalCost = 10
+
+const priceSum = otherOptions.reduce((sum, opt) => sum + opt.currentPrice, 0);
+// priceSum = 22 + 15 + 38 = 75
+
+const trades = otherOptions.map(opt => ({
+  optionId: opt.id,
+  allocation: totalCost * (opt.currentPrice / priceSum),
+  // palm: 10 * (22/75) = 2.93
+  // sp: 10 * (15/75) = 2.00
+  // outros: 10 * (38/75) = 5.07
+}));
 ```
 
-### Atualização do `PurchaseSuccessModal.tsx`
+---
 
-Adicionar props opcionais para exibir detalhes do batch:
+## Verificações de Segurança
 
-```typescript
-interface PurchaseSuccessModalProps {
-  // ... props existentes ...
-  contracts?: Array<{ option_label: string; shares: number; cost: number }>;
-  excludedOptionLabel?: string; // Opção que o usuário apostou CONTRA
-}
-```
-
-E renderizar condicionalmente quando `contracts` estiver presente:
-
-```typescript
-{isNoBatch && contracts && (
-  <div className="space-y-2">
-    <p className="text-sm text-muted-foreground">Contratos comprados:</p>
-    {contracts.map(c => (
-      <div key={c.option_label} className="flex justify-between text-sm">
-        <span>{c.option_label}</span>
-        <span>{c.shares} contratos (R${c.cost.toFixed(2)})</span>
-      </div>
-    ))}
-  </div>
-)}
-```
-
-## Resumo das Entregas
-
-1. **`MarketDetailPage.tsx`**: Ajustar `onConfirm` para retornar dados da API de batch
-2. **`MultiOptionPurchaseModal.tsx`**: Processar retorno e popular `successData` com valores reais
-3. **`PurchaseSuccessModal.tsx`**: Suportar exibição de lista de contratos para compras NÃO
-
-## Resultado Esperado
-
-Após a compra de NÃO:
-- Modal de sucesso aparece com confetti
-- Mostra a opção excluída ("Você apostou CONTRA: Opção X")
-- Lista os contratos comprados nas outras opções
-- Exibe total investido real e lucro potencial calculado
-- Permite compartilhar a posição nas redes sociais
+1. **RLS**: Tabela `comments` já tem políticas para usuários autenticados
+2. **Validação**: Edge function valida autenticação antes de processar
+3. **Atomicidade**: Transação SQL garante consistência dos trades batch
+4. **Limites**: Respeitar `minBuy`/`maxBuy` do mercado

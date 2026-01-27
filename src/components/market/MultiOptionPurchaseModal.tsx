@@ -10,7 +10,6 @@ import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 import { SlippageSelector } from './SlippageSelector';
 import { Progress } from '@/components/ui/progress';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MultiOptionNoPurchaseContent } from './MultiOptionNoPurchaseContent';
 import {
   Drawer,
   DrawerContent,
@@ -38,29 +37,14 @@ interface MultiOptionPurchaseModalProps {
   side: 'YES' | 'NO';
   userBalance: number;
   onClose: () => void;
-  onConfirm: (
-    optionId: string,
-    shares: number,
-    maxCostOrTotalCost: number,
-    side: 'YES' | 'NO',
-    slippageTolerance: number
-  ) => Promise<BatchTradeResult | void>;
+  onConfirm: (optionId: string, shares: number, maxCost: number, side: 'YES' | 'NO') => Promise<void>;
   onRefreshPrice: () => Promise<MarketEvent | null>;
-}
-
-interface BatchTradeResult {
-  contracts: Array<{ option_id: string; option_label: string; shares: number; cost: number }>;
-  totalCost: number;
-  newBalance: number;
-  excludedOptionLabel: string;
 }
 
 interface SuccessData {
   shares: number;
   totalCost: number;
   potentialProfit: number;
-  contracts?: Array<{ option_label: string; shares: number; cost: number }>;
-  excludedOptionLabel?: string;
 }
 
 interface MultiOptionQuote {
@@ -108,13 +92,6 @@ export function MultiOptionPurchaseModal({
   // Calculate quote using LMSR multi-option formula (client-side calculation)
   // This matches the backend atomic_execute_multi_trade function
   useEffect(() => {
-    // For "NÃO" we operate by total R$ budget and execute a batch on the backend.
-    // Keep this quote strictly for "SIM" (single option) to avoid misleading numbers.
-    if (side === 'NO') {
-      setQuote(null);
-      return;
-    }
-
     if (debouncedShares <= 0) {
       setQuote(null);
       return;
@@ -252,7 +229,7 @@ export function MultiOptionPurchaseModal({
       const potentialProfit = sharesNum - totalCost;
       const maxCostWithSlippage = quote.cost * (1 + slippageTolerance);
 
-      await onConfirm(selectedOption.id, sharesNum, maxCostWithSlippage, side, slippageTolerance);
+      await onConfirm(selectedOption.id, sharesNum, maxCostWithSlippage, side);
       
       setSuccessData({
         shares: sharesNum,
@@ -293,102 +270,13 @@ export function MultiOptionPurchaseModal({
       <PurchaseSuccessModal
         eventTitle={event.title}
         eventId={event.id}
-        outcome={side}
-        optionLabel={side === 'NO' ? undefined : selectedOption.label}
+        outcome="YES"
+        optionLabel={selectedOption.label}
         shares={successData.shares}
         totalCost={successData.totalCost}
         potentialProfit={successData.potentialProfit}
-        contracts={successData.contracts}
-        excludedOptionLabel={successData.excludedOptionLabel}
         onClose={onClose}
       />
-    );
-  }
-
-  if (side === 'NO') {
-    const noContent = (
-      <MultiOptionNoPurchaseContent
-        minBuy={event.limits.minBuy}
-        maxBuy={event.limits.maxBuy}
-        userBalance={userBalance}
-        slippageTolerance={slippageTolerance}
-        onSlippageChange={setSlippageTolerance}
-        isConfirming={isConfirming}
-        onConfirm={async (totalCost, slippage) => {
-          setIsConfirming(true);
-          setError(null);
-          try {
-            const result = await onConfirm(selectedOption.id, 0, totalCost, 'NO', slippage);
-            
-            // Calculate total shares and profit from batch result
-            const batchResult = result as BatchTradeResult | undefined;
-            const totalShares = batchResult?.contracts?.reduce((sum, c) => sum + c.shares, 0) || 0;
-            const actualCost = batchResult?.totalCost || totalCost;
-            const potentialProfit = totalShares - actualCost; // Each contract pays R$1 if wins
-            
-            setSuccessData({
-              shares: totalShares,
-              totalCost: actualCost,
-              potentialProfit,
-              contracts: batchResult?.contracts?.map(c => ({
-                option_label: c.option_label,
-                shares: c.shares,
-                cost: c.cost,
-              })),
-              excludedOptionLabel: batchResult?.excludedOptionLabel || selectedOption.label,
-            });
-          } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : '';
-            if (
-              errorMessage.includes('preço mudou') ||
-              errorMessage.includes('slippage') ||
-              errorMessage.includes('Preço excedeu') ||
-              errorMessage.includes('custo máximo')
-            ) {
-              setSlippageDetected(true);
-              setError('O preço mudou desde sua cotação. Atualizando preços...');
-              handleRefreshPrice();
-            } else {
-              setError(errorMessage || 'Erro ao processar compra. Tente novamente.');
-            }
-          } finally {
-            setIsConfirming(false);
-          }
-        }}
-      />
-    );
-
-    if (isMobile) {
-      return (
-        <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
-          <DrawerContent className="max-h-[90vh]">
-            <DrawerHeader className="flex items-center justify-between border-b border-border pb-4">
-              <DrawerTitle>Comprar NÃO</DrawerTitle>
-              <DrawerClose asChild>
-                <Button variant="ghost" size="icon">
-                  <X className="h-5 w-5" />
-                </Button>
-              </DrawerClose>
-            </DrawerHeader>
-            <div className="overflow-y-auto">{noContent}</div>
-          </DrawerContent>
-        </Drawer>
-      );
-    }
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative z-10 w-full max-w-md bg-card border border-border rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
-            <h2 className="text-lg font-semibold">Comprar NÃO</h2>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          {noContent}
-        </div>
-      </div>
     );
   }
 
@@ -438,7 +326,23 @@ export function MultiOptionPurchaseModal({
           </div>
         </div>
 
-        {/* Compra NÃO em mercados MULTIPLE é tratada em um fluxo dedicado acima */}
+        {/* Other options context - only for NO side */}
+        {side === 'NO' && displayOtherOptions.length > 0 && (
+          <div className="space-y-2 p-3 rounded-lg bg-yes/5 border border-yes/20">
+            <p className="text-xs text-muted-foreground">Você ganha se qualquer uma vencer:</p>
+            <div className="flex gap-2 flex-wrap">
+              {displayOtherOptions.map(opt => (
+                <div 
+                  key={opt.id}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yes/10 text-xs"
+                >
+                  <span className="text-yes font-medium">{opt.label}</span>
+                  <span className="text-muted-foreground">{opt.currentPrice}¢</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Price Timer */}
         <div className={cn(
@@ -610,7 +514,7 @@ export function MultiOptionPurchaseModal({
 
       {/* Footer */}
       <div className="p-5 pt-0">
-          <Button
+        <Button
           variant="default"
           size="lg"
           className="w-full"

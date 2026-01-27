@@ -28,22 +28,14 @@ const WhatsAppIcon = () => (
   </svg>
 );
 
-interface BatchContract {
-  option_label: string;
-  shares: number;
-  cost: number;
-}
-
 interface PurchaseSuccessModalProps {
   eventTitle: string;
   eventId: string;
   outcome: 'YES' | 'NO';
-  optionLabel?: string; // For multi-option markets (YES side)
+  optionLabel?: string; // For multi-option markets
   shares: number;
   totalCost: number;
   potentialProfit: number;
-  contracts?: BatchContract[]; // For multi-option NO batch purchases
-  excludedOptionLabel?: string; // Option user bet AGAINST
   onClose: () => void;
 }
 
@@ -55,8 +47,6 @@ export function PurchaseSuccessModal({
   shares,
   totalCost,
   potentialProfit,
-  contracts,
-  excludedOptionLabel,
   onClose,
 }: PurchaseSuccessModalProps) {
   const [copied, setCopied] = useState(false);
@@ -143,8 +133,7 @@ export function PurchaseSuccessModal({
     toast.success('Texto copiado! Cole no Instagram Stories ou Direct');
   };
 
-  const isNoBatch = outcome === 'NO' && !!contracts && contracts.length > 0;
-  const isMultiOptionYes = !!optionLabel;
+  const isMultiOption = !!optionLabel;
   const isYes = outcome === 'YES';
 
   return (
@@ -225,11 +214,7 @@ export function PurchaseSuccessModal({
                 
                 {/* Outcome Badge */}
                 <div className="flex items-center gap-3">
-                  {isNoBatch ? (
-                    <span className="px-4 py-2 rounded-lg font-bold text-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      NÃO {excludedOptionLabel}
-                    </span>
-                  ) : isMultiOptionYes ? (
+                  {isMultiOption ? (
                     <span className="px-4 py-2 rounded-lg font-bold text-lg bg-primary/20 text-primary border border-primary/30">
                       {optionLabel}
                     </span>
@@ -248,23 +233,6 @@ export function PurchaseSuccessModal({
                     <p className="font-bold text-lg">{shares}</p>
                   </div>
                 </div>
-
-                {/* Batch contracts breakdown for NO purchases */}
-                {isNoBatch && contracts && (
-                  <div className="mt-4 pt-3 border-t border-slate-700">
-                    <p className="text-xs text-slate-400 mb-2">Contratos comprados em:</p>
-                    <div className="space-y-1.5">
-                      {contracts.map((c, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm">
-                          <span className="text-slate-300 truncate max-w-[60%]">{c.option_label}</span>
-                          <span className="text-slate-400 whitespace-nowrap">
-                            {c.shares} × R${c.cost.toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
             

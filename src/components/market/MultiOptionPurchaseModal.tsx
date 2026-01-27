@@ -344,7 +344,6 @@ export function MultiOptionPurchaseModal({
         {/* Explanation for NO contracts */}
         {side === 'NO' && (
           <div className="space-y-2 p-3 rounded-lg bg-no/10 border border-no/20">
-            <p className="text-xs font-medium text-no">Contrato NÃO (Kalshi-style)</p>
             <p className="text-xs text-muted-foreground">
               Você ganha R$1 por contrato se <span className="font-medium">{selectedOption.label}</span> <strong>NÃO</strong> vencer.
               {otherOptions.length > 0 && (

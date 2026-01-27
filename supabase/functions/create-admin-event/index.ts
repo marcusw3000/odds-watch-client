@@ -255,6 +255,26 @@ Deno.serve(async (req) => {
 
     logStep(functionName, 'Event created', { eventId: newEvent.id, marketType });
 
+    // Record initial price snapshot for the new market
+    const initialYesPriceToRecord = marketType === 'BINARY' ? initialYesPrice : 0.5;
+    const initialNoPriceToRecord = marketType === 'BINARY' ? initialNoPrice : 0.5;
+    
+    const { error: historyError } = await adminClient
+      .from('market_price_history')
+      .insert({
+        market_id: newEvent.id,
+        yes_price: initialYesPriceToRecord,
+        no_price: initialNoPriceToRecord,
+        source: 'initial',
+      });
+
+    if (historyError) {
+      logError(functionName, 'Failed to record initial price history', { error: historyError });
+      // Non-blocking error - market was created successfully
+    } else {
+      logStep(functionName, 'Initial price history recorded');
+    }
+
     return new Response(
       JSON.stringify({ success: true, event: newEvent }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

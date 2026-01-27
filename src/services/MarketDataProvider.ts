@@ -365,42 +365,47 @@ export const MarketDataProvider = {
     return categories;
   },
 
-  // Busca histórico de odds (mock for now)
+  // Busca histórico de odds real da tabela market_price_history
   async getOddsHistory(eventId: string): Promise<OddsHistoryPoint[]> {
+    // Try to fetch real price history from database
+    const { data, error } = await supabase
+      .from('market_price_history')
+      .select('yes_price, no_price, recorded_at')
+      .eq('market_id', eventId)
+      .order('recorded_at', { ascending: true })
+      .limit(200);
+
+    if (!error && data && data.length > 0) {
+      // Aggregate by hour to reduce points for smoother charts
+      return this.aggregatePriceHistoryByHour(data);
+    }
+
+    // Fallback to current market price as single point if no history
     const market = await this.getEventById(eventId);
     if (!market) return [];
 
-    // Generate mock history based on current price
-    const history: OddsHistoryPoint[] = [];
-    const now = new Date();
-    const currentYes = market.outcomes.YES.price;
-    
-    let historicalYes = currentYes + (Math.random() - 0.5) * 30;
-    historicalYes = Math.max(10, Math.min(90, historicalYes));
-    
-    for (let i = 30; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      const progress = 1 - (i / 30);
-      const targetYes = historicalYes + (currentYes - historicalYes) * progress;
-      const noise = (Math.random() - 0.5) * 5;
-      const yesPrice = Math.max(5, Math.min(95, Math.round(targetYes + noise)));
-      
-      history.push({
-        timestamp: date,
-        yesPrice,
-        noPrice: 100 - yesPrice,
-      });
-    }
+    return [{
+      timestamp: new Date(),
+      yesPrice: market.outcomes.YES.price,
+      noPrice: market.outcomes.NO.price,
+    }];
+  },
 
-    history[history.length - 1] = {
-      timestamp: now,
-      yesPrice: currentYes,
-      noPrice: 100 - currentYes,
-    };
+  // Helper to aggregate price history by hour
+  aggregatePriceHistoryByHour(data: Array<{ yes_price: number; no_price: number; recorded_at: string }>): OddsHistoryPoint[] {
+    const grouped = new Map<string, { yes_price: number; no_price: number; recorded_at: string }>();
+    
+    data.forEach(record => {
+      const date = new Date(record.recorded_at);
+      const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+      grouped.set(hourKey, record); // Keep the last value for each hour
+    });
 
-    return history;
+    return Array.from(grouped.values()).map(r => ({
+      timestamp: new Date(r.recorded_at),
+      yesPrice: Math.round(Number(r.yes_price) * 100),
+      noPrice: Math.round(Number(r.no_price) * 100),
+    }));
   },
 
   // Busca comentários do evento

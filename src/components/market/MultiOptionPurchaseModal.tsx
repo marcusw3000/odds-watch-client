@@ -44,14 +44,23 @@ interface MultiOptionPurchaseModalProps {
     maxCostOrTotalCost: number,
     side: 'YES' | 'NO',
     slippageTolerance: number
-  ) => Promise<void>;
+  ) => Promise<BatchTradeResult | void>;
   onRefreshPrice: () => Promise<MarketEvent | null>;
+}
+
+interface BatchTradeResult {
+  contracts: Array<{ option_id: string; option_label: string; shares: number; cost: number }>;
+  totalCost: number;
+  newBalance: number;
+  excludedOptionLabel: string;
 }
 
 interface SuccessData {
   shares: number;
   totalCost: number;
   potentialProfit: number;
+  contracts?: Array<{ option_label: string; shares: number; cost: number }>;
+  excludedOptionLabel?: string;
 }
 
 interface MultiOptionQuote {
@@ -285,10 +294,12 @@ export function MultiOptionPurchaseModal({
         eventTitle={event.title}
         eventId={event.id}
         outcome={side}
-        optionLabel={selectedOption.label}
+        optionLabel={side === 'NO' ? undefined : selectedOption.label}
         shares={successData.shares}
         totalCost={successData.totalCost}
         potentialProfit={successData.potentialProfit}
+        contracts={successData.contracts}
+        excludedOptionLabel={successData.excludedOptionLabel}
         onClose={onClose}
       />
     );
@@ -307,12 +318,24 @@ export function MultiOptionPurchaseModal({
           setIsConfirming(true);
           setError(null);
           try {
-            await onConfirm(selectedOption.id, 0, totalCost, 'NO', slippage);
-            // success modal for NO: show invested as "shares" purely for display (contracts count varies in batch)
+            const result = await onConfirm(selectedOption.id, 0, totalCost, 'NO', slippage);
+            
+            // Calculate total shares and profit from batch result
+            const batchResult = result as BatchTradeResult | undefined;
+            const totalShares = batchResult?.contracts?.reduce((sum, c) => sum + c.shares, 0) || 0;
+            const actualCost = batchResult?.totalCost || totalCost;
+            const potentialProfit = totalShares - actualCost; // Each contract pays R$1 if wins
+            
             setSuccessData({
-              shares: totalCost,
-              totalCost,
-              potentialProfit: 0,
+              shares: totalShares,
+              totalCost: actualCost,
+              potentialProfit,
+              contracts: batchResult?.contracts?.map(c => ({
+                option_label: c.option_label,
+                shares: c.shares,
+                cost: c.cost,
+              })),
+              excludedOptionLabel: batchResult?.excludedOptionLabel || selectedOption.label,
             });
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '';

@@ -742,12 +742,14 @@ export function MarketDetailPage() {
               triggerPortfolioRefresh();
               handleRefreshPrice();
               
-              const contractCount = data.contracts?.length || 0;
-              toast({
-                title: "Compra NÃO realizada!",
-                description: `Você comprou contratos em ${contractCount} opções por R$${data.totalCost?.toFixed(2)}.`,
-              });
-              return;
+              // Return data to modal for success screen instead of just toast
+              const excludedOption = event.options?.find(o => o.id === optionId);
+              return {
+                contracts: data.contracts,
+                totalCost: data.totalCost,
+                newBalance: data.newBalance,
+                excludedOptionLabel: excludedOption?.label || '',
+              };
             }
             
             // YES side: buy single option

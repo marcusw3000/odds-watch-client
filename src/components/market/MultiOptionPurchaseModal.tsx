@@ -341,20 +341,6 @@ export function MultiOptionPurchaseModal({
           </div>
         </div>
 
-        {/* Explanation for NO contracts */}
-        {side === 'NO' && (
-          <div className="space-y-2 p-3 rounded-lg bg-no/10 border border-no/20">
-            <p className="text-xs text-muted-foreground">
-              Você ganha R$1 por contrato se <span className="font-medium">{selectedOption.label}</span> <strong>NÃO</strong> vencer.
-              {otherOptions.length > 0 && (
-                <span> Ou seja, se qualquer outra opção vencer ({otherOptions.slice(0, 3).map(o => o.label).join(', ')}{otherOptions.length > 3 ? '...' : ''}).</span>
-              )}
-            </p>
-            <p className="text-xs text-no">
-              ⚠️ Se {selectedOption.label} vencer, você perde 100% do investimento.
-            </p>
-          </div>
-        )}
 
         {/* Price Timer */}
         <div className={cn(

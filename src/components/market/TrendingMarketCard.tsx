@@ -51,11 +51,8 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
   const isSettled = statusInfo.status === 'SETTLED';
   const resultIsYes = event.result === 'YES';
   
-  // Check if market is recent (< 3 days)
-  const createdAt = event.createdAt ? new Date(event.createdAt) : new Date();
-  const isRecentMarket = differenceInDays(new Date(), createdAt) < 3;
-
-  // Generate mock price history data with dates - using deterministic seeded random
+  // Generate price history data with dates - using deterministic seeded random as fallback
+  // Real data will come from usePriceHistory hook when integrated
   const priceHistory = useMemo(() => {
     // Seeded random function for deterministic "randomness" based on event.id
     const seededRandom = (seed: number) => {
@@ -112,6 +109,9 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
     
     return data;
   }, [event.id, event.createdAt, event.outcomes.YES.price, event.outcomes.NO.price]);
+
+  // Check if we have enough data for a meaningful chart
+  const hasEnoughData = priceHistory.length > 1;
 
   return (
     <div 
@@ -348,11 +348,11 @@ export const TrendingMarketCard = memo(function TrendingMarketCard({
 
           {/* Chart */}
           <div className="flex-1 min-h-[180px]" style={{ contain: 'layout style' }}>
-            {isRecentMarket ? (
+            {!hasEnoughData ? (
               <div className="h-[180px] flex flex-col items-center justify-center text-center text-muted-foreground bg-muted/30 rounded-lg">
                 <Clock className="h-8 w-8 mb-2 opacity-50" />
-                <p className="text-sm font-medium">Mercado recente</p>
-                <p className="text-xs opacity-70">Histórico sendo coletado...</p>
+                <p className="text-sm font-medium">Aguardando trades</p>
+                <p className="text-xs opacity-70">Gráfico aparece após o primeiro trade</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={180}>

@@ -1,5 +1,6 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceSparklineProps {
   eventId: string;
@@ -9,6 +10,11 @@ interface PriceSparklineProps {
   height?: number;
 }
 
+interface PriceHistoryPoint {
+  yes_price: number;
+  recorded_at: string;
+}
+
 export const PriceSparkline = memo(function PriceSparkline({
   eventId,
   currentPrice,
@@ -16,22 +22,52 @@ export const PriceSparkline = memo(function PriceSparkline({
   width = 48,
   height = 18,
 }: PriceSparklineProps) {
-  const { points, isUp } = useMemo(() => {
-    // Generate deterministic data based on eventId
-    const seed = eventId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const random = (i: number) => {
-      const x = Math.sin(seed + i) * 10000;
-      return x - Math.floor(x);
+  const [historyData, setHistoryData] = useState<PriceHistoryPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real price history
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data, error } = await supabase
+        .from('market_price_history')
+        .select('yes_price, recorded_at')
+        .eq('market_id', eventId)
+        .order('recorded_at', { ascending: true })
+        .limit(20); // Last 20 points for sparkline
+
+      if (!error && data && data.length > 0) {
+        setHistoryData(data);
+      }
+      setIsLoading(false);
     };
+
+    fetchHistory();
+  }, [eventId]);
+
+  const { points, isUp } = useMemo(() => {
+    // Use real data if available, otherwise generate deterministic fallback
+    let data: number[];
     
-    // Generate 7 points (7-day trend)
-    const data = Array.from({ length: 7 }, (_, i) => {
-      // Trend towards current price
-      const progress = i / 6;
-      const baseValue = 50 + (currentPrice - 50) * progress;
-      const noise = (random(i) - 0.5) * 15;
-      return Math.max(5, Math.min(95, baseValue + noise));
-    });
+    if (historyData.length >= 2) {
+      // Use real price history
+      data = historyData.map(p => Number(p.yes_price) * 100);
+    } else {
+      // Fallback: Generate deterministic data based on eventId
+      const seed = eventId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const random = (i: number) => {
+        const x = Math.sin(seed + i) * 10000;
+        return x - Math.floor(x);
+      };
+      
+      // Generate 7 points (7-day trend)
+      data = Array.from({ length: 7 }, (_, i) => {
+        // Trend towards current price
+        const progress = i / 6;
+        const baseValue = 50 + (currentPrice - 50) * progress;
+        const noise = (random(i) - 0.5) * 15;
+        return Math.max(5, Math.min(95, baseValue + noise));
+      });
+    }
 
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -48,7 +84,16 @@ export const PriceSparkline = memo(function PriceSparkline({
       points: pathPoints,
       isUp: data[data.length - 1] > data[0],
     };
-  }, [eventId, currentPrice, width, height]);
+  }, [eventId, currentPrice, width, height, historyData]);
+
+  if (isLoading) {
+    return (
+      <div 
+        className={cn("flex-shrink-0 bg-muted/50 rounded animate-pulse", className)}
+        style={{ width, height }}
+      />
+    );
+  }
 
   return (
     <svg 
@@ -69,3 +114,4 @@ export const PriceSparkline = memo(function PriceSparkline({
     </svg>
   );
 });
+

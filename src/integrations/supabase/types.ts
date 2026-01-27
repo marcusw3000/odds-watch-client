@@ -988,6 +988,41 @@ export type Database = {
           },
         ]
       }
+      market_price_history: {
+        Row: {
+          id: string
+          market_id: string
+          no_price: number
+          recorded_at: string
+          source: string
+          yes_price: number
+        }
+        Insert: {
+          id?: string
+          market_id: string
+          no_price: number
+          recorded_at?: string
+          source?: string
+          yes_price: number
+        }
+        Update: {
+          id?: string
+          market_id?: string
+          no_price?: number
+          recorded_at?: string
+          source?: string
+          yes_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_price_history_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_settlements: {
         Row: {
           api_response: Json | null

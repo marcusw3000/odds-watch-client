@@ -97,23 +97,59 @@ Deno.serve(async (req) => {
     );
 
     if (tradeError) {
-      console.error("Multi trade batch error:", tradeError);
+      console.error("Multi trade batch error:", {
+        error: tradeError.message,
+        details: tradeError.details,
+        hint: tradeError.hint,
+        code: tradeError.code,
+        userId: user.id,
+        marketId,
+        excludeOptionId,
+        totalCost,
+        maxSlippage,
+      });
       return new Response(
-        JSON.stringify({ success: false, message: "Erro ao executar operação", error: tradeError.message }),
+        JSON.stringify({ 
+          success: false, 
+          message: tradeError.message || "Erro ao executar operação",
+          details: tradeError.details,
+          hint: tradeError.hint,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!result || !result.success) {
       const errorMessage = result?.error || "Erro desconhecido";
-      console.error("Multi trade batch failed:", errorMessage);
+      console.error("Multi trade batch failed:", {
+        error: errorMessage,
+        partialContracts: result?.partial_contracts,
+        partialCost: result?.partial_cost,
+        userId: user.id,
+        marketId,
+        totalCost,
+      });
       return new Response(
-        JSON.stringify({ success: false, message: errorMessage }),
+        JSON.stringify({ 
+          success: false, 
+          message: errorMessage,
+          partialContracts: result?.partial_contracts,
+          partialCost: result?.partial_cost,
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Multi-option NO trade executed: user=${user.id}, market=${marketId}, excluded=${excludeOptionId}, cost=${result.total_cost}, contracts=${result.contracts?.length || 0}`);
+    console.log("Multi-option NO trade executed successfully:", {
+      userId: user.id,
+      marketId,
+      excludedOptionId: excludeOptionId,
+      requestedCost: totalCost,
+      actualCost: result.total_cost,
+      optionsBought: result.options_bought,
+      optionsSkipped: result.options_skipped,
+      newBalance: result.new_balance,
+    });
 
     return new Response(
       JSON.stringify({

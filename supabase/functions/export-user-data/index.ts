@@ -62,13 +62,22 @@ Deno.serve(async (req) => {
       .limit(1);
 
     if (recentExports && recentExports.length > 0) {
-      return new Response(JSON.stringify({ 
-        error: 'Rate limit exceeded',
-        message: 'Você só pode exportar seus dados uma vez por hora.' 
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      // IMPORTANT:
+      // We intentionally return 200 here (instead of 429) to avoid some clients/
+      // monitoring layers treating non-2xx as a "runtime error" and triggering
+      // blank-screen fallbacks.
+      // The frontend already handles `data.error` and shows a friendly toast.
+      return new Response(
+        JSON.stringify({
+          error: 'Rate limit exceeded',
+          message: 'Você só pode exportar seus dados uma vez por hora.',
+          rate_limited: true,
+          retry_after_seconds: 60 * 60,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // Fetch all user data

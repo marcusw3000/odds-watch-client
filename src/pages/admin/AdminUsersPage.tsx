@@ -251,8 +251,8 @@ export function AdminUsersPage() {
       toast.error('Informe um valor válido');
       return;
     }
-    if (!adjustmentReason.trim()) {
-      toast.error('Informe o motivo do ajuste');
+    if (!adjustmentReason.trim() || adjustmentReason.trim().length < 3) {
+      toast.error('Informe o motivo do ajuste (mínimo 3 caracteres)');
       return;
     }
     setAdjustDialogOpen(false);

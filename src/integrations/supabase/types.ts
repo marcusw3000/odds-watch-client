@@ -2418,6 +2418,10 @@ export type Database = {
       }
     }
     Functions: {
+      activate_referral_on_deposit: {
+        Args: { p_deposit_amount: number; p_user_id: string }
+        Returns: boolean
+      }
       anonymize_old_reporters: { Args: never; Returns: undefined }
       atomic_deposit_balance: {
         Args: { p_amount: number; p_user_id: string }
@@ -2484,7 +2488,7 @@ export type Database = {
         | {
             Args: {
               p_market_id: string
-              p_max_cost: number
+              p_max_cost?: number
               p_outcome: string
               p_shares: number
               p_user_id: string
@@ -2555,6 +2559,15 @@ export type Database = {
         Returns: undefined
       }
       generate_referral_code: { Args: never; Returns: string }
+      get_active_referral_discount: {
+        Args: { p_user_id: string }
+        Returns: {
+          discount_percent: number
+          expires_at: string
+          has_discount: boolean
+          referral_id: string
+        }[]
+      }
       get_trending_suggestions: {
         Args: {
           p_category?: string
@@ -2621,6 +2634,15 @@ export type Database = {
       process_market_settlement_achievements: {
         Args: { p_market_id: string; p_winning_outcome: string }
         Returns: undefined
+      }
+      process_referral_commission: {
+        Args: {
+          p_fee_amount: number
+          p_ledger_entry_id?: string
+          p_referred_id: string
+          p_trade_amount: number
+        }
+        Returns: Json
       }
       recalculate_user_statistics: {
         Args: { p_user_id: string }

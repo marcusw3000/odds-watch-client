@@ -146,6 +146,26 @@ serve(async (req) => {
       logStep("Fee calculated", { feeRuleId: feeRule.id, mode: feeRule.mode, feeAmount });
     }
 
+    // Check for referral discount
+    let discountApplied = 0;
+    const { data: discount } = await supabaseAdmin.rpc(
+      'get_active_referral_discount',
+      { p_user_id: userId }
+    );
+
+    if (discount && discount.length > 0 && discount[0].has_discount) {
+      const originalFee = feeAmount;
+      feeAmount = feeAmount * (1 - discount[0].discount_percent);
+      discountApplied = originalFee - feeAmount;
+      logStep("Referral discount applied", { 
+        originalFee, 
+        discountPercent: discount[0].discount_percent,
+        newFee: feeAmount,
+        discountApplied
+      });
+    }
+
+    feeAmount = Math.round(feeAmount * 100) / 100; // Round to 2 decimals
     const netAmount = amount - feeAmount;
 
     // Update payment status with fee info
@@ -172,7 +192,32 @@ serve(async (req) => {
       throw new Error("Failed to update balance");
     }
 
-    logStep("Balance updated atomically", { amount, feeAmount, netAmount });
+    logStep("Balance updated atomically", { amount, feeAmount, netAmount, discountApplied });
+
+    // Try to activate referral if this is first deposit >= min_deposit
+    const { data: referralActivated } = await supabaseAdmin.rpc(
+      'activate_referral_on_deposit',
+      { p_user_id: userId, p_deposit_amount: amount }
+    );
+
+    if (referralActivated) {
+      logStep("Referral activated for user", { userId });
+    }
+
+    // Process referral commission if there's a fee
+    if (feeAmount > 0) {
+      const { data: commissionResult } = await supabaseAdmin.rpc(
+        'process_referral_commission',
+        { p_referred_id: userId, p_fee_amount: feeAmount, p_trade_amount: amount }
+      );
+
+      if (commissionResult?.processed) {
+        logStep("Referral commission processed", { 
+          commissionAmount: commissionResult.commission_amount,
+          referrerId: commissionResult.referrer_id 
+        });
+      }
+    }
 
     // Record platform revenue if there's a fee
     if (feeAmount > 0) {

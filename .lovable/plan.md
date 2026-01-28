@@ -1,35 +1,55 @@
 
-
-# Remover Bloco de Explicação do Contrato NÃO
+# Corrigir Preview de Imagem ao Compartilhar Site
 
 ## Problema
-O bloco de explicação do contrato NÃO (caixa vermelha) ainda está visível no modal de compra, mesmo após a remoção do título "Kalshi-style".
+Quando o link do site é compartilhado em plataformas como WhatsApp, Telegram, Facebook, Twitter ou LinkedIn, a imagem de preview não aparece.
+
+## Causa Raiz
+As meta tags `og:image` e `twitter:image` no `index.html` usam caminhos relativos (`/og-image.png`) em vez de URLs absolutas. Os crawlers das redes sociais não conseguem resolver esses caminhos relativos.
 
 ## Solução
-Remover completamente o bloco de explicação (linhas 344-357) do arquivo `MultiOptionPurchaseModal.tsx`.
+Atualizar as meta tags para usar URLs absolutas com o domínio completo.
 
-## Mudança
+---
 
-**Arquivo:** `src/components/market/MultiOptionPurchaseModal.tsx`
+## Alterações
 
-**Remover este bloco (linhas 344-357):**
-```tsx
-{/* Explanation for NO contracts */}
-{side === 'NO' && (
-  <div className="space-y-2 p-3 rounded-lg bg-no/10 border border-no/20">
-    <p className="text-xs text-muted-foreground">
-      Você ganha R$1 por contrato se <span className="font-medium">{selectedOption.label}</span> <strong>NÃO</strong> vencer.
-      {otherOptions.length > 0 && (
-        <span> Ou seja, se qualquer outra opção vencer ({otherOptions.slice(0, 3).map(o => o.label).join(', ')}{otherOptions.length > 3 ? '...' : ''}).</span>
-      )}
-    </p>
-    <p className="text-xs text-no">
-      ⚠️ Se {selectedOption.label} vencer, você perde 100% do investimento.
-    </p>
-  </div>
-)}
+### Arquivo: `index.html`
+
+**Antes:**
+```html
+<meta property="og:image" content="/og-image.png" />
+<meta name="twitter:image" content="/og-image.png" />
 ```
 
-## Resultado
-O modal de compra NÃO ficará mais limpo, sem a caixa de explicação vermelha.
+**Depois:**
+```html
+<meta property="og:image" content="https://odds-watch-client.lovable.app/og-image.png" />
+<meta name="twitter:image" content="https://odds-watch-client.lovable.app/og-image.png" />
+```
 
+---
+
+## Detalhes Técnicos
+
+| Meta Tag | Antes | Depois |
+|----------|-------|--------|
+| `og:image` | `/og-image.png` | `https://odds-watch-client.lovable.app/og-image.png` |
+| `twitter:image` | `/og-image.png` | `https://odds-watch-client.lovable.app/og-image.png` |
+| `og:url` | `https://mercadoprevisoes.com.br` | Mantém (ou atualizar se necessário) |
+
+### Observações
+1. A imagem `og-image.png` já existe em `public/` com dimensões corretas (1200x630)
+2. O código dinâmico em `src/lib/seo.ts` já usa `window.location.origin` para construir URLs absolutas corretamente
+3. Esta correção afeta apenas as meta tags estáticas do HTML inicial
+
+---
+
+## Resultado Esperado
+Após a publicação, ao compartilhar o link em qualquer plataforma, a imagem de preview aparecerá corretamente.
+
+## Validação
+Após implementar, testar em:
+- [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+- [Twitter Card Validator](https://cards-dev.twitter.com/validator)
+- Compartilhar link no WhatsApp

@@ -1,164 +1,387 @@
 
-# Correção da Taxa de Liquidação Dinâmica
+# Implementacao Completa do Sistema de Indicacao
 
-## Problema Atual
+## Resumo
 
-| Aspecto | Atual (Hardcoded) | Configurado (fee_rules) |
-|---------|-------------------|-------------------------|
-| Taxa | 5% | 0.5% |
-| Origem | `v_rake_percent := 0.05` | `SELECT * FROM fee_rules WHERE type = 'SETTLEMENT'` |
-| Tipo Revenue | `SETTLEMENT_RAKE` | `SETTLEMENT` |
-| Snapshot | Não registrado | Não registrado |
+Este plano implementa tres funcionalidades criticas para o sistema de referral:
 
-**Impacto**: Usuários estão sendo cobrados **10x mais** do que o configurado pelo admin.
+1. **Trigger de ativacao automatica**: Muda status para `ACTIVATED` quando indicado deposita >= R$ 50
+2. **Desconto nas taxas**: Aplica 50% de desconto em todas as taxas para indicados ativos (por 30 dias)
+3. **Comissoes automaticas**: Credita 10% das taxas ao indicador em cada trade
 
 ---
 
-## Solução: Migração SQL
+## Arquitetura Atual
 
-Atualizar a função `process_market_payouts` para:
-
-1. **Buscar taxa dinâmica** do `fee_rules` ao invés de usar valor hardcoded
-2. **Criar snapshot de política** em `fee_policy_snapshots` para auditoria
-3. **Gravar fee nos ledger_entries** de cada pagamento individual
-4. **Usar tipo consistente** `SETTLEMENT` na `platform_revenue`
+| Componente | Status | Localizacao |
+|------------|--------|-------------|
+| Tabela `referrals` | Existe | Database |
+| Tabela `referral_commissions` | Existe | Database |
+| Tabela `referral_settings` | Existe | min_deposit=50, commission=10%, discount=50% |
+| `ReferralService.ts` | Existe | Frontend service (metodos prontos) |
+| Trigger de ativacao | NAO EXISTE | Precisa criar |
+| Desconto no FeeEngine | NAO EXISTE | Precisa integrar |
+| Comissao automatica | NAO EXISTE | Precisa integrar |
 
 ---
 
-## Alterações Técnicas
+## Componente 1: Trigger de Ativacao Automatica
 
-### Nova Lógica de Fee
+### Logica
+
+Quando um deposito e confirmado em `verify-deposit`:
+1. Verificar se usuario e um `referred_id` em algum referral PENDING
+2. Verificar se o valor atende `min_deposit_amount` (R$ 50)
+3. Se sim, atualizar status para `ACTIVATED` e setar `activated_at`
+
+### Implementacao
+
+Criar funcao SQL que sera chamada apos deposito confirmado:
 
 ```sql
+CREATE OR REPLACE FUNCTION activate_referral_on_deposit(
+  p_user_id UUID,
+  p_deposit_amount NUMERIC
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
-  v_fee_rule RECORD;
-  v_fee_percent NUMERIC := 0.005; -- Default 0.5% if no rule
-  v_fee_snapshot_id UUID;
-
--- Buscar regra de taxa ativa para SETTLEMENT
-SELECT * INTO v_fee_rule 
-FROM fee_rules 
-WHERE type = 'SETTLEMENT' AND is_active = true 
-ORDER BY effective_from DESC 
-LIMIT 1;
-
-IF FOUND THEN
-  -- Usar taxa configurada (PERCENT ou FIXED)
-  IF v_fee_rule.mode = 'PERCENT' THEN
-    v_fee_percent := COALESCE(v_fee_rule.percent_value, 0.005);
+  v_referral RECORD;
+  v_min_deposit NUMERIC;
+BEGIN
+  -- Buscar configuracao de deposito minimo
+  SELECT min_deposit_amount INTO v_min_deposit 
+  FROM referral_settings 
+  WHERE is_active = true 
+  LIMIT 1;
+  
+  v_min_deposit := COALESCE(v_min_deposit, 50.00);
+  
+  -- Verificar se deposito atende minimo
+  IF p_deposit_amount < v_min_deposit THEN
+    RETURN FALSE;
   END IF;
   
-  -- Criar snapshot para auditoria
-  INSERT INTO fee_policy_snapshots (
-    fee_rule_id, type, applied_mode, applied_percent
-  ) VALUES (
-    v_fee_rule.id, 'SETTLEMENT', v_fee_rule.mode, v_fee_percent
-  )
-  RETURNING id INTO v_fee_snapshot_id;
+  -- Buscar referral pendente para este usuario
+  SELECT * INTO v_referral
+  FROM referrals
+  WHERE referred_id = p_user_id
+    AND status = 'PENDING'
+  FOR UPDATE;
+  
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Ativar o referral
+  UPDATE referrals
+  SET status = 'ACTIVATED',
+      activated_at = NOW()
+  WHERE id = v_referral.id;
+  
+  -- Criar notificacao para o indicador
+  INSERT INTO notifications (user_id, type, title, message, data)
+  VALUES (
+    v_referral.referrer_id,
+    'REFERRAL_ACTIVATED',
+    'Indicacao Ativada!',
+    'Seu indicado fez o primeiro deposito. Voce ganhara comissao em todas as operacoes dele!',
+    jsonb_build_object('referral_id', v_referral.id, 'referred_id', p_user_id)
+  );
+  
+  RETURN TRUE;
+END;
+$$;
+```
+
+### Integracao em verify-deposit/index.ts
+
+Apos creditar o deposito, chamar a funcao de ativacao:
+
+```typescript
+// Apos: logStep("Balance updated atomically", { amount, feeAmount, netAmount });
+
+// Verificar e ativar referral se aplicavel
+const { data: referralActivated } = await supabaseAdmin.rpc(
+  'activate_referral_on_deposit',
+  { p_user_id: userId, p_deposit_amount: amount }
+);
+
+if (referralActivated) {
+  logStep("Referral activated for user", { userId });
+}
+```
+
+---
+
+## Componente 2: Desconto nas Taxas
+
+### Logica
+
+Usuarios indicados com status `ACTIVATED` recebem 50% de desconto em todas as taxas (TRADE, DEPOSIT, WITHDRAW) por 30 dias apos ativacao.
+
+### Implementacao SQL
+
+Criar funcao que retorna o desconto ativo:
+
+```sql
+CREATE OR REPLACE FUNCTION get_active_referral_discount(p_user_id UUID)
+RETURNS TABLE (
+  has_discount BOOLEAN,
+  discount_percent NUMERIC,
+  referral_id UUID,
+  expires_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    true AS has_discount,
+    r.discount_percent,
+    r.id AS referral_id,
+    r.discount_expires_at AS expires_at
+  FROM referrals r
+  WHERE r.referred_id = p_user_id
+    AND r.status = 'ACTIVATED'
+    AND r.discount_expires_at > NOW()
+  LIMIT 1;
+  
+  -- Se nao encontrou, retornar false
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT false, 0::NUMERIC, NULL::UUID, NULL::TIMESTAMPTZ;
+  END IF;
+END;
+$$;
+```
+
+### Integracao nas Funcoes Atomicas
+
+Modificar `atomic_execute_trade` para aplicar desconto:
+
+```sql
+-- Dentro de atomic_execute_trade, apos calcular v_fee_amount:
+
+-- Verificar desconto de indicacao
+SELECT * INTO v_referral_discount
+FROM get_active_referral_discount(p_user_id);
+
+IF v_referral_discount.has_discount THEN
+  v_original_fee := v_fee_amount;
+  v_fee_amount := v_fee_amount * (1 - v_referral_discount.discount_percent);
+  v_discount_applied := v_original_fee - v_fee_amount;
 END IF;
 ```
 
-### Cálculo de Payout com Taxa
+### Integracao em verify-deposit/index.ts
 
-```sql
--- Para cada pagamento, calcular fee individual
-v_gross_payout := v_contract.shares * v_contract_unit * v_payout_ratio;
-v_fee_amount := v_gross_payout * v_fee_percent;
-v_net_payout := v_gross_payout - v_fee_amount;
+Aplicar desconto na taxa de deposito:
 
--- Creditar apenas o valor líquido
-UPDATE wallets 
-SET balance_available = balance_available + v_net_payout
-WHERE id = v_wallet_id;
+```typescript
+// Apos calcular feeAmount
 
--- Ledger entry com fee registrado
-INSERT INTO ledger_entries (
-  user_id, wallet_id, ref_type, ref_id, direction,
-  amount, fee_amount, net_amount, platform_revenue, 
-  fee_snapshot_id, status
-) VALUES (
-  v_contract.user_id, v_wallet_id, 'SETTLEMENT', 
-  p_market_id::text, 'CREDIT',
-  v_gross_payout, v_fee_amount, v_net_payout, v_fee_amount,
-  v_fee_snapshot_id, 'COMPLETED'
+// Verificar desconto de indicacao
+const { data: discount } = await supabaseAdmin.rpc(
+  'get_active_referral_discount',
+  { p_user_id: userId }
 );
-```
 
-### Revenue Tracking Atualizado
-
-```sql
--- Acumular receita da plataforma com tipo correto
-INSERT INTO platform_revenue (day, type, gross, fees, net)
-VALUES (
-  CURRENT_DATE, 
-  'SETTLEMENT',  -- Tipo consistente com fee_rules
-  v_total_gross_payouts, 
-  v_total_fees_collected, 
-  v_total_gross_payouts - v_total_fees_collected
-)
-ON CONFLICT (day, type) DO UPDATE SET
-  gross = platform_revenue.gross + EXCLUDED.gross,
-  fees = platform_revenue.fees + EXCLUDED.fees,
-  net = platform_revenue.net + EXCLUDED.net,
-  updated_at = NOW();
+if (discount?.[0]?.has_discount) {
+  const originalFee = feeAmount;
+  feeAmount = feeAmount * (1 - discount[0].discount_percent);
+  logStep("Referral discount applied", { 
+    originalFee, 
+    discountPercent: discount[0].discount_percent,
+    newFee: feeAmount 
+  });
+}
 ```
 
 ---
 
-## Fluxo de Liquidação Corrigido
+## Componente 3: Comissoes Automaticas
+
+### Logica
+
+Quando um usuario indicado paga taxa em qualquer operacao:
+1. Identificar o referral ativo
+2. Calcular comissao (10% da taxa)
+3. Creditar na wallet do indicador
+4. Registrar em `referral_commissions`
+5. Atualizar `total_commission_earned` no referral
+
+### Implementacao SQL
+
+```sql
+CREATE OR REPLACE FUNCTION process_referral_commission(
+  p_referred_id UUID,
+  p_fee_amount NUMERIC,
+  p_trade_amount NUMERIC,
+  p_ledger_entry_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_referral RECORD;
+  v_commission_amount NUMERIC;
+  v_referrer_wallet_id UUID;
+BEGIN
+  -- Buscar referral ativo para o usuario
+  SELECT * INTO v_referral
+  FROM referrals
+  WHERE referred_id = p_referred_id
+    AND status = 'ACTIVATED'
+  LIMIT 1;
+  
+  IF NOT FOUND OR p_fee_amount <= 0 THEN
+    RETURN jsonb_build_object('processed', false, 'reason', 'No active referral or zero fee');
+  END IF;
+  
+  -- Calcular comissao
+  v_commission_amount := p_fee_amount * v_referral.commission_percent;
+  
+  -- Buscar wallet do indicador
+  SELECT id INTO v_referrer_wallet_id
+  FROM wallets
+  WHERE user_id = v_referral.referrer_id;
+  
+  IF v_referrer_wallet_id IS NULL THEN
+    RETURN jsonb_build_object('processed', false, 'reason', 'Referrer wallet not found');
+  END IF;
+  
+  -- Creditar comissao na wallet do indicador
+  UPDATE wallets
+  SET balance_available = balance_available + v_commission_amount,
+      updated_at = NOW()
+  WHERE id = v_referrer_wallet_id;
+  
+  -- Registrar comissao
+  INSERT INTO referral_commissions (
+    referral_id, ledger_entry_id, trade_amount, fee_amount, commission_amount
+  ) VALUES (
+    v_referral.id, p_ledger_entry_id, p_trade_amount, p_fee_amount, v_commission_amount
+  );
+  
+  -- Atualizar total ganho
+  UPDATE referrals
+  SET total_commission_earned = total_commission_earned + v_commission_amount
+  WHERE id = v_referral.id;
+  
+  -- Criar ledger entry para o indicador
+  INSERT INTO ledger_entries (
+    user_id, wallet_id, amount, net_amount, direction, 
+    ref_type, status, meta
+  ) VALUES (
+    v_referral.referrer_id, v_referrer_wallet_id, v_commission_amount, 
+    v_commission_amount, 'CREDIT', 'ADJUSTMENT', 'COMPLETED',
+    jsonb_build_object(
+      'type', 'referral_commission',
+      'referral_id', v_referral.id,
+      'referred_id', p_referred_id,
+      'original_fee', p_fee_amount
+    )
+  );
+  
+  RETURN jsonb_build_object(
+    'processed', true,
+    'commission_amount', v_commission_amount,
+    'referrer_id', v_referral.referrer_id,
+    'referral_id', v_referral.id
+  );
+END;
+$$;
+```
+
+### Integracao nas Funcoes Atomicas
+
+Adicionar ao final de `atomic_execute_trade`:
+
+```sql
+-- Processar comissao de indicacao (se houver taxa)
+IF v_fee_amount > 0 THEN
+  PERFORM process_referral_commission(
+    p_user_id, 
+    v_fee_amount, 
+    p_trade_cost, 
+    v_ledger_id
+  );
+END IF;
+```
+
+---
+
+## Fluxo Completo
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│              PROCESSO DE LIQUIDAÇÃO                     │
-├─────────────────────────────────────────────────────────┤
-│ 1. Buscar fee_rule SETTLEMENT ativa                     │
-│    └── percent_value: 0.5% (configurável)               │
-├─────────────────────────────────────────────────────────┤
-│ 2. Criar fee_policy_snapshot (auditoria)                │
-│    └── Registra regra aplicada no momento              │
-├─────────────────────────────────────────────────────────┤
-│ 3. Para cada contrato vencedor:                         │
-│    ├── Prêmio bruto: shares × R$1.00                    │
-│    ├── Taxa: prêmio × 0.5% = R$ X                       │
-│    ├── Prêmio líquido: prêmio - taxa                    │
-│    └── Crédito na wallet: prêmio líquido                │
-├─────────────────────────────────────────────────────────┤
-│ 4. Registrar ledger_entry                               │
-│    ├── amount: prêmio bruto                             │
-│    ├── fee_amount: taxa cobrada                         │
-│    ├── net_amount: prêmio líquido                       │
-│    └── fee_snapshot_id: referência auditoria            │
-├─────────────────────────────────────────────────────────┤
-│ 5. Acumular em platform_revenue                         │
-│    └── type: 'SETTLEMENT' (consistente)                 │
-└─────────────────────────────────────────────────────────┘
+FLUXO DE INDICACAO COMPLETO
+===========================
+
+1. USUARIO NOVO SE REGISTRA COM CODIGO
+   /auth?ref=ABC123
+        |
+        v
+   ReferralService.linkReferral()
+   - Vincula referred_id
+   - Define discount_expires_at (+30 dias)
+   - Status permanece PENDING
+        |
+        v
+2. USUARIO FAZ PRIMEIRO DEPOSITO >= R$ 50
+   verify-deposit -> activate_referral_on_deposit()
+        |
+        v
+   [Status muda para ACTIVATED]
+   [Notificacao enviada ao indicador]
+        |
+        v
+3. USUARIO FAZ TRADE/OPERACAO
+   atomic_execute_trade() ou verify-deposit()
+        |
+        +---> get_active_referral_discount()
+        |     [Aplica 50% desconto na taxa]
+        |
+        +---> process_referral_commission()
+              [10% da taxa -> wallet do indicador]
+              [Registra em referral_commissions]
+              [Atualiza total_commission_earned]
 ```
 
 ---
 
-## Exemplo Prático
+## Arquivos a Modificar
 
-| Cenário | Taxa 5% (atual) | Taxa 0.5% (corrigido) |
-|---------|-----------------|----------------------|
-| Prêmio bruto | R$ 100,00 | R$ 100,00 |
-| Taxa cobrada | R$ 5,00 | R$ 0,50 |
-| Prêmio líquido | R$ 95,00 | R$ 99,50 |
-| Receita plataforma | R$ 5,00 | R$ 0,50 |
-
----
-
-## Arquivos Afetados
-
-| Arquivo | Alteração |
+| Arquivo | Alteracao |
 |---------|-----------|
-| `supabase/migrations/new_migration.sql` | Atualizar função `process_market_payouts` |
+| `supabase/migrations/new.sql` | Criar 3 funcoes SQL |
+| `supabase/functions/verify-deposit/index.ts` | Ativar referral + aplicar desconto |
+| Funcoes atomicas (via migracao) | Integrar desconto e comissao |
 
 ---
 
-## Benefícios
+## Configuracoes Atuais (referral_settings)
 
-- Taxa configurável pelo admin (0.5% atualmente)
-- Auditoria completa via `fee_policy_snapshots`
-- Ledger entries com valores corretos de fee
-- Tipo `SETTLEMENT` consistente em todo o sistema
-- Usuários recebem prêmio justo (menos 10x de desconto indevido)
+| Parametro | Valor |
+|-----------|-------|
+| `min_deposit_amount` | R$ 50,00 |
+| `default_commission_percent` | 10% (0.10) |
+| `default_discount_percent` | 50% (0.50) |
+| `discount_duration_days` | 30 dias |
+
+---
+
+## Beneficios
+
+- Ativacao automatica sem intervencao manual
+- Desconto aplicado em tempo real em todas as taxas
+- Comissoes creditadas instantaneamente na wallet do indicador
+- Auditoria completa via `referral_commissions` e `ledger_entries`
+- Sistema configuravel pelo admin via `referral_settings`

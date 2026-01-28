@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { Download, FileJson, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 type ExportFormat = 'json' | 'csv';
 
-export function ExportDataButton() {
+export const ExportDataButton = forwardRef<HTMLDivElement>((_, ref) => {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
@@ -24,8 +24,8 @@ export function ExportDataButton() {
         body: { format },
       });
 
+      // Handle rate limit - can come as error or as data with error field
       if (error) {
-        // Check for rate limit error (429 status)
         const context = (error as any).context;
         const isRateLimited = context?.status === 429 || 
           error.message?.includes('429') || 
@@ -42,11 +42,21 @@ export function ExportDataButton() {
         throw error;
       }
 
-      // Check if response contains rate limit error
-      if (data?.error === 'Rate limit exceeded') {
+      // Check if response contains rate limit error (some versions return it in data)
+      if (data?.error === 'Rate limit exceeded' || data?.error?.includes?.('Rate limit')) {
         toast({
           title: 'Limite excedido',
           description: data.message || 'Você só pode exportar seus dados uma vez por hora.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Check for any error in data
+      if (data?.error) {
+        toast({
+          title: 'Erro',
+          description: data.message || 'Ocorreu um erro ao exportar.',
           variant: 'destructive',
         });
         return;
@@ -83,32 +93,36 @@ export function ExportDataButton() {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={isExporting}>
-          {isExporting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Exportando...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4 mr-2" />
-              Exportar meus dados
-            </>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleExport('json')}>
-          <FileJson className="h-4 w-4 mr-2" />
-          Exportar como JSON
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleExport('csv')}>
-          <FileSpreadsheet className="h-4 w-4 mr-2" />
-          Exportar como CSV
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div ref={ref}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" disabled={isExporting}>
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Exportando...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar meus dados
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => handleExport('json')}>
+            <FileJson className="h-4 w-4 mr-2" />
+            Exportar como JSON
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExport('csv')}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Exportar como CSV
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
-}
+});
+
+ExportDataButton.displayName = 'ExportDataButton';

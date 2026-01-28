@@ -48,15 +48,17 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: claims, error: claimsError } = await userClient.auth.getClaims();
-    if (claimsError || !claims?.claims?.sub) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error('Claims error:', claimsError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const adminUserId = claims.claims.sub as string;
+    const adminUserId = claimsData.claims.sub as string;
 
     // Use service role for admin operations
     const adminClient = createClient(

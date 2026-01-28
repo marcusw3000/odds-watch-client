@@ -1,78 +1,151 @@
 
+# Correção do Sistema Financeiro - Visão Geral Admin
 
-# Traduzir Todas as Ações dos Logs de Auditoria
+## Problemas Identificados
 
-## Problema
-Algumas ações nos logs de auditoria aparecem sem tradução (ex: `market_settled`, `market_status_change`) porque o dicionário `ACTION_LABELS` só tem chaves em UPPERCASE, mas o banco de dados tem valores em lowercase.
+| Problema | Causa | Impacto |
+|----------|-------|---------|
+| Receita R$ 0,00 | Tabela `platform_revenue` vazia | Cards de receita zerados |
+| Taxa média R$ 0,00 | `fee_amount = 0` em ledger_entries | Indicadores incorretos |
+| Gráficos vazios | Sem dados de receita | UI quebrada |
+| Taxas não cobradas | Função `atomic_execute_trade` não aplica fee_rules | Perda de receita |
 
-## Solução
+---
 
-### Arquivo: `src/pages/admin/AdminAuditLogsPage.tsx`
+## Solução Proposta
 
-**1. Expandir o dicionário ACTION_LABELS para incluir todas as variações:**
+### Fase 1: Aplicar Taxas nos Trades (Banco de Dados)
 
-```typescript
-const ACTION_LABELS: Record<string, string> = {
-  // Regras de Taxa
-  'FEE_RULE_CREATED': 'Regra Criada',
-  'FEE_RULE_UPDATED': 'Regra Atualizada',
-  'FEE_RULE_ACTIVATED': 'Regra Ativada',
-  'FEE_RULE_DEACTIVATED': 'Regra Desativada',
-  
-  // Mercados (UPPERCASE)
-  'MARKET_CLOSED': 'Mercado Fechado',
-  'MARKET_SETTLED': 'Mercado Liquidado',
-  'MARKET_STATUS_CHANGE': 'Status Alterado',
-  'MARKET_CREATED': 'Mercado Criado',
-  'MARKET_UPDATED': 'Mercado Atualizado',
-  
-  // Mercados (lowercase - compatibilidade)
-  'market_closed': 'Mercado Fechado',
-  'market_settled': 'Mercado Liquidado',
-  'market_status_change': 'Status Alterado',
-  'market_created': 'Mercado Criado',
-  'market_updated': 'Mercado Atualizado',
-  
-  // Eventos
-  'EVENT_SETTLED': 'Evento Liquidado',
-  'EVENT_CREATED': 'Evento Criado',
-  'EVENT_UPDATED': 'Evento Atualizado',
-  
-  // Usuários e Roles
-  'ROLE_ASSIGNED': 'Role Atribuído',
-  'ROLE_REMOVED': 'Role Removido',
-  'USER_BLOCKED': 'Usuário Bloqueado',
-  'USER_UNBLOCKED': 'Usuário Desbloqueado',
-  'USER_WARNING_SENT': 'Aviso Enviado',
-  
-  // Carteiras
-  'WALLET_ADJUSTED': 'Saldo Ajustado',
-  'MANUAL_ADJUST': 'Ajuste Manual',
-  
-  // Pagamentos
-  'WITHDRAWAL_COMPLETED': 'Saque Aprovado',
-  'WITHDRAWAL_FAILED': 'Saque Rejeitado',
-  'DEPOSIT_COMPLETED': 'Depósito Confirmado',
-  'DEPOSIT_FAILED': 'Depósito Falhou',
-};
+**Alterar a função `atomic_execute_trade` para:**
+1. Buscar a regra de taxa ativa para TRADE
+2. Calcular o fee baseado na regra (1% conforme configurado)
+3. Gravar `fee_amount` e `platform_revenue` no `ledger_entries`
+4. Inserir registro na tabela `platform_revenue`
+
+```sql
+-- Dentro da função atomic_execute_trade, adicionar:
+DECLARE
+  v_fee_rule RECORD;
+  v_fee_amount numeric := 0;
+  v_net_amount numeric;
+
+-- Buscar regra de taxa ativa
+SELECT * INTO v_fee_rule 
+FROM fee_rules 
+WHERE type = 'TRADE' AND is_active = true 
+ORDER BY effective_from DESC 
+LIMIT 1;
+
+-- Calcular taxa (modo PERCENT)
+IF FOUND AND v_fee_rule.mode = 'PERCENT' THEN
+  v_fee_amount := v_trade_cost * COALESCE(v_fee_rule.percent_value, 0);
+END IF;
+
+v_net_amount := v_trade_cost - v_fee_amount;
+
+-- Inserir no ledger com fee
+INSERT INTO ledger_entries (
+  user_id, wallet_id, amount, fee_amount, net_amount, 
+  platform_revenue, direction, ref_type, ref_id, status
+) VALUES (
+  p_user_id, v_wallet.id, v_trade_cost, v_fee_amount, v_net_amount,
+  v_fee_amount, 'DEBIT', 'TRADE', p_market_id, 'COMPLETED'
+);
+
+-- Acumular receita da plataforma
+INSERT INTO platform_revenue (day, type, gross, fees, net)
+VALUES (CURRENT_DATE, 'TRADE', v_trade_cost, v_fee_amount, v_net_amount)
+ON CONFLICT (day, type) 
+DO UPDATE SET 
+  gross = platform_revenue.gross + EXCLUDED.gross,
+  fees = platform_revenue.fees + EXCLUDED.fees,
+  net = platform_revenue.net + EXCLUDED.net,
+  updated_at = now();
 ```
 
-**2. Atualizar o filtro de ações no Select para incluir novas opções:**
+---
 
-Adicionar os novos tipos de ação ao dropdown de filtro para que o administrador possa filtrar por eles.
+### Fase 2: Melhorar a UI para Estados Vazios
+
+**Arquivo: `src/pages/admin/AdminFinancialOverview.tsx`**
+
+1. Adicionar mensagem quando gráficos estão vazios
+2. Mostrar skeleton/placeholder enquanto não há dados
+3. Exibir alerta informativo se não houver receita registrada
+
+```tsx
+// Para o AreaChart vazio
+{revenueByDay.length === 0 ? (
+  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+    <TrendingUp className="h-12 w-12 mb-2 opacity-50" />
+    <p>Nenhuma receita registrada nos últimos 14 dias</p>
+  </div>
+) : (
+  <ResponsiveContainer>...</ResponsiveContainer>
+)}
+
+// Para o PieChart vazio
+{pieData.length === 0 ? (
+  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+    <Activity className="h-12 w-12 mb-2 opacity-50" />
+    <p>Nenhuma receita por tipo registrada</p>
+  </div>
+) : (
+  <ResponsiveContainer>...</ResponsiveContainer>
+)}
+```
+
+---
+
+### Fase 3: Aplicar Taxas em Depósitos e Saques
+
+Seguir o mesmo padrão nas edge functions:
+- `create-deposit/index.ts` 
+- `request-withdrawal/index.ts`
+
+Buscar a regra de taxa ativa e aplicar antes de completar a transação.
 
 ---
 
 ## Detalhes Técnicos
 
-| Ação no Banco | Tradução |
-|---------------|----------|
-| `market_settled` | Mercado Liquidado |
-| `market_status_change` | Status Alterado |
-| `market_closed` | Mercado Fechado |
-| `MARKET_SETTLED` | Mercado Liquidado |
-| `MARKET_STATUS_CHANGE` | Status Alterado |
+### Tabela `platform_revenue` - Estrutura Esperada
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | uuid | PK |
+| day | date | Data da receita |
+| type | text | TRADE, DEPOSIT, WITHDRAW, SETTLEMENT |
+| gross | numeric | Valor bruto transacionado |
+| fees | numeric | Taxa cobrada |
+| net | numeric | Valor líquido |
+
+### Constraint de Unicidade
+
+```sql
+ALTER TABLE platform_revenue 
+ADD CONSTRAINT platform_revenue_day_type_unique 
+UNIQUE (day, type);
+```
+
+Isso permite usar `ON CONFLICT` para acumular valores no mesmo dia.
+
+---
+
+## Ordem de Execução
+
+1. **Migração SQL**: Atualizar função `atomic_execute_trade`
+2. **Migração SQL**: Adicionar constraint unique em `platform_revenue`
+3. **Edge Functions**: Atualizar depósitos e saques
+4. **Frontend**: Melhorar tratamento de estados vazios
+
+---
 
 ## Resultado Esperado
-Todas as badges de ação exibirão texto em português, independentemente do formato (UPPERCASE ou lowercase) armazenado no banco de dados.
 
+Após implementação:
+- ✅ Taxas cobradas automaticamente (1% em trades)
+- ✅ Receita acumulada diariamente na `platform_revenue`
+- ✅ Cards de receita com valores reais
+- ✅ Gráficos populados com dados históricos
+- ✅ Estados vazios com mensagens informativas

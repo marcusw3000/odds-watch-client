@@ -181,27 +181,35 @@ export function AdminFinancialOverview() {
             <CardTitle>Receita por Dia (14 dias)</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]" style={{ contain: 'layout style' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueByDay}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="day" 
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                />
-                <YAxis tickFormatter={(value) => `R$${value}`} />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="amount" 
-                  stroke="hsl(var(--primary))" 
-                  fill="hsl(var(--primary) / 0.2)" 
-                  name="Receita"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {revenueByDay.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <TrendingUp className="h-12 w-12 mb-2 opacity-50" />
+                <p className="text-center">Nenhuma receita registrada nos últimos 14 dias</p>
+                <p className="text-xs text-center mt-1">As taxas serão registradas automaticamente nos próximos trades</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueByDay}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="day" 
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                  />
+                  <YAxis tickFormatter={(value) => `R$${value}`} />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="hsl(var(--primary))" 
+                    fill="hsl(var(--primary) / 0.2)" 
+                    name="Receita"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -210,26 +218,34 @@ export function AdminFinancialOverview() {
             <CardTitle>Receita por Tipo</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]" style={{ contain: 'layout style' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(2)}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            {pieData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <Activity className="h-12 w-12 mb-2 opacity-50" />
+                <p className="text-center">Nenhuma receita por tipo registrada</p>
+                <p className="text-xs text-center mt-1">Dados serão exibidos após transações com taxas</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(2)}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

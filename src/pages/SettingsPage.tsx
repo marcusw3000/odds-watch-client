@@ -1,17 +1,53 @@
-import { Settings, Bell, Shield, Download, Headphones, User } from 'lucide-react';
+import { Settings, Bell, Shield, Download, Headphones, User, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { ExportDataButton } from '@/components/settings/ExportDataButton';
 import { SupportTicketsList } from '@/components/support/SupportTicketsList';
+import { ProfilePrivacySettings } from '@/components/profile/ProfilePrivacySettings';
 import { useAuth } from '@/hooks/useAuth';
+import { useMyLeaderboardProfile, useMyStatistics, useUpdateLeaderboardProfile } from '@/hooks/useLeaderboard';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { UserProfile } from '@/types/leaderboard';
 
 export function SettingsPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'notifications';
+  
+  const { data: leaderboardProfile, isLoading: profileLoading } = useMyLeaderboardProfile();
+  const { data: statistics } = useMyStatistics();
+  const updateProfile = useUpdateLeaderboardProfile();
+
+  // Combine profile and statistics into UserProfile format
+  const profile: UserProfile | null = leaderboardProfile && statistics ? {
+    id: leaderboardProfile.id,
+    email: null,
+    full_name: null,
+    avatar_url: leaderboardProfile.avatar_url,
+    display_name: leaderboardProfile.display_name,
+    bio: leaderboardProfile.bio,
+    is_public: leaderboardProfile.is_public,
+    show_profit: leaderboardProfile.show_profit,
+    show_roi: leaderboardProfile.show_roi,
+    show_volume: leaderboardProfile.show_volume,
+    show_trades: leaderboardProfile.show_trades,
+    total_profit: statistics.total_profit,
+    roi_percent: statistics.roi_percent,
+    total_volume: statistics.total_volume,
+    total_trades: statistics.total_trades,
+    winning_trades: statistics.winning_trades,
+    current_streak: statistics.current_streak,
+    best_streak: statistics.best_streak,
+    best_trade_profit: statistics.best_trade_profit,
+    created_at: leaderboardProfile.created_at,
+    updated_at: leaderboardProfile.updated_at,
+  } : null;
+
+  const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
+    await updateProfile.mutateAsync(updates);
+  };
 
   if (!user) {
     return (
@@ -68,22 +104,35 @@ export function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="profile">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Configurações de Perfil
-              </CardTitle>
-              <CardDescription>
-                Gerencie seu perfil público e configurações do leaderboard.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild>
-                <Link to="/profile?tab=settings">Ir para Configurações do Perfil</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {profileLoading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ) : profile ? (
+            <ProfilePrivacySettings
+              profile={profile}
+              onUpdate={handleUpdateProfile}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Erro ao Carregar
+                </CardTitle>
+                <CardDescription>
+                  Não foi possível carregar suas configurações de perfil.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link to="/profile?tab=settings">Tentar na página do perfil</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="support">

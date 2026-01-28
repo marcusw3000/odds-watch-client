@@ -60,8 +60,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body: MultiTradeRequest = await req.json();
-    const { marketId, optionId, shares, maxCost, side = 'YES' } = body;
+    const body = await req.json();
+    
+    // Handle ping/health check requests
+    if (body.ping === true) {
+      return new Response(
+        JSON.stringify({ success: true, message: "pong", timestamp: Date.now() }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const { marketId, optionId, shares, maxCost, side = 'YES' } = body as MultiTradeRequest;
 
     // Validation
     if (!marketId || !optionId || !shares || shares <= 0) {

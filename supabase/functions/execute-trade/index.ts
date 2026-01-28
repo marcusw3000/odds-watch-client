@@ -98,8 +98,17 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const body: TradeRequest = await req.json();
-    const { marketId, outcome, shares: rawShares, maxCost: rawMaxCost } = body;
+    const body = await req.json();
+    
+    // Handle ping/health check requests
+    if (body.ping === true) {
+      return new Response(
+        JSON.stringify({ success: true, message: "pong", timestamp: Date.now() }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const { marketId, outcome, shares: rawShares, maxCost: rawMaxCost } = body as TradeRequest;
 
     // Strict input validation
     if (!marketId || typeof marketId !== "string" || !isValidUUID(marketId)) {

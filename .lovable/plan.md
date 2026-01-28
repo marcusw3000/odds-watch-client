@@ -1,55 +1,61 @@
 
-# Corrigir Preview de Imagem ao Compartilhar Site
+# Corrigir Logs de Auditoria Vazios
 
 ## Problema
-Quando o link do site é compartilhado em plataformas como WhatsApp, Telegram, Facebook, Twitter ou LinkedIn, a imagem de preview não aparece.
+A página de Logs de Auditoria (`/admin/audit-logs`) mostra "Nenhum log de auditoria encontrado" apesar de existirem 9 registros no banco de dados.
 
 ## Causa Raiz
-As meta tags `og:image` e `twitter:image` no `index.html` usam caminhos relativos (`/og-image.png`) em vez de URLs absolutas. Os crawlers das redes sociais não conseguem resolver esses caminhos relativos.
+A query do frontend tenta fazer um JOIN implícito:
+```typescript
+.select('*, profiles:actor_user_id(display_name)')
+```
 
-## Solução
-Atualizar as meta tags para usar URLs absolutas com o domínio completo.
+Porém, a tabela `admin_audit_logs` **não possui uma Foreign Key** para `profiles`. O PostgREST retorna erro 400:
+> "Could not find a relationship between 'admin_audit_logs' and 'actor_user_id'"
+
+O código silenciosamente retorna um array vazio quando há erro.
 
 ---
 
-## Alterações
+## Solução
 
-### Arquivo: `index.html`
+### 1. Migração SQL - Adicionar Foreign Key
 
-**Antes:**
-```html
-<meta property="og:image" content="/og-image.png" />
-<meta name="twitter:image" content="/og-image.png" />
+Criar FK de `actor_user_id` referenciando `profiles.id`:
+
+```sql
+ALTER TABLE admin_audit_logs
+ADD CONSTRAINT admin_audit_logs_actor_user_id_fkey
+FOREIGN KEY (actor_user_id) REFERENCES profiles(id) ON DELETE SET NULL;
 ```
 
-**Depois:**
-```html
-<meta property="og:image" content="https://odds-watch-client.lovable.app/og-image.png" />
-<meta name="twitter:image" content="https://odds-watch-client.lovable.app/og-image.png" />
+**Nota:** Precisamos alterar a coluna para permitir NULL antes (caso o profile seja deletado):
+
+```sql
+-- Permitir NULL para suportar ON DELETE SET NULL
+ALTER TABLE admin_audit_logs 
+ALTER COLUMN actor_user_id DROP NOT NULL;
+
+-- Adicionar FK
+ALTER TABLE admin_audit_logs
+ADD CONSTRAINT admin_audit_logs_actor_user_id_fkey
+FOREIGN KEY (actor_user_id) REFERENCES profiles(id) ON DELETE SET NULL;
 ```
 
 ---
 
 ## Detalhes Técnicos
 
-| Meta Tag | Antes | Depois |
-|----------|-------|--------|
-| `og:image` | `/og-image.png` | `https://odds-watch-client.lovable.app/og-image.png` |
-| `twitter:image` | `/og-image.png` | `https://odds-watch-client.lovable.app/og-image.png` |
-| `og:url` | `https://mercadoprevisoes.com.br` | Mantém (ou atualizar se necessário) |
+| Componente | Arquivo | Descrição |
+|------------|---------|-----------|
+| Query | `src/services/FinancialRepository.ts` | Linha ~397 - já usa sintaxe correta para JOIN |
+| Tabela | `admin_audit_logs` | Falta FK para `profiles` |
+| Erro | PostgREST | 400 - Relacionamento não encontrado |
 
-### Observações
-1. A imagem `og-image.png` já existe em `public/` com dimensões corretas (1200x630)
-2. O código dinâmico em `src/lib/seo.ts` já usa `window.location.origin` para construir URLs absolutas corretamente
-3. Esta correção afeta apenas as meta tags estáticas do HTML inicial
+### Estado Atual
+- Total de logs no banco: **9 registros**
+- RLS: Configurado corretamente (admins podem SELECT/INSERT)
+- A query está correta, apenas falta a FK no schema
 
----
-
-## Resultado Esperado
-Após a publicação, ao compartilhar o link em qualquer plataforma, a imagem de preview aparecerá corretamente.
-
-## Validação
-Após implementar, testar em:
-- [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
-- [Twitter Card Validator](https://cards-dev.twitter.com/validator)
-- Compartilhar link no WhatsApp
+### Resultado Esperado
+Após a migração, os logs de auditoria aparecerão normalmente com o nome do ator (admin) exibido corretamente.

@@ -90,7 +90,9 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { walletId, amount, reason } = await req.json();
+    const body = await req.json();
+    console.log('[adjust-wallet-balance] Received body:', JSON.stringify(body));
+    const { walletId, amount, reason } = body;
 
     // Validate inputs
     if (!walletId || typeof walletId !== 'string') {

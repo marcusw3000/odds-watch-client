@@ -1,151 +1,164 @@
 
-# Correção do Sistema Financeiro - Visão Geral Admin
+# Correção da Taxa de Liquidação Dinâmica
 
-## Problemas Identificados
+## Problema Atual
 
-| Problema | Causa | Impacto |
-|----------|-------|---------|
-| Receita R$ 0,00 | Tabela `platform_revenue` vazia | Cards de receita zerados |
-| Taxa média R$ 0,00 | `fee_amount = 0` em ledger_entries | Indicadores incorretos |
-| Gráficos vazios | Sem dados de receita | UI quebrada |
-| Taxas não cobradas | Função `atomic_execute_trade` não aplica fee_rules | Perda de receita |
+| Aspecto | Atual (Hardcoded) | Configurado (fee_rules) |
+|---------|-------------------|-------------------------|
+| Taxa | 5% | 0.5% |
+| Origem | `v_rake_percent := 0.05` | `SELECT * FROM fee_rules WHERE type = 'SETTLEMENT'` |
+| Tipo Revenue | `SETTLEMENT_RAKE` | `SETTLEMENT` |
+| Snapshot | Não registrado | Não registrado |
+
+**Impacto**: Usuários estão sendo cobrados **10x mais** do que o configurado pelo admin.
 
 ---
 
-## Solução Proposta
+## Solução: Migração SQL
 
-### Fase 1: Aplicar Taxas nos Trades (Banco de Dados)
+Atualizar a função `process_market_payouts` para:
 
-**Alterar a função `atomic_execute_trade` para:**
-1. Buscar a regra de taxa ativa para TRADE
-2. Calcular o fee baseado na regra (1% conforme configurado)
-3. Gravar `fee_amount` e `platform_revenue` no `ledger_entries`
-4. Inserir registro na tabela `platform_revenue`
+1. **Buscar taxa dinâmica** do `fee_rules` ao invés de usar valor hardcoded
+2. **Criar snapshot de política** em `fee_policy_snapshots` para auditoria
+3. **Gravar fee nos ledger_entries** de cada pagamento individual
+4. **Usar tipo consistente** `SETTLEMENT` na `platform_revenue`
+
+---
+
+## Alterações Técnicas
+
+### Nova Lógica de Fee
 
 ```sql
--- Dentro da função atomic_execute_trade, adicionar:
 DECLARE
   v_fee_rule RECORD;
-  v_fee_amount numeric := 0;
-  v_net_amount numeric;
+  v_fee_percent NUMERIC := 0.005; -- Default 0.5% if no rule
+  v_fee_snapshot_id UUID;
 
--- Buscar regra de taxa ativa
+-- Buscar regra de taxa ativa para SETTLEMENT
 SELECT * INTO v_fee_rule 
 FROM fee_rules 
-WHERE type = 'TRADE' AND is_active = true 
+WHERE type = 'SETTLEMENT' AND is_active = true 
 ORDER BY effective_from DESC 
 LIMIT 1;
 
--- Calcular taxa (modo PERCENT)
-IF FOUND AND v_fee_rule.mode = 'PERCENT' THEN
-  v_fee_amount := v_trade_cost * COALESCE(v_fee_rule.percent_value, 0);
+IF FOUND THEN
+  -- Usar taxa configurada (PERCENT ou FIXED)
+  IF v_fee_rule.mode = 'PERCENT' THEN
+    v_fee_percent := COALESCE(v_fee_rule.percent_value, 0.005);
+  END IF;
+  
+  -- Criar snapshot para auditoria
+  INSERT INTO fee_policy_snapshots (
+    fee_rule_id, type, applied_mode, applied_percent
+  ) VALUES (
+    v_fee_rule.id, 'SETTLEMENT', v_fee_rule.mode, v_fee_percent
+  )
+  RETURNING id INTO v_fee_snapshot_id;
 END IF;
+```
 
-v_net_amount := v_trade_cost - v_fee_amount;
+### Cálculo de Payout com Taxa
 
--- Inserir no ledger com fee
+```sql
+-- Para cada pagamento, calcular fee individual
+v_gross_payout := v_contract.shares * v_contract_unit * v_payout_ratio;
+v_fee_amount := v_gross_payout * v_fee_percent;
+v_net_payout := v_gross_payout - v_fee_amount;
+
+-- Creditar apenas o valor líquido
+UPDATE wallets 
+SET balance_available = balance_available + v_net_payout
+WHERE id = v_wallet_id;
+
+-- Ledger entry com fee registrado
 INSERT INTO ledger_entries (
-  user_id, wallet_id, amount, fee_amount, net_amount, 
-  platform_revenue, direction, ref_type, ref_id, status
+  user_id, wallet_id, ref_type, ref_id, direction,
+  amount, fee_amount, net_amount, platform_revenue, 
+  fee_snapshot_id, status
 ) VALUES (
-  p_user_id, v_wallet.id, v_trade_cost, v_fee_amount, v_net_amount,
-  v_fee_amount, 'DEBIT', 'TRADE', p_market_id, 'COMPLETED'
+  v_contract.user_id, v_wallet_id, 'SETTLEMENT', 
+  p_market_id::text, 'CREDIT',
+  v_gross_payout, v_fee_amount, v_net_payout, v_fee_amount,
+  v_fee_snapshot_id, 'COMPLETED'
 );
+```
 
--- Acumular receita da plataforma
+### Revenue Tracking Atualizado
+
+```sql
+-- Acumular receita da plataforma com tipo correto
 INSERT INTO platform_revenue (day, type, gross, fees, net)
-VALUES (CURRENT_DATE, 'TRADE', v_trade_cost, v_fee_amount, v_net_amount)
-ON CONFLICT (day, type) 
-DO UPDATE SET 
+VALUES (
+  CURRENT_DATE, 
+  'SETTLEMENT',  -- Tipo consistente com fee_rules
+  v_total_gross_payouts, 
+  v_total_fees_collected, 
+  v_total_gross_payouts - v_total_fees_collected
+)
+ON CONFLICT (day, type) DO UPDATE SET
   gross = platform_revenue.gross + EXCLUDED.gross,
   fees = platform_revenue.fees + EXCLUDED.fees,
   net = platform_revenue.net + EXCLUDED.net,
-  updated_at = now();
+  updated_at = NOW();
 ```
 
 ---
 
-### Fase 2: Melhorar a UI para Estados Vazios
+## Fluxo de Liquidação Corrigido
 
-**Arquivo: `src/pages/admin/AdminFinancialOverview.tsx`**
-
-1. Adicionar mensagem quando gráficos estão vazios
-2. Mostrar skeleton/placeholder enquanto não há dados
-3. Exibir alerta informativo se não houver receita registrada
-
-```tsx
-// Para o AreaChart vazio
-{revenueByDay.length === 0 ? (
-  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-    <TrendingUp className="h-12 w-12 mb-2 opacity-50" />
-    <p>Nenhuma receita registrada nos últimos 14 dias</p>
-  </div>
-) : (
-  <ResponsiveContainer>...</ResponsiveContainer>
-)}
-
-// Para o PieChart vazio
-{pieData.length === 0 ? (
-  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-    <Activity className="h-12 w-12 mb-2 opacity-50" />
-    <p>Nenhuma receita por tipo registrada</p>
-  </div>
-) : (
-  <ResponsiveContainer>...</ResponsiveContainer>
-)}
+```text
+┌─────────────────────────────────────────────────────────┐
+│              PROCESSO DE LIQUIDAÇÃO                     │
+├─────────────────────────────────────────────────────────┤
+│ 1. Buscar fee_rule SETTLEMENT ativa                     │
+│    └── percent_value: 0.5% (configurável)               │
+├─────────────────────────────────────────────────────────┤
+│ 2. Criar fee_policy_snapshot (auditoria)                │
+│    └── Registra regra aplicada no momento              │
+├─────────────────────────────────────────────────────────┤
+│ 3. Para cada contrato vencedor:                         │
+│    ├── Prêmio bruto: shares × R$1.00                    │
+│    ├── Taxa: prêmio × 0.5% = R$ X                       │
+│    ├── Prêmio líquido: prêmio - taxa                    │
+│    └── Crédito na wallet: prêmio líquido                │
+├─────────────────────────────────────────────────────────┤
+│ 4. Registrar ledger_entry                               │
+│    ├── amount: prêmio bruto                             │
+│    ├── fee_amount: taxa cobrada                         │
+│    ├── net_amount: prêmio líquido                       │
+│    └── fee_snapshot_id: referência auditoria            │
+├─────────────────────────────────────────────────────────┤
+│ 5. Acumular em platform_revenue                         │
+│    └── type: 'SETTLEMENT' (consistente)                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Fase 3: Aplicar Taxas em Depósitos e Saques
+## Exemplo Prático
 
-Seguir o mesmo padrão nas edge functions:
-- `create-deposit/index.ts` 
-- `request-withdrawal/index.ts`
-
-Buscar a regra de taxa ativa e aplicar antes de completar a transação.
-
----
-
-## Detalhes Técnicos
-
-### Tabela `platform_revenue` - Estrutura Esperada
-
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid | PK |
-| day | date | Data da receita |
-| type | text | TRADE, DEPOSIT, WITHDRAW, SETTLEMENT |
-| gross | numeric | Valor bruto transacionado |
-| fees | numeric | Taxa cobrada |
-| net | numeric | Valor líquido |
-
-### Constraint de Unicidade
-
-```sql
-ALTER TABLE platform_revenue 
-ADD CONSTRAINT platform_revenue_day_type_unique 
-UNIQUE (day, type);
-```
-
-Isso permite usar `ON CONFLICT` para acumular valores no mesmo dia.
+| Cenário | Taxa 5% (atual) | Taxa 0.5% (corrigido) |
+|---------|-----------------|----------------------|
+| Prêmio bruto | R$ 100,00 | R$ 100,00 |
+| Taxa cobrada | R$ 5,00 | R$ 0,50 |
+| Prêmio líquido | R$ 95,00 | R$ 99,50 |
+| Receita plataforma | R$ 5,00 | R$ 0,50 |
 
 ---
 
-## Ordem de Execução
+## Arquivos Afetados
 
-1. **Migração SQL**: Atualizar função `atomic_execute_trade`
-2. **Migração SQL**: Adicionar constraint unique em `platform_revenue`
-3. **Edge Functions**: Atualizar depósitos e saques
-4. **Frontend**: Melhorar tratamento de estados vazios
+| Arquivo | Alteração |
+|---------|-----------|
+| `supabase/migrations/new_migration.sql` | Atualizar função `process_market_payouts` |
 
 ---
 
-## Resultado Esperado
+## Benefícios
 
-Após implementação:
-- ✅ Taxas cobradas automaticamente (1% em trades)
-- ✅ Receita acumulada diariamente na `platform_revenue`
-- ✅ Cards de receita com valores reais
-- ✅ Gráficos populados com dados históricos
-- ✅ Estados vazios com mensagens informativas
+- Taxa configurável pelo admin (0.5% atualmente)
+- Auditoria completa via `fee_policy_snapshots`
+- Ledger entries com valores corretos de fee
+- Tipo `SETTLEMENT` consistente em todo o sistema
+- Usuários recebem prêmio justo (menos 10x de desconto indevido)

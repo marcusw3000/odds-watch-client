@@ -25,7 +25,13 @@ export function ExportDataButton() {
       });
 
       if (error) {
-        if (error.message?.includes('429') || error.message?.includes('rate')) {
+        // Check for rate limit error (429 status)
+        const context = (error as any).context;
+        const isRateLimited = context?.status === 429 || 
+          error.message?.includes('429') || 
+          error.message?.includes('rate');
+        
+        if (isRateLimited) {
           toast({
             title: 'Limite excedido',
             description: 'Você só pode exportar seus dados uma vez por hora.',
@@ -34,6 +40,16 @@ export function ExportDataButton() {
           return;
         }
         throw error;
+      }
+
+      // Check if response contains rate limit error
+      if (data?.error === 'Rate limit exceeded') {
+        toast({
+          title: 'Limite excedido',
+          description: data.message || 'Você só pode exportar seus dados uma vez por hora.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       // Create blob and download

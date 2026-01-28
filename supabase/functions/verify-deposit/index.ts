@@ -114,21 +114,57 @@ serve(async (req) => {
       });
     }
 
-    // Update payment status
+    // Fetch active fee rule for DEPOSIT
+    const { data: feeRule, error: feeRuleError } = await supabaseAdmin
+      .from("fee_rules")
+      .select("*")
+      .eq("type", "DEPOSIT")
+      .eq("is_active", true)
+      .order("effective_from", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (feeRuleError) {
+      logStep("Fee rule fetch error (using default 0)", { error: feeRuleError.message });
+    }
+
+    // Calculate fee based on rule mode
+    let feeAmount = 0;
+    if (feeRule) {
+      if (feeRule.mode === 'PERCENT') {
+        feeAmount = amount * (feeRule.percent_value || 0);
+      } else if (feeRule.mode === 'FIXED') {
+        feeAmount = feeRule.flat_value || 0;
+      }
+      // Apply min/max constraints
+      if (feeRule.min_fee !== null && feeAmount < feeRule.min_fee) {
+        feeAmount = feeRule.min_fee;
+      }
+      if (feeRule.max_fee !== null && feeAmount > feeRule.max_fee) {
+        feeAmount = feeRule.max_fee;
+      }
+      logStep("Fee calculated", { feeRuleId: feeRule.id, mode: feeRule.mode, feeAmount });
+    }
+
+    const netAmount = amount - feeAmount;
+
+    // Update payment status with fee info
     await supabaseAdmin
       .from("payments")
       .update({ 
         status: "COMPLETED",
+        fee: feeAmount,
+        net_amount: netAmount,
         stripe_payment_intent_id: session.payment_intent as string || null,
         completed_at: new Date().toISOString(),
       })
       .eq("stripe_checkout_session_id", session_id);
 
-    // Use atomic deposit function to credit wallet balance
+    // Use atomic deposit function to credit wallet balance (credit net amount after fee)
     const { error: depositError } = await supabaseAdmin
       .rpc('atomic_deposit_balance', {
         p_user_id: userId,
-        p_amount: amount
+        p_amount: netAmount
       });
 
     if (depositError) {
@@ -136,7 +172,29 @@ serve(async (req) => {
       throw new Error("Failed to update balance");
     }
 
-    logStep("Balance updated atomically", { amount });
+    logStep("Balance updated atomically", { amount, feeAmount, netAmount });
+
+    // Record platform revenue if there's a fee
+    if (feeAmount > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const { error: revenueError } = await supabaseAdmin
+        .from("platform_revenue")
+        .upsert({
+          day: today,
+          type: 'DEPOSIT',
+          gross: amount,
+          fees: feeAmount,
+          net: netAmount
+        }, {
+          onConflict: 'day,type'
+        });
+
+      if (revenueError) {
+        logStep("Error recording platform revenue", { error: revenueError });
+      } else {
+        logStep("Platform revenue recorded", { type: 'DEPOSIT', feeAmount });
+      }
+    }
 
     // Create notification with new type
     await supabaseAdmin
@@ -145,14 +203,18 @@ serve(async (req) => {
         user_id: userId,
         type: "DEPOSIT_CONFIRMED",
         title: "Depósito Confirmado! 💰",
-        message: `Seu depósito de R$${amount.toFixed(2)} foi creditado com sucesso.`,
-        data: { amount, session_id },
+        message: feeAmount > 0 
+          ? `Seu depósito de R$${amount.toFixed(2)} foi creditado. Taxa: R$${feeAmount.toFixed(2)}. Valor líquido: R$${netAmount.toFixed(2)}.`
+          : `Seu depósito de R$${amount.toFixed(2)} foi creditado com sucesso.`,
+        data: { amount, fee: feeAmount, net_amount: netAmount, session_id },
       });
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: "Depósito creditado com sucesso!",
-      amount 
+      amount,
+      fee: feeAmount,
+      net_amount: netAmount
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

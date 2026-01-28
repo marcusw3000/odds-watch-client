@@ -161,9 +161,39 @@ serve(async (req) => {
     }
     logStep("Balance atomically deducted", { amount });
 
-    // No withdrawal fee
-    const fee = 0;
-    const netAmount = amount;
+    // Fetch active fee rule for WITHDRAW
+    const { data: feeRule, error: feeRuleError } = await supabaseAdmin
+      .from("fee_rules")
+      .select("*")
+      .eq("type", "WITHDRAW")
+      .eq("is_active", true)
+      .order("effective_from", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (feeRuleError) {
+      logStep("Fee rule fetch error (using default 0)", { error: feeRuleError.message });
+    }
+
+    // Calculate fee based on rule mode
+    let fee = 0;
+    if (feeRule) {
+      if (feeRule.mode === 'PERCENT') {
+        fee = amount * (feeRule.percent_value || 0);
+      } else if (feeRule.mode === 'FIXED') {
+        fee = feeRule.flat_value || 0;
+      }
+      // Apply min/max constraints
+      if (feeRule.min_fee !== null && fee < feeRule.min_fee) {
+        fee = feeRule.min_fee;
+      }
+      if (feeRule.max_fee !== null && fee > feeRule.max_fee) {
+        fee = feeRule.max_fee;
+      }
+      logStep("Fee calculated", { feeRuleId: feeRule.id, mode: feeRule.mode, fee });
+    }
+
+    const netAmount = amount - fee;
 
     // Encrypt PIX key before storing
     const encryptedPixKey = await encryptSensitiveData(pix_key);
@@ -195,8 +225,30 @@ serve(async (req) => {
       }
       throw new Error("Erro ao criar solicitação de saque");
     }
-    logStep("Withdrawal request created", { paymentId: payment.id, idempotencyKey });
+    logStep("Withdrawal request created", { paymentId: payment.id, idempotencyKey, fee });
     // Note: Balance was already atomically deducted by atomic_withdraw_balance
+
+    // Record platform revenue if there's a fee
+    if (fee > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const { error: revenueError } = await supabaseAdmin
+        .from("platform_revenue")
+        .upsert({
+          day: today,
+          type: 'WITHDRAW',
+          gross: amount,
+          fees: fee,
+          net: netAmount
+        }, {
+          onConflict: 'day,type'
+        });
+
+      if (revenueError) {
+        logStep("Error recording platform revenue", { error: revenueError });
+      } else {
+        logStep("Platform revenue recorded", { type: 'WITHDRAW', fee });
+      }
+    }
 
     // Create notification with new type
     await supabaseAdmin

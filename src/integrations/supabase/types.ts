@@ -2480,16 +2480,32 @@ export type Database = {
         }
         Returns: Json
       }
-      atomic_execute_trade: {
-        Args: {
-          p_market_id: string
-          p_max_cost: number
-          p_outcome: string
-          p_shares: number
-          p_user_id: string
-        }
-        Returns: Json
-      }
+      atomic_execute_trade:
+        | {
+            Args: {
+              p_market_id: string
+              p_max_cost: number
+              p_outcome: string
+              p_shares: number
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_market_id: string
+              p_new_liquidity: number
+              p_new_no_price: number
+              p_new_no_shares: number
+              p_new_yes_price: number
+              p_new_yes_shares: number
+              p_outcome: string
+              p_shares: number
+              p_trade_cost: number
+              p_user_id: string
+            }
+            Returns: Json
+          }
       atomic_subscribe_copy_trader: {
         Args: {
           p_amount: number

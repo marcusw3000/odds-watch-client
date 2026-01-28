@@ -53,7 +53,7 @@ export type Database = {
       admin_audit_logs: {
         Row: {
           action: string
-          actor_user_id: string
+          actor_user_id: string | null
           after_data: Json | null
           before_data: Json | null
           created_at: string
@@ -64,7 +64,7 @@ export type Database = {
         }
         Insert: {
           action: string
-          actor_user_id: string
+          actor_user_id?: string | null
           after_data?: Json | null
           before_data?: Json | null
           created_at?: string
@@ -75,7 +75,7 @@ export type Database = {
         }
         Update: {
           action?: string
-          actor_user_id?: string
+          actor_user_id?: string | null
           after_data?: Json | null
           before_data?: Json | null
           created_at?: string
@@ -84,7 +84,22 @@ export type Database = {
           id?: string
           ip_address?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_logs_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_logs_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {

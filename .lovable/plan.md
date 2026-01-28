@@ -1,61 +1,78 @@
 
-# Corrigir Logs de Auditoria Vazios
+
+# Traduzir Todas as Ações dos Logs de Auditoria
 
 ## Problema
-A página de Logs de Auditoria (`/admin/audit-logs`) mostra "Nenhum log de auditoria encontrado" apesar de existirem 9 registros no banco de dados.
-
-## Causa Raiz
-A query do frontend tenta fazer um JOIN implícito:
-```typescript
-.select('*, profiles:actor_user_id(display_name)')
-```
-
-Porém, a tabela `admin_audit_logs` **não possui uma Foreign Key** para `profiles`. O PostgREST retorna erro 400:
-> "Could not find a relationship between 'admin_audit_logs' and 'actor_user_id'"
-
-O código silenciosamente retorna um array vazio quando há erro.
-
----
+Algumas ações nos logs de auditoria aparecem sem tradução (ex: `market_settled`, `market_status_change`) porque o dicionário `ACTION_LABELS` só tem chaves em UPPERCASE, mas o banco de dados tem valores em lowercase.
 
 ## Solução
 
-### 1. Migração SQL - Adicionar Foreign Key
+### Arquivo: `src/pages/admin/AdminAuditLogsPage.tsx`
 
-Criar FK de `actor_user_id` referenciando `profiles.id`:
+**1. Expandir o dicionário ACTION_LABELS para incluir todas as variações:**
 
-```sql
-ALTER TABLE admin_audit_logs
-ADD CONSTRAINT admin_audit_logs_actor_user_id_fkey
-FOREIGN KEY (actor_user_id) REFERENCES profiles(id) ON DELETE SET NULL;
+```typescript
+const ACTION_LABELS: Record<string, string> = {
+  // Regras de Taxa
+  'FEE_RULE_CREATED': 'Regra Criada',
+  'FEE_RULE_UPDATED': 'Regra Atualizada',
+  'FEE_RULE_ACTIVATED': 'Regra Ativada',
+  'FEE_RULE_DEACTIVATED': 'Regra Desativada',
+  
+  // Mercados (UPPERCASE)
+  'MARKET_CLOSED': 'Mercado Fechado',
+  'MARKET_SETTLED': 'Mercado Liquidado',
+  'MARKET_STATUS_CHANGE': 'Status Alterado',
+  'MARKET_CREATED': 'Mercado Criado',
+  'MARKET_UPDATED': 'Mercado Atualizado',
+  
+  // Mercados (lowercase - compatibilidade)
+  'market_closed': 'Mercado Fechado',
+  'market_settled': 'Mercado Liquidado',
+  'market_status_change': 'Status Alterado',
+  'market_created': 'Mercado Criado',
+  'market_updated': 'Mercado Atualizado',
+  
+  // Eventos
+  'EVENT_SETTLED': 'Evento Liquidado',
+  'EVENT_CREATED': 'Evento Criado',
+  'EVENT_UPDATED': 'Evento Atualizado',
+  
+  // Usuários e Roles
+  'ROLE_ASSIGNED': 'Role Atribuído',
+  'ROLE_REMOVED': 'Role Removido',
+  'USER_BLOCKED': 'Usuário Bloqueado',
+  'USER_UNBLOCKED': 'Usuário Desbloqueado',
+  'USER_WARNING_SENT': 'Aviso Enviado',
+  
+  // Carteiras
+  'WALLET_ADJUSTED': 'Saldo Ajustado',
+  'MANUAL_ADJUST': 'Ajuste Manual',
+  
+  // Pagamentos
+  'WITHDRAWAL_COMPLETED': 'Saque Aprovado',
+  'WITHDRAWAL_FAILED': 'Saque Rejeitado',
+  'DEPOSIT_COMPLETED': 'Depósito Confirmado',
+  'DEPOSIT_FAILED': 'Depósito Falhou',
+};
 ```
 
-**Nota:** Precisamos alterar a coluna para permitir NULL antes (caso o profile seja deletado):
+**2. Atualizar o filtro de ações no Select para incluir novas opções:**
 
-```sql
--- Permitir NULL para suportar ON DELETE SET NULL
-ALTER TABLE admin_audit_logs 
-ALTER COLUMN actor_user_id DROP NOT NULL;
-
--- Adicionar FK
-ALTER TABLE admin_audit_logs
-ADD CONSTRAINT admin_audit_logs_actor_user_id_fkey
-FOREIGN KEY (actor_user_id) REFERENCES profiles(id) ON DELETE SET NULL;
-```
+Adicionar os novos tipos de ação ao dropdown de filtro para que o administrador possa filtrar por eles.
 
 ---
 
 ## Detalhes Técnicos
 
-| Componente | Arquivo | Descrição |
-|------------|---------|-----------|
-| Query | `src/services/FinancialRepository.ts` | Linha ~397 - já usa sintaxe correta para JOIN |
-| Tabela | `admin_audit_logs` | Falta FK para `profiles` |
-| Erro | PostgREST | 400 - Relacionamento não encontrado |
+| Ação no Banco | Tradução |
+|---------------|----------|
+| `market_settled` | Mercado Liquidado |
+| `market_status_change` | Status Alterado |
+| `market_closed` | Mercado Fechado |
+| `MARKET_SETTLED` | Mercado Liquidado |
+| `MARKET_STATUS_CHANGE` | Status Alterado |
 
-### Estado Atual
-- Total de logs no banco: **9 registros**
-- RLS: Configurado corretamente (admins podem SELECT/INSERT)
-- A query está correta, apenas falta a FK no schema
+## Resultado Esperado
+Todas as badges de ação exibirão texto em português, independentemente do formato (UPPERCASE ou lowercase) armazenado no banco de dados.
 
-### Resultado Esperado
-Após a migração, os logs de auditoria aparecerão normalmente com o nome do ator (admin) exibido corretamente.

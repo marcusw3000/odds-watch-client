@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, Briefcase, Lightbulb, Headphones, Users } from 'lucide-react';
+import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, Briefcase, Lightbulb, Headphones, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
@@ -176,6 +176,12 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
+                  <Link to="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configurações
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/copy-traders">
                     <Users className="mr-2 h-4 w-4" />
                     Copy Trading
@@ -273,6 +279,17 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
                   </Link>
                 </Button>
               ))}
+                <Button
+                  variant="ghost"
+                  className="justify-start gap-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                  asChild
+                >
+                  <Link to="/settings">
+                    <Settings className="h-4 w-4" />
+                    Configurações
+                  </Link>
+                </Button>
                 <Button
                   variant="ghost"
                   className="justify-start gap-2"

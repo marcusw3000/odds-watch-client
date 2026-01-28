@@ -33,19 +33,47 @@ import { format } from 'date-fns';
 import { Eye, Search, Shield } from 'lucide-react';
 
 const ACTION_LABELS: Record<string, string> = {
+  // Regras de Taxa
   'FEE_RULE_CREATED': 'Regra Criada',
   'FEE_RULE_UPDATED': 'Regra Atualizada',
   'FEE_RULE_ACTIVATED': 'Regra Ativada',
   'FEE_RULE_DEACTIVATED': 'Regra Desativada',
-  'EVENT_SETTLED': 'Evento Liquidado',
-  'MANUAL_ADJUST': 'Ajuste Manual',
-  'WALLET_ADJUSTED': 'Saldo Ajustado',
+  
+  // Mercados (UPPERCASE)
   'MARKET_CLOSED': 'Mercado Fechado',
   'MARKET_SETTLED': 'Mercado Liquidado',
+  'MARKET_STATUS_CHANGE': 'Status Alterado',
+  'MARKET_CREATED': 'Mercado Criado',
+  'MARKET_UPDATED': 'Mercado Atualizado',
+  
+  // Mercados (lowercase - compatibilidade)
+  'market_closed': 'Mercado Fechado',
+  'market_settled': 'Mercado Liquidado',
+  'market_status_change': 'Status Alterado',
+  'market_created': 'Mercado Criado',
+  'market_updated': 'Mercado Atualizado',
+  
+  // Eventos
+  'EVENT_SETTLED': 'Evento Liquidado',
+  'EVENT_CREATED': 'Evento Criado',
+  'EVENT_UPDATED': 'Evento Atualizado',
+  
+  // Usuários e Roles
   'ROLE_ASSIGNED': 'Role Atribuído',
   'ROLE_REMOVED': 'Role Removido',
+  'USER_BLOCKED': 'Usuário Bloqueado',
+  'USER_UNBLOCKED': 'Usuário Desbloqueado',
+  'USER_WARNING_SENT': 'Aviso Enviado',
+  
+  // Carteiras
+  'WALLET_ADJUSTED': 'Saldo Ajustado',
+  'MANUAL_ADJUST': 'Ajuste Manual',
+  
+  // Pagamentos
   'WITHDRAWAL_COMPLETED': 'Saque Aprovado',
   'WITHDRAWAL_FAILED': 'Saque Rejeitado',
+  'DEPOSIT_COMPLETED': 'Depósito Confirmado',
+  'DEPOSIT_FAILED': 'Depósito Falhou',
 };
 
 export function AdminAuditLogsPage() {
@@ -158,13 +186,19 @@ export function AdminAuditLogsPage() {
                   <SelectItem value="FEE_RULE_UPDATED">Regra Atualizada</SelectItem>
                   <SelectItem value="FEE_RULE_ACTIVATED">Regra Ativada</SelectItem>
                   <SelectItem value="FEE_RULE_DEACTIVATED">Regra Desativada</SelectItem>
+                  <SelectItem value="MARKET_CLOSED">Mercado Fechado</SelectItem>
+                  <SelectItem value="market_settled">Mercado Liquidado</SelectItem>
+                  <SelectItem value="market_status_change">Status Alterado</SelectItem>
                   <SelectItem value="EVENT_SETTLED">Evento Liquidado</SelectItem>
                   <SelectItem value="MANUAL_ADJUST">Ajuste Manual</SelectItem>
                   <SelectItem value="WALLET_ADJUSTED">Saldo Ajustado</SelectItem>
                   <SelectItem value="ROLE_ASSIGNED">Role Atribuído</SelectItem>
                   <SelectItem value="ROLE_REMOVED">Role Removido</SelectItem>
+                  <SelectItem value="USER_BLOCKED">Usuário Bloqueado</SelectItem>
+                  <SelectItem value="USER_WARNING_SENT">Aviso Enviado</SelectItem>
                   <SelectItem value="WITHDRAWAL_COMPLETED">Saque Aprovado</SelectItem>
                   <SelectItem value="WITHDRAWAL_FAILED">Saque Rejeitado</SelectItem>
+                  <SelectItem value="DEPOSIT_COMPLETED">Depósito Confirmado</SelectItem>
                 </SelectContent>
               </Select>
             </div>

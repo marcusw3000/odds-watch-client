@@ -2488,7 +2488,7 @@ export type Database = {
         | {
             Args: {
               p_market_id: string
-              p_max_cost?: number
+              p_max_cost: number
               p_outcome: string
               p_shares: number
               p_user_id: string

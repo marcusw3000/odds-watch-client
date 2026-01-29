@@ -45,7 +45,7 @@ function transformPayloadToEvent(payload: Record<string, unknown>): MarketEvent 
     expiryAt: payload.settlement_date ? new Date(payload.settlement_date as string) : new Date(),
     tradingHaltAt: payload.close_date ? new Date(payload.close_date as string) : new Date(),
     eventAt: payload.settlement_date ? new Date(payload.settlement_date as string) : new Date(),
-    limits: { minBuy: 10, maxBuy: 5000 },
+    limits: { minBuy: 1, maxBuy: 5000 },
     createdAt: new Date(payload.created_at as string),
     lastUpdatedAt: new Date(payload.updated_at as string),
     volume: payload.total_volume as number,

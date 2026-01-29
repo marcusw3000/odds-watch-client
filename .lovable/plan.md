@@ -1,59 +1,110 @@
-# Plano: Corrigir Processamento de Payouts Após Liquidação
 
-## ✅ IMPLEMENTADO
+# Plano: Corrigir Erro de Enum e Reprocessar Payouts
 
-### Alterações Realizadas
+## Problema Identificado
 
-1. **Migração SQL aplicada**: `process_market_payouts` agora detecta automaticamente se o resultado é um UUID (mercado multi-opção) ou YES/NO (mercado binário)
+A função `process_market_payouts` falha ao inserir notificações porque usa `'market_settled'` (minúsculo), mas o enum `notification_type` requer `'MARKET_SETTLED'` (maiúsculo).
 
-2. **UI de Liquidação atualizada** (`AdminSettlementsPage.tsx`):
-   - Para mercados BINARY: exibe botões SIM/NÃO
-   - Para mercados MULTIPLE: exibe dropdown com as opções do mercado
+Este erro causa a falha de toda a transação, resultando em:
+- Nenhum wallet creditado
+- Nenhuma entrada no ledger
+- Nenhuma notificação enviada
+- Contratos permanecem com shares > 0
 
-3. **Hook atualizado** (`useAdminEvents.ts`):
-   - `useSettleEvent` agora aceita `result: string` (UUID ou YES/NO)
-
-### Fluxo Corrigido
+### Evidência do Erro
 
 ```text
-Admin acessa /admin/settlements
-         │
-         ▼
-   Seleciona mercado
-         │
-    ┌────┴────┐
-    │         │
- BINARY    MULTIPLE
-    │         │
-    ▼         ▼
- SIM/NÃO   Dropdown de opções
-    │         │
-    └────┬────┘
-         │
-         ▼
-   Confirma liquidação → process_market_payouts detecta tipo
-         │
-    ┌────┴────┐
-    │         │
- YES/NO    UUID
-    │         │
-    ▼         ▼
-position   option_id match
-    │         │
-    └────┬────┘
-         │
-         ▼
-   ✅ Wallets creditados
-   ✅ Ledger entries criados
-   ✅ Notificações enviadas
+Logs do Postgres:
+ERROR: invalid input value for enum notification_type: "market_settled"
 ```
 
-### Lógica de Payouts
+### Mercados Afetados
 
-**Mercados BINARY:**
-- Vencedores: `position = 'YES'` ou `position = 'NO'` conforme resultado
+| Mercado | Tipo | Resultado Registrado | Payouts | Status |
+|---------|------|---------------------|---------|--------|
+| Teste | MULTIPLE | YES (incorreto) | 0 | ❌ Precisa UUID |
+| Teste LMSR | MULTIPLE | YES (incorreto) | 0 | ❌ Precisa UUID |
+| Taxa CDI | BINARY | YES | 0 | ❌ Falhou no enum |
+| Taxa SELIC | BINARY | YES | 4 | ✅ Funcionou antes da migração |
 
-**Mercados MULTIPLE:**
-- YES winners: `option_id = UUID vencedor` AND (`contract_type = 'YES'` OR NULL)
-- NO winners: `option_id != UUID vencedor` AND `contract_type = 'NO'`
-- Perdedores: todos os outros contratos são zerados
+## Solução
+
+### Migração SQL
+
+Atualizar a função `process_market_payouts` para usar o valor correto do enum:
+
+```text
+ANTES:  'market_settled'
+DEPOIS: 'MARKET_SETTLED'
+```
+
+A correção é simples - apenas trocar 2 ocorrências de `'market_settled'` por `'MARKET_SETTLED'` na função.
+
+---
+
+## Detalhes Técnicos
+
+A migração SQL irá:
+
+1. Dropar a função existente `process_market_payouts`
+2. Recriar com o enum correto `'MARKET_SETTLED'`
+3. Manter toda a lógica de payouts intacta
+
+### Locais da Correção
+
+```sql
+-- Linha ~78-85 (multi-option winners)
+INSERT INTO notifications (user_id, type, title, message, data)
+VALUES (
+  v_contract.user_id,
+  'MARKET_SETTLED',  -- ANTES: 'market_settled'
+  ...
+);
+
+-- Linha ~133-140 (multi-option NO winners)
+INSERT INTO notifications (user_id, type, title, message, data)
+VALUES (
+  v_contract.user_id,
+  'MARKET_SETTLED',  -- ANTES: 'market_settled'
+  ...
+);
+
+-- Linha ~208-215 (binary winners)
+INSERT INTO notifications (user_id, type, title, message, data)
+VALUES (
+  v_contract.user_id,
+  'MARKET_SETTLED',  -- ANTES: 'market_settled'
+  ...
+);
+```
+
+---
+
+## Reprocessamento de Mercados Afetados
+
+Após a correção, os mercados que falharam podem ser reprocessados manualmente:
+
+**Para mercado BINARY (Taxa CDI):**
+```sql
+SELECT process_market_payouts(
+  '01f42911-f2d8-416f-b7e1-204a35d29601'::uuid, 
+  'YES'
+);
+```
+
+**Para mercados MULTIPLE:**
+Será necessário atualizar o campo `result` com o UUID da opção vencedora e então chamar a função. Isso requer que o administrador:
+1. Identifique qual opção realmente venceu
+2. Execute uma query para corrigir o `result` 
+3. Chame `process_market_payouts` com o UUID correto
+
+---
+
+## Resultado Esperado
+
+Após a migração:
+1. Novos settlements funcionarão corretamente
+2. Ledger entries serão criados
+3. Wallets serão creditados
+4. Notificações serão enviadas
+5. Stats de perfil serão atualizados

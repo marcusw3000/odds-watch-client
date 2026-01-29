@@ -162,12 +162,7 @@ export function MarketDetailPage() {
     );
 
     if (result.success) {
-      toast({
-        title: 'Compra realizada!',
-        description: `Você comprou ${shares} contratos ${outcome === 'YES' ? 'SIM' : 'NÃO'} por R$${result.quote?.cost.toFixed(2) || maxCost.toFixed(2)}.`,
-      });
-      setSelectedOutcome(null);
-      // Refresh balance, event and contracts
+      // Refresh balance, event and contracts in background
       const [portfolio, updatedEvent] = await Promise.all([
         MarketDataProvider.getUserPortfolio(),
         MarketDataProvider.getEventById(id!),
@@ -177,6 +172,7 @@ export function MarketDetailPage() {
       if (updatedEvent) setEvent(updatedEvent);
       // Trigger portfolio refresh for other open tabs/components
       triggerPortfolioRefresh();
+      // Note: Don't close modal here - let TradingModal show success screen
     } else {
       throw new Error(result.message);
     }
@@ -188,12 +184,7 @@ export function MarketDetailPage() {
     const result = await MarketDataProvider.sellContract(contractId, minValue);
 
     if (result.success) {
-      toast({
-        title: 'Venda realizada!',
-        description: `Você vendeu contratos por R$${result.saleValue?.toFixed(2)}.`,
-      });
-      setSelectedOutcome(null);
-      // Refresh data
+      // Refresh data in background
       const [portfolio, updatedEvent] = await Promise.all([
         MarketDataProvider.getUserPortfolio(),
         MarketDataProvider.getEventById(id!),
@@ -202,6 +193,7 @@ export function MarketDetailPage() {
       setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
       if (updatedEvent) setEvent(updatedEvent);
       triggerPortfolioRefresh();
+      // Note: Don't close modal here - let TradingModal show success screen
     } else {
       throw new Error(result.message);
     }

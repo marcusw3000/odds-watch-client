@@ -1,78 +1,102 @@
 
-# Plano: Restaurar Interface de Compra por Quantidade de Contratos
+# Plano: Exibir Tela de Compartilhamento Após Compra
 
-## Resumo
-Modificar o `MinimalTradingCard.tsx` para usar a lógica de entrada por **quantidade de contratos** (como no `PurchaseModal.tsx` antigo) ao invés de entrada por **valor em R$**.
+## Problema Identificado
+Quando uma compra é realizada com sucesso, o modal de trading é fechado antes de exibir a tela de compartilhamento. Isso acontece porque a página `MarketDetailPage` está fechando o modal prematuramente ao chamar `setSelectedOutcome(null)` logo após a compra.
 
-## Mudanças de Experiência do Usuário
+## Fluxo Atual (Incorreto)
+```text
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Usuário clica   │     │  TradingModal    │     │ MarketDetailPage│
+│ "Comprar"       │────►│  handleConfirm() │────►│ handleConfirm() │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │ setSelectedOutcome(null)
+                                                 │ (fecha o modal) │
+                                                 └─────────────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │ Toast de sucesso│
+                                                 │ (sem compartilhamento)
+                                                 └─────────────────┘
+```
 
-**Antes (atual):**
-- Usuário digita valor em R$ (ex: R$10,00)
-- Sistema calcula quantos contratos pode comprar
-- Botões de porcentagem do saldo (25%, 50%, 75%, 100%)
+## Fluxo Corrigido
+```text
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Usuário clica   │     │  TradingModal    │     │ MarketDetailPage│
+│ "Comprar"       │────►│  handleConfirm() │────►│ handleConfirm() │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                │                         │
+                                ▼                         ▼
+                        ┌──────────────────┐     ┌─────────────────┐
+                        │ setSuccessData() │     │ (não fecha modal│
+                        └──────────────────┘     │  prematuramente)│
+                                │                └─────────────────┘
+                                ▼
+                        ┌──────────────────┐
+                        │ PurchaseSuccess  │
+                        │ Modal com        │
+                        │ compartilhamento │
+                        └──────────────────┘
+                                │
+                                ▼ (usuário clica fechar)
+                        ┌──────────────────┐
+                        │ onClose()        │
+                        └──────────────────┘
+```
 
-**Depois (restaurado):**
-- Usuário escolhe quantidade de contratos (ex: 50 contratos)
-- Sistema calcula o custo total
-- Botões de seleção rápida (10, 25, 50, 100 contratos)
-- Setas de incremento/decremento (+/-)
-- Botão "Max" para usar saldo máximo disponível
+## Alterações Necessárias
+
+### 1. Arquivo: `src/pages/MarketDetailPage.tsx`
+
+**Modificação 1 - Função `handleConfirmPurchase` (linhas 154-183)**
+- Remover a chamada `setSelectedOutcome(null)` da função de sucesso
+- Manter a atualização de dados (balanço, contratos, evento) em segundo plano
+- Deixar o `TradingModal` controlar quando fechar
+
+**Modificação 2 - Função `handleConfirmSell` (linhas 185-208)**  
+- Aplicar a mesma correção para vendas
+
+**Modificação 3 - Callback do `MultiOptionPurchaseModal` (linhas 725-747)**
+- Não fechar o modal após confirmar a compra
+- Deixar o modal exibir a tela de sucesso
+
+---
 
 ## Detalhes Técnicos
 
-### Arquivo: `src/components/market/MinimalTradingCard.tsx`
+A correção envolve remover as linhas que fecham os modais prematuramente:
 
-#### 1. Modificar o input e lógica principal
-- Trocar input de R$ para quantidade de contratos
-- Remover prefixo "R$" do input no modo compra
-- Input recebe número de contratos diretamente
-- Calcular custo via LMSR baseado na quantidade
-
-#### 2. Substituir botões de porcentagem por botões de quantidade
-Trocar os botões `[25%, 50%, 75%, 100%]` por:
-- Botões de quantidade rápida: `[10, 25, 50, 100]` contratos
-- Botão "Max" que calcula quantos contratos cabem no saldo
-
-#### 3. Adicionar setas de incremento/decremento
-Adicionar botões +/- ao lado do input para ajuste fino:
-```text
-┌─────────────────────────────┐
-│ Quantidade       ▲         │
-│ [    50    ]     ▼         │
-└─────────────────────────────┘
+**Em `handleConfirmPurchase`:**
+```typescript
+// REMOVER esta linha (169):
+setSelectedOutcome(null);
 ```
 
-#### 4. Atualizar rótulos e labels
-- "Valor" → "Quantidade"
-- "Saldo: R$X" → permanece para referência
-- Mostrar custo calculado claramente abaixo
-
-#### 5. Manter lógica de venda inalterada
-O modo "Vender" já usa quantidade de contratos, não precisa de alteração
-
-### Fluxo de cálculo
-
-```text
-Usuário digita: 50 contratos
-        ↓
-LMSR calcula: getQuote(eventId, outcome, 50)
-        ↓
-Exibe: "Total: R$25.00"
-        ↓
-Botão: "Comprar Sim - R$25.00"
+**Em `handleConfirmSell`:**
+```typescript
+// REMOVER esta linha (195):
+setSelectedOutcome(null);
 ```
 
-## Componentes Afetados
+O `TradingModal` já tem a lógica correta para:
+1. Chamar `setSuccessData()` após compra bem-sucedida
+2. Renderizar `PurchaseSuccessModal` quando `successData` existe
+3. Chamar `onClose()` apenas quando o usuário fecha a tela de sucesso
 
-| Componente | Mudança |
-|------------|---------|
-| `MinimalTradingCard.tsx` | Modificar lógica de input e botões |
-| `MarketsPage.tsx` | Nenhuma (já usa MinimalTradingCard) |
-| `MarketDetailPage.tsx` | Nenhuma (já usa MinimalTradingCard) |
+---
 
-## Validações a Manter
+## Resultado Esperado
 
-- Verificar saldo suficiente
-- Aplicar slippage de 5%
-- Validar quantidade mínima/máxima
-- Mensagens de erro em português
+Após a compra:
+1. Toast de sucesso continua aparecendo
+2. Modal exibe automaticamente a tela de compartilhamento com:
+   - Confetti de celebração
+   - Card visual da posição comprada
+   - Botões de compartilhamento (Download, Copiar, X, WhatsApp, Instagram)
+   - Dados da compra (contratos, valor investido, lucro potencial)
+3. Usuário pode compartilhar ou fechar quando quiser

@@ -6,7 +6,8 @@ import {
   ExternalLink, 
   CheckCircle2,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Trophy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,10 +26,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { usePendingSettlements, useSettleEvent, AdminEvent } from '@/hooks/useAdminEvents';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+
+interface MarketOption {
+  id: string;
+  label: string;
+  current_price: number;
+}
 
 export function AdminSettlementsPage() {
   const [searchParams] = useSearchParams();
@@ -39,9 +54,33 @@ export function AdminSettlementsPage() {
   const settleEventMutation = useSettleEvent();
 
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
-  const [result, setResult] = useState<'YES' | 'NO' | null>(null);
+  const [result, setResult] = useState<string | null>(null);
   const [evidence, setEvidence] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(false);
+  const [marketOptions, setMarketOptions] = useState<MarketOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+
+  // Load market options when selecting a MULTIPLE market
+  useEffect(() => {
+    if (selectedEvent?.market_type === 'MULTIPLE') {
+      setLoadingOptions(true);
+      supabase
+        .from('market_options')
+        .select('id, label, current_price')
+        .eq('market_id', selectedEvent.id)
+        .order('display_order')
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setMarketOptions(data);
+          }
+          setLoadingOptions(false);
+        });
+    } else {
+      setMarketOptions([]);
+    }
+    // Reset result when changing event
+    setResult(null);
+  }, [selectedEvent]);
 
   // Select event from URL param
   useEffect(() => {
@@ -182,34 +221,70 @@ export function AdminSettlementsPage() {
             {/* Result Selection */}
             <div className="space-y-3">
               <Label>Qual foi o resultado? *</Label>
-              <RadioGroup 
-                value={result || ''} 
-                onValueChange={(v) => setResult(v as 'YES' | 'NO')}
-                className="grid grid-cols-2 gap-4"
-              >
-                <div>
-                  <RadioGroupItem value="YES" id="yes" className="peer sr-only" />
-                  <Label
-                    htmlFor="yes"
-                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-success peer-data-[state=checked]:bg-success/10 cursor-pointer"
-                  >
-                    <CheckCircle2 className="h-8 w-8 mb-2 text-success" />
-                    <span className="text-lg font-bold">SIM</span>
-                    <span className="text-sm text-muted-foreground">O evento ocorreu</span>
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem value="NO" id="no" className="peer sr-only" />
-                  <Label
-                    htmlFor="no"
-                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-destructive peer-data-[state=checked]:bg-destructive/10 cursor-pointer"
-                  >
-                    <AlertTriangle className="h-8 w-8 mb-2 text-destructive" />
-                    <span className="text-lg font-bold">NÃO</span>
-                    <span className="text-sm text-muted-foreground">O evento não ocorreu</span>
-                  </Label>
-                </div>
-              </RadioGroup>
+              
+              {selectedEvent.market_type === 'MULTIPLE' ? (
+                // Multi-option market: show dropdown with options
+                loadingOptions ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando opções...
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Select value={result || ''} onValueChange={setResult}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione a opção vencedora" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {marketOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            <div className="flex items-center gap-2">
+                              <Trophy className="h-4 w-4 text-warning" />
+                              <span>{option.label}</span>
+                              <span className="text-muted-foreground">
+                                ({Math.round(option.current_price * 100)}%)
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione qual opção venceu o mercado
+                    </p>
+                  </div>
+                )
+              ) : (
+                // Binary market: show YES/NO buttons
+                <RadioGroup 
+                  value={result || ''} 
+                  onValueChange={setResult}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <div>
+                    <RadioGroupItem value="YES" id="yes" className="peer sr-only" />
+                    <Label
+                      htmlFor="yes"
+                      className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-success peer-data-[state=checked]:bg-success/10 cursor-pointer"
+                    >
+                      <CheckCircle2 className="h-8 w-8 mb-2 text-success" />
+                      <span className="text-lg font-bold">SIM</span>
+                      <span className="text-sm text-muted-foreground">O evento ocorreu</span>
+                    </Label>
+                  </div>
+                  <div>
+                    <RadioGroupItem value="NO" id="no" className="peer sr-only" />
+                    <Label
+                      htmlFor="no"
+                      className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-destructive peer-data-[state=checked]:bg-destructive/10 cursor-pointer"
+                    >
+                      <AlertTriangle className="h-8 w-8 mb-2 text-destructive" />
+                      <span className="text-lg font-bold">NÃO</span>
+                      <span className="text-sm text-muted-foreground">O evento não ocorreu</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              )}
             </div>
 
             {/* Evidence URL */}
@@ -266,9 +341,16 @@ export function AdminSettlementsPage() {
                 <p>Você está prestes a liquidar o evento:</p>
                 <p className="font-medium">{selectedEvent.title}</p>
                 <p>
-                  Resultado: <strong className={result === 'YES' ? 'text-success' : 'text-destructive'}>
-                    {result === 'YES' ? 'SIM' : 'NÃO'}
-                  </strong>
+                  Resultado:{' '}
+                  {selectedEvent.market_type === 'MULTIPLE' ? (
+                    <strong className="text-warning">
+                      {marketOptions.find(o => o.id === result)?.label || result}
+                    </strong>
+                  ) : (
+                    <strong className={result === 'YES' ? 'text-success' : 'text-destructive'}>
+                      {result === 'YES' ? 'SIM' : 'NÃO'}
+                    </strong>
+                  )}
                 </p>
                 <p className="text-destructive font-medium">
                   Esta ação é IRREVERSÍVEL. Tem certeza?

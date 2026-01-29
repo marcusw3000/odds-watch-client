@@ -142,7 +142,7 @@ export function useSettleEvent() {
       evidence,
     }: {
       eventId: string;
-      result: 'YES' | 'NO';
+      result: string; // 'YES' | 'NO' for binary, option UUID for multi-option
       evidence: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('update-admin-event', {

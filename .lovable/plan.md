@@ -1,66 +1,78 @@
 
+# Plano: Restaurar Interface de Compra por Quantidade de Contratos
 
-# Adicionar "Configurações" no Menu Dropdown do Perfil
+## Resumo
+Modificar o `MinimalTradingCard.tsx` para usar a lógica de entrada por **quantidade de contratos** (como no `PurchaseModal.tsx` antigo) ao invés de entrada por **valor em R$**.
 
-## Problema
+## Mudanças de Experiência do Usuário
 
-O menu dropdown do usuário no Header possui várias opções, mas não inclui um link para a página de Configurações (`/settings`). Atualmente existe apenas um link para "Suporte" que direciona para `/settings?tab=support`.
+**Antes (atual):**
+- Usuário digita valor em R$ (ex: R$10,00)
+- Sistema calcula quantos contratos pode comprar
+- Botões de porcentagem do saldo (25%, 50%, 75%, 100%)
 
-## Solução
+**Depois (restaurado):**
+- Usuário escolhe quantidade de contratos (ex: 50 contratos)
+- Sistema calcula o custo total
+- Botões de seleção rápida (10, 25, 50, 100 contratos)
+- Setas de incremento/decremento (+/-)
+- Botão "Max" para usar saldo máximo disponível
 
-Adicionar um novo item de menu "Configurações" no dropdown do perfil, posicionado de forma lógica próximo aos outros itens de configuração do usuário.
+## Detalhes Técnicos
 
-## Alterações
+### Arquivo: `src/components/market/MinimalTradingCard.tsx`
 
-### Arquivo: `src/components/layout/Header.tsx`
+#### 1. Modificar o input e lógica principal
+- Trocar input de R$ para quantidade de contratos
+- Remover prefixo "R$" do input no modo compra
+- Input recebe número de contratos diretamente
+- Calcular custo via LMSR baseado na quantidade
 
-**1. Importar o ícone Settings:**
+#### 2. Substituir botões de porcentagem por botões de quantidade
+Trocar os botões `[25%, 50%, 75%, 100%]` por:
+- Botões de quantidade rápida: `[10, 25, 50, 100]` contratos
+- Botão "Max" que calcula quantos contratos cabem no saldo
 
-Adicionar `Settings` na importação do lucide-react (linha 3).
-
-**2. Adicionar item no dropdown desktop (após "Meu Perfil"):**
-
-```tsx
-<DropdownMenuItem asChild>
-  <Link to="/settings">
-    <Settings className="mr-2 h-4 w-4" />
-    Configurações
-  </Link>
-</DropdownMenuItem>
+#### 3. Adicionar setas de incremento/decremento
+Adicionar botões +/- ao lado do input para ajuste fino:
+```text
+┌─────────────────────────────┐
+│ Quantidade       ▲         │
+│ [    50    ]     ▼         │
+└─────────────────────────────┘
 ```
 
-**3. Adicionar botão no menu mobile:**
+#### 4. Atualizar rótulos e labels
+- "Valor" → "Quantidade"
+- "Saldo: R$X" → permanece para referência
+- Mostrar custo calculado claramente abaixo
 
-```tsx
-<Button
-  variant="ghost"
-  className="justify-start gap-2"
-  onClick={() => setMobileMenuOpen(false)}
-  asChild
->
-  <Link to="/settings">
-    <Settings className="h-4 w-4" />
-    Configurações
-  </Link>
-</Button>
+#### 5. Manter lógica de venda inalterada
+O modo "Vender" já usa quantidade de contratos, não precisa de alteração
+
+### Fluxo de cálculo
+
+```text
+Usuário digita: 50 contratos
+        ↓
+LMSR calcula: getQuote(eventId, outcome, 50)
+        ↓
+Exibe: "Total: R$25.00"
+        ↓
+Botão: "Comprar Sim - R$25.00"
 ```
 
-## Estrutura Final do Menu
+## Componentes Afetados
 
-| Item | Rota | Ícone |
-|------|------|-------|
-| Meu Perfil | /profile | User |
-| **Configurações** | **/settings** | **Settings** |
-| Copy Trading | /copy-traders | Users |
-| Indicar Amigos | /referral | Gift |
-| Taxas | /fees | Calculator |
-| Suporte | /settings?tab=support | Headphones |
-| --- | --- | --- |
-| Sair | (logout) | LogOut |
+| Componente | Mudança |
+|------------|---------|
+| `MinimalTradingCard.tsx` | Modificar lógica de input e botões |
+| `MarketsPage.tsx` | Nenhuma (já usa MinimalTradingCard) |
+| `MarketDetailPage.tsx` | Nenhuma (já usa MinimalTradingCard) |
 
-## Benefícios
+## Validações a Manter
 
-- Acesso direto às configurações sem precisar navegar por outras páginas
-- Consistência com o padrão de UX esperado
-- O item "Suporte" continua sendo um atalho direto para a tab de suporte
-
+- Verificar saldo suficiente
+- Aplicar slippage de 5%
+- Validar quantidade mínima/máxima
+- Mensagens de erro em português

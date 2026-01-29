@@ -2629,7 +2629,11 @@ export type Database = {
       }
       process_market_payouts: {
         Args: { p_market_id: string; p_winning_outcome: string }
-        Returns: Json
+        Returns: {
+          payout_amount: number
+          shares_settled: number
+          user_id: string
+        }[]
       }
       process_market_settlement_achievements: {
         Args: { p_market_id: string; p_winning_outcome: string }

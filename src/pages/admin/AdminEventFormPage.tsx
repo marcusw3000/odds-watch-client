@@ -67,6 +67,9 @@ export function AdminEventFormPage() {
   // Market type (Binary vs Multiple)
   const [marketType, setMarketType] = useState<MarketType>('BINARY');
   
+  // Max winners for MULTIPLE type
+  const [maxWinners, setMaxWinners] = useState(1);
+  
   // Multiple options (for MULTIPLE type)
   const [options, setOptions] = useState<MarketOption[]>([
     { label: '', probability: 50, displayOrder: 0 },
@@ -255,6 +258,7 @@ export function AdminEventFormPage() {
           marketType,
           recurrenceType: recurrenceType !== 'none' ? recurrenceType : undefined,
           liquidity: liquidityLevel,
+          maxWinners: marketType === 'MULTIPLE' ? maxWinners : undefined,
           options: marketType === 'MULTIPLE' ? options.map(o => ({
             label: o.label,
             description: o.description,
@@ -637,6 +641,34 @@ export function AdminEventFormPage() {
                     e a soma de todas as probabilidades sempre será 100%.
                   </AlertDescription>
                 </Alert>
+                
+                {/* Max Winners Selector */}
+                {!isEditing && (
+                  <div className="space-y-3">
+                    <Label>Quantidade de Vencedores</Label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3].map((num) => (
+                        <Button
+                          key={num}
+                          type="button"
+                          variant={maxWinners === num ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setMaxWinners(num)}
+                          className="w-12"
+                        >
+                          {num}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {maxWinners === 1 
+                        ? 'Winner-takes-all: apenas 1 opção ganha 100% do prêmio'
+                        : `${maxWinners} primeiros colocados recebem prêmios proporcionais (100%, 60%, 30%...)`
+                      }
+                    </p>
+                  </div>
+                )}
+                
                 <MultiOptionEditor
                   options={options}
                   onChange={setOptions}

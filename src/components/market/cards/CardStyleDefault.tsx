@@ -122,6 +122,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
             totalOptions={event.options!.length}
             isSettled={isSettled}
             isWinner={leaderIsWinner}
+            result={event.result}
           />
         ) : (
           <>

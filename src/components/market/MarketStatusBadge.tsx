@@ -1,6 +1,7 @@
-import { Clock, Pause, HelpCircle, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Clock, Pause, HelpCircle, AlertTriangle, CheckCircle, Trophy } from 'lucide-react';
 import { MarketStatus, MARKET_STATUS_LABELS, MarketOption } from '@/types/market';
 import { formatCountdown, getStatusColor } from '@/hooks/useMarketStatus';
+import { parseResult, PLACEMENT_LABELS } from '@/lib/resultParser';
 import { cn } from '@/lib/utils';
 
 interface MarketStatusBadgeProps {
@@ -8,7 +9,7 @@ interface MarketStatusBadgeProps {
   timeToHalt?: number | null;
   timeToEvent?: number | null;
   contestTimeRemaining?: number | null;
-  result?: string;  // Can be 'YES', 'NO', or option id for multiple-choice markets
+  result?: string;  // Can be 'YES', 'NO', option id, or JSON array for multiple winners
   options?: MarketOption[];  // For multiple-choice markets to display winning option label
   size?: 'sm' | 'md' | 'lg';
   showCountdown?: boolean;
@@ -47,15 +48,32 @@ export function MarketStatusBadge({
 
   const getLabel = () => {
     if (status === 'SETTLED' && result) {
-      // Binary market
-      if (result === 'YES') return 'Resultado: SIM';
-      if (result === 'NO') return 'Resultado: NÃO';
+      const winners = parseResult(result);
       
-      // Multiple-choice market - find winning option label
+      // Binary market
+      if (winners[0] === 'YES') return 'Resultado: SIM';
+      if (winners[0] === 'NO') return 'Resultado: NÃO';
+      
+      // Multiple-choice market - find winning option labels
       if (options && options.length > 0) {
-        const winningOption = options.find(opt => opt.id === result);
-        if (winningOption) {
-          return `Vencedor: ${winningOption.label}`;
+        if (winners.length === 1) {
+          const winningOption = options.find(opt => opt.id === winners[0]);
+          if (winningOption) {
+            return `Vencedor: ${winningOption.label}`;
+          }
+        } else {
+          // Multiple winners - show abbreviated version
+          const winnerLabels = winners
+            .slice(0, 3)
+            .map((id, index) => {
+              const option = options.find(opt => opt.id === id);
+              return option ? `${PLACEMENT_LABELS[index]} ${option.label}` : null;
+            })
+            .filter(Boolean);
+          
+          if (winnerLabels.length > 0) {
+            return winnerLabels.join(' ');
+          }
         }
       }
       

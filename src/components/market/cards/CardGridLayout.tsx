@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { MarketOption } from '@/types/market';
 import { Trophy } from 'lucide-react';
+import { parseResult, getOptionPlacement, PLACEMENT_LABELS } from '@/lib/resultParser';
 
 // Grid structure constants for market cards
 export const CARD_GRID = {
@@ -74,25 +75,35 @@ interface LeaderOptionRowProps {
   totalOptions: number;
   isSettled?: boolean;
   isWinner?: boolean;
+  result?: string;  // Pass result to check for placement
 }
 
-export function LeaderOptionRow({ option, totalOptions, isSettled, isWinner }: LeaderOptionRowProps) {
+export function LeaderOptionRow({ option, totalOptions, isSettled, isWinner, result }: LeaderOptionRowProps) {
   const othersCount = totalOptions - 1;
+  
+  // Get placement badge if this option placed
+  const placement = result ? getOptionPlacement(option.id, result) : null;
+  const placementBadge = placement ? PLACEMENT_LABELS[placement - 1] : null;
+  
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Trophy className={cn(
-            "h-3.5 w-3.5 flex-shrink-0",
-            isWinner ? "text-yes" : "text-amber-500"
-          )} />
+          {placementBadge ? (
+            <span className="text-sm">{placementBadge}</span>
+          ) : (
+            <Trophy className={cn(
+              "h-3.5 w-3.5 flex-shrink-0",
+              isWinner ? "text-yes" : "text-amber-500"
+            )} />
+          )}
           <span className={cn(
             "text-xs font-medium truncate",
             isWinner && "text-yes"
           )}>
             {option.label}
           </span>
-          {isWinner && (
+          {isWinner && !placementBadge && (
             <span className="text-yes text-[10px]">✓</span>
           )}
         </div>

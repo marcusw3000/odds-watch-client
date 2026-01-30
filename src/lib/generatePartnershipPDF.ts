@@ -155,7 +155,7 @@ export function generatePartnershipPDF(): void {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...COLORS.secondary);
-  doc.text('🇧🇷 CASE DE SUCESSO BRASILEIRO', margin + 5, y + 10);
+  doc.text('[BRASIL] CASE DE SUCESSO BRASILEIRO', margin + 5, y + 10);
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
@@ -236,7 +236,7 @@ export function generatePartnershipPDF(): void {
   y = addBullets(solutionBullets, y);
 
   y += 10;
-  addHighlightBox('⚙️ PLATAFORMA 100% PERSONALIZÁVEL', [
+  addHighlightBox('PLATAFORMA 100% PERSONALIZAVEL', [
     'Nome e identidade visual: Customizáveis',
     'Tipos de mercado: Configuráveis',
     'Taxas e comissões: Ajustáveis',
@@ -299,7 +299,7 @@ export function generatePartnershipPDF(): void {
   doc.text('Ranking com distribuição proporcional - 1º, 2º, 3º lugares', margin, y + 8);
 
   y += 25;
-  addHighlightBox('✓ Tipos, categorias e regras totalmente personalizáveis por parceiro', [], y);
+  addHighlightBox('> Tipos, categorias e regras totalmente personalizaveis por parceiro', [], y);
 
   addFooter();
 
@@ -309,7 +309,7 @@ export function generatePartnershipPDF(): void {
   addSlideTitle('Diferencial', 'Eventos Brasileiros e Globais');
 
   y = 55;
-  addHighlightBox('🌎 EVENTOS BRASILEIROS E GLOBAIS', [
+  addHighlightBox('EVENTOS BRASILEIROS E GLOBAIS', [
     'Brasil: SELIC, IPCA, PTAX, eleições, economia',
     'Global: Eleições EUA/Europa, indicadores mundiais, tech',
     'Entretenimento: Premiações, cultura pop, esportes',
@@ -365,7 +365,7 @@ export function generatePartnershipPDF(): void {
   });
 
   y += 50;
-  addHighlightBox('⚙️ Todos os módulos são configuráveis e podem ser ativados/desativados', [], y);
+  addHighlightBox('Todos os modulos sao configuraveis e podem ser ativados/desativados', [], y);
 
   addFooter();
 
@@ -404,7 +404,7 @@ export function generatePartnershipPDF(): void {
   y = addBullets(businessBullets, y);
 
   y += 10;
-  addHighlightBox('💡 Modelo comprovado pelo sucesso global da Kalshi e Polymarket', [], y);
+  addHighlightBox('Modelo comprovado pelo sucesso global da Kalshi e Polymarket', [], y);
 
   addFooter();
 
@@ -495,12 +495,12 @@ export function generatePartnershipPDF(): void {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
   const partnershipPoints = [
-    '✓ Primeiro mover no mercado brasileiro de prediction markets',
-    '✓ Tecnologia pronta, testada e funcionando',
-    '✓ Modelo de negócio validado globalmente (Kalshi)',
-    '✓ Plataforma 100% personalizável para diferentes parceiros',
-    '✓ Arquitetura preparada para expansão internacional',
-    '✓ Equipe técnica dedicada e experiente',
+    '> Primeiro mover no mercado brasileiro de prediction markets',
+    '> Tecnologia pronta, testada e funcionando',
+    '> Modelo de negocio validado globalmente (Kalshi)',
+    '> Plataforma 100% personalizavel para diferentes parceiros',
+    '> Arquitetura preparada para expansao internacional',
+    '> Equipe tecnica dedicada e experiente',
   ];
 
   partnershipPoints.forEach((point, i) => {

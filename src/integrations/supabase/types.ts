@@ -1166,6 +1166,7 @@ export type Database = {
           liquidity_pool: number
           lmsr_b: number
           market_type: string
+          max_winners: number | null
           no_shares: number
           options_exclusive: boolean
           parent_market_id: string | null
@@ -1202,6 +1203,7 @@ export type Database = {
           liquidity_pool?: number
           lmsr_b?: number
           market_type?: string
+          max_winners?: number | null
           no_shares?: number
           options_exclusive?: boolean
           parent_market_id?: string | null
@@ -1238,6 +1240,7 @@ export type Database = {
           liquidity_pool?: number
           lmsr_b?: number
           market_type?: string
+          max_winners?: number | null
           no_shares?: number
           options_exclusive?: boolean
           parent_market_id?: string | null
@@ -2629,11 +2632,7 @@ export type Database = {
       }
       process_market_payouts: {
         Args: { p_market_id: string; p_winning_outcome: string }
-        Returns: {
-          payout_amount: number
-          shares_settled: number
-          user_id: string
-        }[]
+        Returns: Json
       }
       process_market_settlement_achievements: {
         Args: { p_market_id: string; p_winning_outcome: string }

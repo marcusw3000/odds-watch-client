@@ -96,7 +96,7 @@ export interface MarketEvent {
   settledAt?: Date;       // When market was settled
   
   // Result and contestation
-  result?: 'YES' | 'NO' | string;  // Can be YES/NO for binary or option id for multiple
+  result?: 'YES' | 'NO' | string;  // Can be YES/NO for binary, option id, or JSON array of winner ids
   resultSource?: string;           // Source of result (API, admin)
   resultSubmittedAt?: Date;        // When result was submitted
   contestations?: Contestation[];  // List of contestations
@@ -119,6 +119,9 @@ export interface MarketEvent {
   // Recurrence type for repeating markets
   recurrenceType?: RecurrenceType;
   parentMarketId?: string;
+  
+  // Multi-winner configuration
+  maxWinners?: number;  // Number of winners for multi-option markets (default 1)
 }
 
 // Database market type (from Supabase)

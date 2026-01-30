@@ -238,6 +238,7 @@ export interface CreateEventData {
   marketType?: 'BINARY' | 'MULTIPLE';
   recurrenceType?: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
   liquidity?: 'low' | 'medium' | 'high';
+  maxWinners?: number;  // Number of winners for multi-option markets
   options?: Array<{
     label: string;
     description?: string;

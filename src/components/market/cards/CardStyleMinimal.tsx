@@ -112,6 +112,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
             totalOptions={event.options!.length}
             isSettled={isSettled}
             isWinner={leaderIsWinner}
+            result={event.result}
           />
         ) : (
           <>

@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
       recurrenceType,
       options,
       liquidity = 'medium',
+      maxWinners = 1,
     } = body;
 
     logStep(functionName, 'Creating event', { title, category, marketType, liquidity });
@@ -177,6 +178,7 @@ Deno.serve(async (req) => {
         total_volume: 0,
         market_type: marketType,
         options_exclusive: true, // All options are mutually exclusive by default
+        max_winners: marketType === 'MULTIPLE' ? Math.min(maxWinners, options?.length || 1) : 1,
       })
       .select()
       .single();

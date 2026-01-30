@@ -117,6 +117,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
             totalOptions={event.options!.length}
             isSettled={isSettled}
             isWinner={leaderIsWinner}
+            result={event.result}
           />
         ) : (
           <>

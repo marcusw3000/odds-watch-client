@@ -33,11 +33,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MultiWinnerSelector } from '@/components/admin/MultiWinnerSelector';
 import { usePendingSettlements, useSettleEvent, AdminEvent } from '@/hooks/useAdminEvents';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { serializeWinners, PLACEMENT_LABELS } from '@/lib/resultParser';
 
 interface MarketOption {
   id: string;
@@ -55,15 +57,19 @@ export function AdminSettlementsPage() {
 
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
   const [evidence, setEvidence] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [marketOptions, setMarketOptions] = useState<MarketOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [maxWinners, setMaxWinners] = useState(1);
 
-  // Load market options when selecting a MULTIPLE market
+  // Load market options and max_winners when selecting a MULTIPLE market
   useEffect(() => {
     if (selectedEvent?.market_type === 'MULTIPLE') {
       setLoadingOptions(true);
+      
+      // Fetch options
       supabase
         .from('market_options')
         .select('id, label, current_price')
@@ -75,11 +81,23 @@ export function AdminSettlementsPage() {
           }
           setLoadingOptions(false);
         });
+
+      // Fetch max_winners from market
+      supabase
+        .from('markets')
+        .select('max_winners')
+        .eq('id', selectedEvent.id)
+        .single()
+        .then(({ data }) => {
+          setMaxWinners(data?.max_winners || 1);
+        });
     } else {
       setMarketOptions([]);
+      setMaxWinners(1);
     }
-    // Reset result when changing event
+    // Reset selections when changing event
     setResult(null);
+    setSelectedWinners([]);
   }, [selectedEvent]);
 
   // Select event from URL param
@@ -93,25 +111,44 @@ export function AdminSettlementsPage() {
   }, [eventId, closedEvents]);
 
   const handleSettle = () => {
-    if (!selectedEvent || !result || !evidence.trim()) {
+    const isMultiple = selectedEvent?.market_type === 'MULTIPLE';
+    
+    if (!selectedEvent || !evidence.trim()) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
+
+    if (isMultiple) {
+      if (selectedWinners.length < maxWinners) {
+        toast.error(`Selecione ${maxWinners} vencedor(es)`);
+        return;
+      }
+    } else {
+      if (!result) {
+        toast.error('Selecione o resultado');
+        return;
+      }
+    }
+
     setConfirmDialog(true);
   };
 
   const confirmSettlement = async () => {
-    if (!selectedEvent || !result || !evidence.trim()) return;
+    if (!selectedEvent || !evidence.trim()) return;
+
+    const isMultiple = selectedEvent.market_type === 'MULTIPLE';
+    const finalResult = isMultiple 
+      ? serializeWinners(selectedWinners)
+      : result!;
 
     try {
       await settleEventMutation.mutateAsync({
         eventId: selectedEvent.id,
-        result,
+        result: finalResult,
         evidence,
       });
 
       toast.success('Evento liquidado com sucesso! Pagamentos e comissões processados.');
-      // Redirecionar para a página de detalhes do evento liquidado
       navigate(`/admin/events/${selectedEvent.id}`);
     } catch (error) {
       toast.error('Erro ao liquidar evento');
@@ -133,8 +170,23 @@ export function AdminSettlementsPage() {
     return { type: 'MANUAL', name: '', url: '', rule: '' };
   };
 
+  // Get display text for confirmation dialog
+  const getConfirmationResultText = () => {
+    if (!selectedEvent) return '';
+    
+    if (selectedEvent.market_type === 'MULTIPLE') {
+      return selectedWinners.map((id, index) => {
+        const option = marketOptions.find(o => o.id === id);
+        return `${PLACEMENT_LABELS[index]} ${option?.label || id}`;
+      }).join(', ');
+    }
+    
+    return result === 'YES' ? 'SIM' : 'NÃO';
+  };
+
   if (selectedEvent) {
     const resolutionSource = getResolutionSource(selectedEvent);
+    const isMultiple = selectedEvent.market_type === 'MULTIPLE';
 
     return (
       <div className="space-y-6 max-w-3xl">
@@ -167,6 +219,15 @@ export function AdminSettlementsPage() {
                   {selectedEvent.close_date && format(new Date(selectedEvent.close_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
               </div>
+              {isMultiple && (
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground">Tipo de Mercado</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline">Múltiplas Opções</Badge>
+                    <Badge variant="secondary">{maxWinners} vencedor(es)</Badge>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -222,16 +283,28 @@ export function AdminSettlementsPage() {
             <div className="space-y-3">
               <Label>Qual foi o resultado? *</Label>
               
-              {selectedEvent.market_type === 'MULTIPLE' ? (
-                // Multi-option market: show dropdown with options
+              {isMultiple ? (
+                // Multi-option market with multi-winner support
                 loadingOptions ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Carregando opções...
                   </div>
+                ) : maxWinners > 1 ? (
+                  // Multiple winners - use MultiWinnerSelector
+                  <MultiWinnerSelector
+                    options={marketOptions}
+                    maxWinners={maxWinners}
+                    selectedWinners={selectedWinners}
+                    onChange={setSelectedWinners}
+                  />
                 ) : (
+                  // Single winner - use simple select
                   <div className="space-y-2">
-                    <Select value={result || ''} onValueChange={setResult}>
+                    <Select 
+                      value={selectedWinners[0] || ''} 
+                      onValueChange={(value) => setSelectedWinners([value])}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecione a opção vencedora" />
                       </SelectTrigger>
@@ -317,7 +390,12 @@ export function AdminSettlementsPage() {
               onClick={handleSettle} 
               className="w-full" 
               size="lg"
-              disabled={!result || !evidence.trim() || settleEventMutation.isPending}
+              disabled={
+                (!isMultiple && !result) || 
+                (isMultiple && selectedWinners.length < maxWinners) ||
+                !evidence.trim() || 
+                settleEventMutation.isPending
+              }
             >
               {settleEventMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -340,18 +418,26 @@ export function AdminSettlementsPage() {
               <AlertDialogDescription className="space-y-3">
                 <p>Você está prestes a liquidar o evento:</p>
                 <p className="font-medium">{selectedEvent.title}</p>
-                <p>
-                  Resultado:{' '}
-                  {selectedEvent.market_type === 'MULTIPLE' ? (
-                    <strong className="text-warning">
-                      {marketOptions.find(o => o.id === result)?.label || result}
-                    </strong>
+                <div>
+                  <span>Resultado: </span>
+                  {isMultiple ? (
+                    <div className="mt-2 space-y-1">
+                      {selectedWinners.map((id, index) => {
+                        const option = marketOptions.find(o => o.id === id);
+                        return (
+                          <div key={id} className="flex items-center gap-2">
+                            <span className="text-lg">{PLACEMENT_LABELS[index]}</span>
+                            <strong className="text-warning">{option?.label || id}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <strong className={result === 'YES' ? 'text-success' : 'text-destructive'}>
                       {result === 'YES' ? 'SIM' : 'NÃO'}
                     </strong>
                   )}
-                </p>
+                </div>
                 <p className="text-destructive font-medium">
                   Esta ação é IRREVERSÍVEL. Tem certeza?
                 </p>
@@ -407,15 +493,22 @@ export function AdminSettlementsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h3 className="font-medium">{event.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{event.category}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium">{event.title}</h3>
+                      {event.market_type === 'MULTIPLE' && (
+                        <Badge variant="secondary" className="text-xs">Múltiplas</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{event.category}</p>
                     <div className="flex items-center gap-4 mt-3 text-sm">
                       <span className="text-muted-foreground">
                         Expirou em {event.close_date && format(new Date(event.close_date), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
-                      <span className="text-muted-foreground">
-                        SIM: {Math.round(event.current_yes_price * 100)}% / NÃO: {Math.round(event.current_no_price * 100)}%
-                      </span>
+                      {event.market_type !== 'MULTIPLE' && (
+                        <span className="text-muted-foreground">
+                          SIM: {Math.round(event.current_yes_price * 100)}% / NÃO: {Math.round(event.current_no_price * 100)}%
+                        </span>
+                      )}
                     </div>
                   </div>
                   <Button onClick={() => setSelectedEvent(event)}>

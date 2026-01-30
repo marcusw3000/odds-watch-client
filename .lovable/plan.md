@@ -1,97 +1,90 @@
 
-# Plano: Implementar Tela de Pós-Compra para Cards Iniciais
+# Plano: Corrigir Posicionamento do Modal de Compra no Desktop
 
 ## Problema Identificado
 
-Quando o usuário faz uma compra a partir dos cards na página de mercados, a tela de sucesso (`PurchaseSuccessModal`) **nunca é exibida**. Isso ocorre porque:
+O modal de trading no desktop (`MinimalTradingCard`) não está sendo centralizado corretamente na viewport. Dependendo da posição de scroll do navegador, o card aparece muito acima ou muito abaixo, dificultando a visualização.
 
-1. O usuário clica em "Comprar Sim/Não" no card
-2. O `MinimalTradingCard` é aberto como modal
-3. Após confirmar a compra, `handleConfirmPurchase` no `MarketsPage.tsx` chama `handleCloseModal()` imediatamente
-4. O modal é fechado antes de `setSuccessData()` ser executado
-5. A tela de sucesso com confetes e opções de compartilhamento nunca aparece
+### Causa Técnica
+
+O código atual (linhas 510-522):
+```typescript
+return (
+  <div 
+    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    onClick={(e) => e.target === e.currentTarget && onClose()}
+  >
+    <div 
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+      onClick={onClose}
+    />
+    <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in-0 zoom-in-95">
+      {modalContent}
+    </div>
+  </div>
+);
+```
+
+**Problemas:**
+1. O backdrop usa `fixed inset-0` dentro de outro `fixed inset-0`, causando conflito de stacking
+2. O modal content usa apenas `relative`, fazendo com que ele não fique posicionado corretamente em relação ao viewport quando há scroll
+
+---
 
 ## Solução
 
-Remover a chamada `handleCloseModal()` após o sucesso da compra em `MarketsPage.tsx`. O `MinimalTradingCard` já gerencia a exibição do `PurchaseSuccessModal` internamente, e o fechamento do modal deve acontecer apenas quando o usuário clicar em "Fechar" na tela de sucesso.
+Reestruturar o modal desktop para garantir centralização correta:
+
+1. Manter backdrop como primeiro filho com `fixed inset-0`
+2. O container do modal deve ter `z-index` maior que o backdrop
+3. Adicionar `overflow-y-auto` para casos onde o modal é maior que a tela
+
+### Código Corrigido
+
+```typescript
+// Desktop: fixed modal - properly centered
+return (
+  <div className="fixed inset-0 z-50 overflow-y-auto">
+    {/* Backdrop */}
+    <div 
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+      onClick={onClose}
+    />
+    {/* Centering container */}
+    <div 
+      className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
+    >
+      {/* Modal */}
+      <div 
+        className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in-0 zoom-in-95 pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {modalContent}
+      </div>
+    </div>
+  </div>
+);
+```
 
 ---
 
-## Alteração Necessária
+## Alterações
 
-### Arquivo: `src/pages/MarketsPage.tsx`
+### Arquivo: `src/components/market/MinimalTradingCard.tsx`
 
-**Antes (linhas 174-203):**
-```typescript
-const handleConfirmPurchase = async (shares: number, maxCost: number) => {
-  if (!selectedEvent) return;
+**Linhas afetadas:** 509-523
 
-  const result = await MarketDataProvider.purchaseContract(/*...*/);
-
-  if (result.success) {
-    setUserBalance(prev => prev - actualCost);
-    toast({ title: 'Compra realizada!', /*...*/ });
-    handleCloseModal();  // ← PROBLEMA: fecha antes do modal de sucesso
-    // ...
-  } else {
-    throw new Error(result.message);
-  }
-};
-```
-
-**Depois:**
-```typescript
-const handleConfirmPurchase = async (shares: number, maxCost: number) => {
-  if (!selectedEvent) return;
-
-  const result = await MarketDataProvider.purchaseContract(/*...*/);
-
-  if (result.success) {
-    setUserBalance(prev => prev - actualCost);
-    // Remover toast - a tela de sucesso já celebra a compra
-    // Remover handleCloseModal() - o MinimalTradingCard mostrará o PurchaseSuccessModal
-    window.dispatchEvent(new Event('market-update'));
-    triggerPortfolioRefresh();
-    const portfolio = await MarketDataProvider.getUserPortfolio();
-    setUserContracts(portfolio.contracts || []);
-  } else {
-    throw new Error(result.message);
-  }
-};
-```
-
-### Mesma alteração para vendas (`handleConfirmSell`)
-
-Remover `handleCloseModal()` também da função de venda para manter consistência.
-
----
-
-## Fluxo Corrigido
-
-```text
-1. Usuário clica "Comprar Sim" no card
-      ↓
-2. MinimalTradingCard abre (drawer no mobile, modal no desktop)
-      ↓
-3. Usuário confirma a compra
-      ↓
-4. handleConfirmPurchase executa (atualiza saldo, portfolio)
-      ↓
-5. MinimalTradingCard define successData
-      ↓
-6. PurchaseSuccessModal é exibido com confetes
-      ↓
-7. Usuário compartilha ou clica "Fechar"
-      ↓
-8. onClose() é chamado → modal fecha
-```
+**Mudanças:**
+1. Separar backdrop e container de centralização
+2. Container de centralização com `fixed inset-0 flex items-center justify-center`
+3. Usar `pointer-events-none` no container e `pointer-events-auto` no modal
+4. Manter animação de entrada e estilo visual
 
 ---
 
 ## Resultado Esperado
 
-Após a implementação:
-- Confetes aparecem após compra bem-sucedida
-- Card de compartilhamento com detalhes da posição é exibido
-- Botões de compartilhamento (Download, Copiar, X, WhatsApp, Instagram) funcionam
-- Modal só fecha quando usuário clicar em "Fechar"
+- Modal sempre centralizado na viewport, independente da posição de scroll
+- Clique fora do modal fecha corretamente
+- Backdrop cobre toda a tela
+- Animação de entrada preservada

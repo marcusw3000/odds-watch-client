@@ -38,8 +38,8 @@ interface SuccessData {
   outcome: 'YES' | 'NO';
 }
 
-const DEFAULT_SLIPPAGE = 0.05;
-const SELL_SLIPPAGE = 0.02;
+const DEFAULT_SLIPPAGE = 0.10; // 10% tolerance for price movement between quote and execution
+const SELL_SLIPPAGE = 0.05;   // 5% tolerance for sells
 
 // Memoized percentage button component
 const PercentageButton = React.memo(function PercentageButton({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { MarketEvent, UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
@@ -506,9 +507,14 @@ export function MinimalTradingCard({
     );
   }
 
-  // Desktop: fixed modal - properly centered
-  return (
-    <div className="fixed inset-0 z-50">
+  // Desktop: use Portal to ensure modal is always centered relative to viewport
+  // This bypasses any ancestor with CSS containment (contain: layout) that would break fixed positioning
+  if (typeof document === 'undefined') {
+    return null; // SSR guard
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100]">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-background/80 backdrop-blur-sm"
@@ -524,6 +530,7 @@ export function MinimalTradingCard({
           {modalContent}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

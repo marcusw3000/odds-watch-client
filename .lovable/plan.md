@@ -1,110 +1,97 @@
 
-# Plano: Corrigir Erro de Enum e Reprocessar Payouts
+# Plano: Implementar Tela de Pós-Compra para Cards Iniciais
 
 ## Problema Identificado
 
-A função `process_market_payouts` falha ao inserir notificações porque usa `'market_settled'` (minúsculo), mas o enum `notification_type` requer `'MARKET_SETTLED'` (maiúsculo).
+Quando o usuário faz uma compra a partir dos cards na página de mercados, a tela de sucesso (`PurchaseSuccessModal`) **nunca é exibida**. Isso ocorre porque:
 
-Este erro causa a falha de toda a transação, resultando em:
-- Nenhum wallet creditado
-- Nenhuma entrada no ledger
-- Nenhuma notificação enviada
-- Contratos permanecem com shares > 0
-
-### Evidência do Erro
-
-```text
-Logs do Postgres:
-ERROR: invalid input value for enum notification_type: "market_settled"
-```
-
-### Mercados Afetados
-
-| Mercado | Tipo | Resultado Registrado | Payouts | Status |
-|---------|------|---------------------|---------|--------|
-| Teste | MULTIPLE | YES (incorreto) | 0 | ❌ Precisa UUID |
-| Teste LMSR | MULTIPLE | YES (incorreto) | 0 | ❌ Precisa UUID |
-| Taxa CDI | BINARY | YES | 0 | ❌ Falhou no enum |
-| Taxa SELIC | BINARY | YES | 4 | ✅ Funcionou antes da migração |
+1. O usuário clica em "Comprar Sim/Não" no card
+2. O `MinimalTradingCard` é aberto como modal
+3. Após confirmar a compra, `handleConfirmPurchase` no `MarketsPage.tsx` chama `handleCloseModal()` imediatamente
+4. O modal é fechado antes de `setSuccessData()` ser executado
+5. A tela de sucesso com confetes e opções de compartilhamento nunca aparece
 
 ## Solução
 
-### Migração SQL
+Remover a chamada `handleCloseModal()` após o sucesso da compra em `MarketsPage.tsx`. O `MinimalTradingCard` já gerencia a exibição do `PurchaseSuccessModal` internamente, e o fechamento do modal deve acontecer apenas quando o usuário clicar em "Fechar" na tela de sucesso.
 
-Atualizar a função `process_market_payouts` para usar o valor correto do enum:
+---
+
+## Alteração Necessária
+
+### Arquivo: `src/pages/MarketsPage.tsx`
+
+**Antes (linhas 174-203):**
+```typescript
+const handleConfirmPurchase = async (shares: number, maxCost: number) => {
+  if (!selectedEvent) return;
+
+  const result = await MarketDataProvider.purchaseContract(/*...*/);
+
+  if (result.success) {
+    setUserBalance(prev => prev - actualCost);
+    toast({ title: 'Compra realizada!', /*...*/ });
+    handleCloseModal();  // ← PROBLEMA: fecha antes do modal de sucesso
+    // ...
+  } else {
+    throw new Error(result.message);
+  }
+};
+```
+
+**Depois:**
+```typescript
+const handleConfirmPurchase = async (shares: number, maxCost: number) => {
+  if (!selectedEvent) return;
+
+  const result = await MarketDataProvider.purchaseContract(/*...*/);
+
+  if (result.success) {
+    setUserBalance(prev => prev - actualCost);
+    // Remover toast - a tela de sucesso já celebra a compra
+    // Remover handleCloseModal() - o MinimalTradingCard mostrará o PurchaseSuccessModal
+    window.dispatchEvent(new Event('market-update'));
+    triggerPortfolioRefresh();
+    const portfolio = await MarketDataProvider.getUserPortfolio();
+    setUserContracts(portfolio.contracts || []);
+  } else {
+    throw new Error(result.message);
+  }
+};
+```
+
+### Mesma alteração para vendas (`handleConfirmSell`)
+
+Remover `handleCloseModal()` também da função de venda para manter consistência.
+
+---
+
+## Fluxo Corrigido
 
 ```text
-ANTES:  'market_settled'
-DEPOIS: 'MARKET_SETTLED'
+1. Usuário clica "Comprar Sim" no card
+      ↓
+2. MinimalTradingCard abre (drawer no mobile, modal no desktop)
+      ↓
+3. Usuário confirma a compra
+      ↓
+4. handleConfirmPurchase executa (atualiza saldo, portfolio)
+      ↓
+5. MinimalTradingCard define successData
+      ↓
+6. PurchaseSuccessModal é exibido com confetes
+      ↓
+7. Usuário compartilha ou clica "Fechar"
+      ↓
+8. onClose() é chamado → modal fecha
 ```
-
-A correção é simples - apenas trocar 2 ocorrências de `'market_settled'` por `'MARKET_SETTLED'` na função.
-
----
-
-## Detalhes Técnicos
-
-A migração SQL irá:
-
-1. Dropar a função existente `process_market_payouts`
-2. Recriar com o enum correto `'MARKET_SETTLED'`
-3. Manter toda a lógica de payouts intacta
-
-### Locais da Correção
-
-```sql
--- Linha ~78-85 (multi-option winners)
-INSERT INTO notifications (user_id, type, title, message, data)
-VALUES (
-  v_contract.user_id,
-  'MARKET_SETTLED',  -- ANTES: 'market_settled'
-  ...
-);
-
--- Linha ~133-140 (multi-option NO winners)
-INSERT INTO notifications (user_id, type, title, message, data)
-VALUES (
-  v_contract.user_id,
-  'MARKET_SETTLED',  -- ANTES: 'market_settled'
-  ...
-);
-
--- Linha ~208-215 (binary winners)
-INSERT INTO notifications (user_id, type, title, message, data)
-VALUES (
-  v_contract.user_id,
-  'MARKET_SETTLED',  -- ANTES: 'market_settled'
-  ...
-);
-```
-
----
-
-## Reprocessamento de Mercados Afetados
-
-Após a correção, os mercados que falharam podem ser reprocessados manualmente:
-
-**Para mercado BINARY (Taxa CDI):**
-```sql
-SELECT process_market_payouts(
-  '01f42911-f2d8-416f-b7e1-204a35d29601'::uuid, 
-  'YES'
-);
-```
-
-**Para mercados MULTIPLE:**
-Será necessário atualizar o campo `result` com o UUID da opção vencedora e então chamar a função. Isso requer que o administrador:
-1. Identifique qual opção realmente venceu
-2. Execute uma query para corrigir o `result` 
-3. Chame `process_market_payouts` com o UUID correto
 
 ---
 
 ## Resultado Esperado
 
-Após a migração:
-1. Novos settlements funcionarão corretamente
-2. Ledger entries serão criados
-3. Wallets serão creditados
-4. Notificações serão enviadas
-5. Stats de perfil serão atualizados
+Após a implementação:
+- Confetes aparecem após compra bem-sucedida
+- Card de compartilhamento com detalhes da posição é exibido
+- Botões de compartilhamento (Download, Copiar, X, WhatsApp, Instagram) funcionam
+- Modal só fecha quando usuário clicar em "Fechar"

@@ -1,201 +1,216 @@
 
-# Plano: Suporte a Múltiplos Vencedores em Mercados Multi-Opção
 
-## Visão Geral
-Atualmente, mercados multi-opção utilizam um modelo "winner-takes-all" onde apenas **uma opção** pode ser declarada vencedora na liquidação. O objetivo é permitir que o administrador selecione **múltiplos vencedores** (ex: 1º, 2º e 3º lugar) ao liquidar um mercado, distribuindo os prêmios proporcionalmente.
+# Plano: Apresentação PDF para Parcerias - OddsWatch
+
+## Objetivo
+Criar uma apresentação profissional em PDF sobre a plataforma OddsWatch para apresentar a potenciais **parceiros estratégicos**, destacando a proposta de valor, tecnologia flexível, modelo de negócio e potencial de expansão global.
 
 ---
 
-## Mudanças Necessárias
+## Estrutura da Apresentação (14 Slides)
 
-### 1. Banco de Dados
+### Slide 1 - Capa
+- Logo/Nome: **OddsWatch** *(nome temporário)*
+- Tagline: "Plataforma de Mercados Preditivos - Brasil e Mundo"
+- Data da apresentação
+- Nota discreta: *"Nome e identidade visual em processo de definição"*
 
-**Adicionar coluna para quantidade de vencedores**
-- Tabela `markets`: adicionar coluna `max_winners` (INTEGER, default 1)
-- Permite configurar quantas opções podem ganhar em cada mercado
+### Slide 2 - O Fenômeno Global
+**Caso Kalshi**
+- **Luana Lopes Lara**: Brasileira de 29 anos, co-fundadora da Kalshi
+- Tornou-se a **bilionária self-made mais jovem do mundo** em dezembro de 2025
+- **Kalshi**: Avaliada em **US$ 11 bilhões** após rodada de US$ 1 bilhão (Paradigm)
+- Único mercado preditivo regulado pela CFTC nos EUA
+- **Mensagem**: "Uma brasileira revolucionou o mercado americano. Agora trazemos essa inovação de volta para o Brasil - e para o mundo."
 
-**Alterar coluna `result` para suportar múltiplos valores**
-- Atualmente armazena um UUID único ou "YES"/"NO"
-- Mudará para armazenar um array JSON de UUIDs ordenados por colocação
+### Slide 3 - O Momento é Agora
+**Tendência dos EUA chegando ao Brasil**
+- Prediction markets são **tendência consolidada nos EUA**
+- Kalshi: crescimento exponencial, de US$ 5B para US$ 11B em 2 meses
+- Polymarket: volumes recordes durante eleições americanas
+- **Oportunidade**: O Brasil ainda não tem uma plataforma focada no mercado local
+- "Estamos trazendo para o Brasil, **abrasileirando** a experiência, e preparando para expansão global"
 
+### Slide 4 - O Problema
+- Falta de plataformas de mercados preditivos focadas no contexto brasileiro
+- Indicadores econômicos (SELIC, IPCA, PTAX) sem mecanismos de previsão acessíveis
+- Eventos globais relevantes sem cobertura localizada
+- Plataformas existentes são internacionais, em inglês, sem pagamentos locais
+
+### Slide 5 - A Solução
+- Plataforma completa de mercados preditivos **flexível e personalizável**
+- Eventos brasileiros E mundiais (economia, política, cultura, esportes)
+- Interface adaptável, com suporte a múltiplos idiomas
+- Pagamentos locais (PIX, cartão) + expansão para métodos internacionais
+- **100% customizável** para diferentes mercados e parceiros
+
+### Slide 6 - Como Funciona
+- Algoritmo **LMSR** (Logarithmic Market Scoring Rule) - padrão da indústria
+- Usuários adquirem contratos SIM/NÃO ou multi-opção
+- Preços refletem probabilidade do evento (R$0,65 = 65% de chance)
+- Liquidação automática baseada em dados oficiais
+- **Modelo adaptável** para diferentes tipos de eventos e mercados
+
+### Slide 7 - Tipos de Mercado
+- **Mercados Binários**: SIM/NÃO (SELIC vai subir? Brasil ganha a Copa?)
+- **Mercados Multi-Opção**: Múltiplas respostas (Quem será o próximo CEO?)
+- **Múltiplos Vencedores**: Ranking com distribuição proporcional (1º, 2º, 3º)
+- **Totalmente configurável**: tipos, categorias e regras personalizáveis
+
+### Slide 8 - Diferencial: Eventos Brasileiros e Globais
+**NOVO SLIDE**
+- **Eventos Brasileiros**: SELIC, IPCA, PTAX, eleições, economia local
+- **Eventos Globais**: Eleições internacionais, indicadores econômicos mundiais, tecnologia, cultura
+- **Expansão Internacional**: Arquitetura preparada para múltiplos países
+- **Localização**: Cada mercado pode ter sua própria moeda, idioma e regulamentação
+- "Do Brasil para o mundo - plataforma com DNA global"
+
+### Slide 9 - Funcionalidades da Plataforma
+- Portfólio pessoal com histórico completo
+- Sistema de depósito/saque (Stripe + PIX + expansível)
+- Leaderboard e sistema de conquistas
+- **Copy Trading** (seguir traders experientes)
+- Programa de indicação com comissões
+- Notificações em tempo real
+- **Todos os módulos são configuráveis e podem ser ativados/desativados**
+
+### Slide 10 - Painel Administrativo
+- Dashboard com métricas em tempo real
+- Criação/gerenciamento de mercados (interface intuitiva)
+- Liquidação automatizada e manual
+- Sistema financeiro completo (ledger, taxas, receita)
+- Gerenciamento de usuários e suporte
+- **White-label ready**: visual e funcionalidades personalizáveis
+
+### Slide 11 - Modelo de Negócio
+- **Taxa de liquidação**: Configurável (ex: 0,5% sobre ganhos)
+- **Comissões de transação**: Ajustáveis por faixas e região
+- **Copy Trading**: Modelo de assinatura + percentual sobre performance
+- **Programa de indicação**: Parâmetros customizáveis
+- **Flexibilidade total**: todos os valores são ajustáveis conforme parceria
+
+### Slide 12 - Tecnologia
+- **Frontend**: React + TypeScript + Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Edge Functions)
+- **Pagamentos**: Stripe (cartão + PIX) + integrações adicionais
+- **Market Maker**: Algoritmo LMSR para liquidez automática
+- **Tempo Real**: WebSockets para atualizações instantâneas
+- **Arquitetura modular**: fácil de escalar e personalizar
+
+### Slide 13 - Segurança e Compliance
+- Autenticação segura (OAuth 2.0, MFA)
+- Row Level Security (RLS) no banco de dados
+- Conformidade LGPD (Brasil) + GDPR-ready (Europa)
+- Logs de auditoria completos
+- Termos de uso e políticas personalizáveis por região
+- **Adaptável** a diferentes regulamentações internacionais
+
+### Slide 14 - Roadmap e Expansão
+- **Fase Atual**: Plataforma funcional completa (MVP Brasil)
+- **Q1 2026**: Integração automática com APIs de dados (BCB, internacionais)
+- **Q2 2026**: App mobile nativo (iOS + Android)
+- **Q3 2026**: Expansão para mercados de entretenimento e esportes
+- **2027**: Expansão LATAM (Argentina, México, Colômbia)
+- **2028**: Expansão global (Europa, Ásia)
+
+### Slide 15 - Oportunidade de Parceria
+- **Primeiro mover** no mercado brasileiro de prediction markets
+- Tecnologia pronta, testada e funcionando
+- Modelo de negócio validado globalmente (Kalshi)
+- **Plataforma 100% personalizável** para diferentes parceiros
+- Arquitetura preparada para expansão internacional
+- **Call to action**: "Seja nosso parceiro na revolução dos mercados preditivos"
+
+---
+
+## Elementos de Destaque no PDF
+
+### Caixa - Flexibilidade Total
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ markets                                                     │
-├─────────────────────────────────────────────────────────────┤
-│ + max_winners: INTEGER DEFAULT 1                            │
-│   result: TEXT → armazenará JSON ["uuid1", "uuid2", "uuid3"]│
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ ⚙️ PLATAFORMA 100% PERSONALIZÁVEL                              │
+├─────────────────────────────────────────────────────────────────┤
+│ • Nome e identidade visual: Customizáveis                      │
+│ • Tipos de mercado: Configuráveis                              │
+│ • Taxas e comissões: Ajustáveis                                │
+│ • Idiomas e moedas: Expansíveis                                │
+│ • Módulos: Ativáveis/desativáveis conforme necessidade         │
+│ • Regulamentação: Adaptável a cada país                        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-### 2. Formulário de Criação de Evento (Admin)
-
-**Arquivo**: `src/pages/admin/AdminEventFormPage.tsx`
-
-- Adicionar campo "Quantidade de Vencedores" visível apenas quando `marketType === 'MULTIPLE'`
-- Slider ou dropdown com valores: 1, 2, 3, ou "Todos" (raro)
-- Atualizar lógica de criação para enviar `maxWinners` ao backend
-
-**Arquivo**: `supabase/functions/create-admin-event/index.ts`
-
-- Aceitar parâmetro `maxWinners` e salvar na coluna `max_winners`
-
----
-
-### 3. Página de Liquidação (Admin)
-
-**Arquivo**: `src/pages/admin/AdminSettlementsPage.tsx`
-
-Mudanças na interface:
-- Quando `max_winners > 1`, trocar o Select único por um componente de **seleção múltipla ordenada**
-- Permitir arrastar/ordenar opções para definir 1º, 2º, 3º lugar
-- Exibir quantas opções ainda precisam ser selecionadas
-- Validar que exatamente `max_winners` opções foram selecionadas
-
-Exemplo visual:
+### Caixa - Escopo de Eventos
 ```text
-┌───────────────────────────────────────────────────────────┐
-│ Selecione os vencedores (3 de 3 necessários)              │
-├───────────────────────────────────────────────────────────┤
-│ 🥇 1º Lugar: [Competidor Alpha ▼]                         │
-│ 🥈 2º Lugar: [Competidor Beta ▼]                          │
-│ 🥉 3º Lugar: [Competidor Gamma ▼]                         │
-└───────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ 🌎 EVENTOS BRASILEIROS E GLOBAIS                               │
+├─────────────────────────────────────────────────────────────────┤
+│ Brasil: SELIC, IPCA, PTAX, eleições, economia                  │
+│ Global: Eleições EUA/Europa, indicadores mundiais, tech        │
+│ Entretenimento: Premiações, cultura pop, esportes              │
+│ Corporativo: IPOs, fusões, resultados de empresas              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-### 4. Função SQL de Pagamentos
-
-**Arquivo**: Migração SQL para `process_market_payouts`
-
-Lógica atualizada:
-- Receber `p_winning_outcome` como JSON array ordenado
-- Processar pagamentos baseados na **colocação**:
-  - 1º lugar: 100% do prêmio base
-  - 2º lugar: X% (ex: 60%)
-  - 3º lugar: Y% (ex: 30%)
-  - Ou distribuição configurável
-
-**Contratos YES**: ganham se apostaram na opção vencedora (qualquer colocação)
-**Contratos NO**: ganham se apostaram CONTRA uma opção que NÃO ficou em nenhuma colocação
-
-```text
-Exemplo com 3 vencedores (A, B, C):
-┌─────────────────────────────────────────────────────────┐
-│ Contrato YES em A (1º) → Ganha 100% × shares           │
-│ Contrato YES em B (2º) → Ganha 60% × shares            │
-│ Contrato YES em C (3º) → Ganha 30% × shares            │
-│ Contrato YES em D      → Perde tudo                    │
-│ Contrato NO em D       → Ganha (D perdeu)              │
-│ Contrato NO em A       → Perde (A ganhou)              │
-└─────────────────────────────────────────────────────────┘
-```
+### Nota sobre Nome e Branding
+- Rodapé: "*OddsWatch é um nome de trabalho. Marca, identidade visual e posicionamento são totalmente personalizáveis para parceiros.*"
 
 ---
 
-### 5. Exibição de Resultados
+## Implementação Técnica
 
-**Arquivos de Cards**: 
-- `CardStyleDefault.tsx`
-- `CardStyleMinimal.tsx`
-- `CardStyleButtons.tsx`
-- `CardStyleSimple.tsx`
+### Arquivos a Criar
 
-**Arquivo de Detalhe**: `MarketDetailPage.tsx`
+**1. `src/lib/generatePartnershipPDF.ts`**
+- Geração do PDF usando jsPDF (já instalado)
+- 15 páginas com layout profissional
+- Cores neutras + elementos visuais corporativos
+- Foco em parceria e flexibilidade
 
-Mudanças:
-- Detectar quando `result` é um array JSON
-- Exibir badges com colocação (🥇 🥈 🥉) para cada vencedor
-- Mostrar "1º", "2º", "3º" ao lado do label da opção
+**2. `src/pages/PartnershipPresentationPage.tsx`**
+- Página dedicada para visualização e download
+- Preview resumido de cada slide
+- Botão de download do PDF
+- Formulário opcional para contato de parceria
 
-**Arquivo**: `src/components/market/MarketStatusBadge.tsx`
-
-- Atualizar para renderizar múltiplos resultados quando aplicável
-
----
-
-### 6. Edge Functions
-
-**Arquivo**: `supabase/functions/update-admin-event/index.ts`
-
-- Aceitar `result` como string ou array de strings
-- Converter para JSON ao salvar
-- Chamar `process_market_payouts` com o array
+### Rota
+- Adicionar `/parceria` ou `/partnership` em `App.tsx`
+- Acesso via link direto (sem necessidade de login)
 
 ---
 
-## Resumo de Arquivos a Modificar
+## Linguagem e Terminologia
 
-| Arquivo | Tipo de Mudança |
-|---------|-----------------|
-| Migração SQL | Nova coluna + função atualizada |
-| `create-admin-event/index.ts` | Aceitar `maxWinners` |
-| `update-admin-event/index.ts` | Aceitar array de `result` |
-| `AdminEventFormPage.tsx` | Campo de quantidade de vencedores |
-| `AdminSettlementsPage.tsx` | Seleção múltipla ordenada |
-| `process_market_payouts` (SQL) | Lógica para múltiplos vencedores |
-| `MarketStatusBadge.tsx` | Exibir múltiplos resultados |
-| Cards (4 arquivos) | Mostrar badges de colocação |
-| `MarketDetailPage.tsx` | Exibir ranking de vencedores |
-| `src/types/market.ts` | Atualizar tipo `result` |
+### Termos a EVITAR
+- ❌ "Aposta", "apostar", "apostador"
+- ❌ "Investimento", "investir", "investidor"
+- ❌ "Ganhar dinheiro", "lucro fácil"
 
----
-
-## Seção Técnica
-
-### Migração SQL
-
-```sql
--- Adicionar coluna para quantidade máxima de vencedores
-ALTER TABLE markets ADD COLUMN max_winners INTEGER DEFAULT 1;
-
--- A coluna result já é TEXT, então pode armazenar JSON
--- Ex: '["uuid1", "uuid2", "uuid3"]' ou "YES" (binário)
-```
-
-### Interface TypeScript
-
-```typescript
-// Atualização em src/types/market.ts
-interface MarketEvent {
-  // ...
-  result?: 'YES' | 'NO' | string | string[]; // Pode ser array de UUIDs
-  maxWinners?: number;
-}
-```
-
-### Parsing de Resultado
-
-```typescript
-// Utilitário para normalizar resultado
-function parseResult(result: string | null): string[] {
-  if (!result) return [];
-  try {
-    const parsed = JSON.parse(result);
-    return Array.isArray(parsed) ? parsed : [result];
-  } catch {
-    return [result]; // "YES", "NO", ou UUID único
-  }
-}
-```
-
-### Distribuição de Prêmios (Exemplo)
-
-| Colocação | Multiplicador |
-|-----------|---------------|
-| 1º lugar  | 1.00 (100%)   |
-| 2º lugar  | 0.60 (60%)    |
-| 3º lugar  | 0.30 (30%)    |
-
-Estes valores podem ser configuráveis por mercado ou globais.
+### Termos a USAR
+- ✅ "Mercado preditivo", "previsão"
+- ✅ "Parceria", "parceiro estratégico"
+- ✅ "Contrato", "posição"
+- ✅ "Plataforma de previsões"
+- ✅ "Oportunidade de negócio"
+- ✅ "Colaboração", "expansão"
 
 ---
 
-## Considerações
+## Paleta Visual
 
-1. **Compatibilidade**: Mercados existentes com `max_winners = 1` continuam funcionando normalmente
-2. **Contratos NO**: A lógica de NO precisa considerar que "perder" significa não estar em NENHUMA colocação
-3. **Rake**: A taxa de 0.5% continua aplicável sobre todos os prêmios
-4. **Auditoria**: Cada pagamento registra a colocação no campo `meta` do ledger
+- **Primária**: Azul corporativo (confiança)
+- **Secundária**: Verde para crescimento
+- **Destaque**: Roxo da marca (discreto)
+- **Fundo**: Branco com gradientes sutis
+- **Texto**: Cinza escuro para legibilidade
+
+---
+
+## Resultado Final
+
+O parceiro receberá:
+1. PDF profissional de 15 páginas
+2. Narrativa focada em parceria e expansão
+3. Destaque para flexibilidade e customização
+4. Visão de expansão Brasil → Mundo
+5. Call to action claro para próximos passos
+

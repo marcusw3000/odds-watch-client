@@ -506,18 +506,23 @@ export function MinimalTradingCard({
     );
   }
 
-  // Desktop: fixed modal
+  // Desktop: fixed modal - properly centered
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in-0 zoom-in-95">
-        {modalContent}
+      {/* Centering container */}
+      <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        {/* Modal */}
+        <div 
+          className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in-0 zoom-in-95 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {modalContent}
+        </div>
       </div>
     </div>
   );

@@ -186,12 +186,7 @@ export function MarketsPage() {
       const actualCost = result.quote?.cost || maxCost;
       setUserBalance(prev => prev - actualCost);
       
-      toast({
-        title: 'Compra realizada!',
-        description: `Você comprou ${shares} contratos ${selectedOutcome === 'YES' ? 'SIM' : 'NÃO'} por R$${actualCost.toFixed(2)}.`,
-      });
-      handleCloseModal();
-      // Trigger market and portfolio refresh for other open tabs/components
+      // Não fechar modal nem mostrar toast - o MinimalTradingCard exibirá o PurchaseSuccessModal
       window.dispatchEvent(new Event('market-update'));
       triggerPortfolioRefresh();
       // Refresh user contracts
@@ -210,11 +205,7 @@ export function MarketsPage() {
       const saleValue = result.saleValue || 0;
       setUserBalance(prev => prev + saleValue);
       
-      toast({
-        title: 'Venda realizada!',
-        description: `Você vendeu seus contratos por R$${saleValue.toFixed(2)}.`,
-      });
-      handleCloseModal();
+      // Não fechar modal nem mostrar toast - o MinimalTradingCard exibirá o PurchaseSuccessModal
       window.dispatchEvent(new Event('market-update'));
       triggerPortfolioRefresh();
       // Refresh user contracts

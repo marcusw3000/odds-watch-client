@@ -29,6 +29,7 @@ const LGPDPage = lazy(() => import("./pages/LGPDPage").then(m => ({ default: m.L
 const FAQPage = lazy(() => import("./pages/FAQPage").then(m => ({ default: m.FAQPage })));
 const CopyTradersPage = lazy(() => import("./pages/CopyTradersPage").then(m => ({ default: m.CopyTradersPage })));
 const TraderDashboardPage = lazy(() => import("./pages/TraderDashboardPage").then(m => ({ default: m.TraderDashboardPage })));
+const PartnershipPresentationPage = lazy(() => import("./pages/PartnershipPresentationPage"));
 
 // Lazy load admin pages for bundle optimization
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
@@ -208,6 +209,7 @@ const App = () => (
               <Route path="/faq" element={<Suspense fallback={<PageLoadingFallback />}><FAQPage /></Suspense>} />
               <Route path="/copy-traders" element={<Suspense fallback={<PageLoadingFallback />}><CopyTradersPage /></Suspense>} />
               <Route path="/trader/dashboard" element={<Suspense fallback={<PageLoadingFallback />}><TraderDashboardPage /></Suspense>} />
+              <Route path="/parceria" element={<Suspense fallback={<PageLoadingFallback />}><PartnershipPresentationPage /></Suspense>} />
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}

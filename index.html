@@ -3,6 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Preconnect to critical third-party origins - placed early for maximum effect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://js.stripe.com" />
+    <link rel="preconnect" href="https://nfwxyftsdhgxfrnrvsdo.supabase.co" />
+    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
+
+    <!-- Preload critical font to reduce longest chain -->
+    <link 
+      rel="preload" 
+      href="https://cdn.gpteng.co/mcp-widgets/v1/fonts/CameraPlainVariable.woff2" 
+      as="font" 
+      type="font/woff2" 
+      crossorigin 
+    />
+
     <title>Mercado de Previsões</title>
     <meta name="description" content="Negocie contratos de previsão sobre eventos econômicos brasileiros. SELIC, IPCA, Dólar e mais." />
     <meta name="author" content="Mercado de Previsões" />
@@ -24,13 +41,6 @@
     <meta name="twitter:title" content="Mercado de Previsões" />
     <meta name="twitter:description" content="Negocie contratos de previsão sobre eventos econômicos brasileiros." />
     <meta name="twitter:image" content="https://odds-watch-client.lovable.app/og-image.png" />
-
-    <!-- Preconnect to critical third-party origins -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://js.stripe.com" />
-    <link rel="preconnect" href="https://nfwxyftsdhgxfrnrvsdo.supabase.co" />
-    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
 
     <!-- Preload fonts for faster LCP -->
     <link 

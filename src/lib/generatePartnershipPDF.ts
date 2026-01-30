@@ -50,6 +50,11 @@ export function generatePartnershipPDF(): void {
   };
 
   const addFooter = () => {
+    // Linha decorativa
+    doc.setDrawColor(...COLORS.muted);
+    doc.setLineWidth(0.2);
+    doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+    
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.muted);
     doc.text(
@@ -92,7 +97,7 @@ export function generatePartnershipPDF(): void {
   };
 
   const addHighlightBox = (title: string, items: string[], y: number) => {
-    const boxHeight = 10 + items.length * 6;
+    const boxHeight = items.length > 0 ? (12 + items.length * 6) : 14;
     doc.setFillColor(...COLORS.light);
     doc.setDrawColor(...COLORS.primary);
     doc.roundedRect(margin, y, contentWidth, boxHeight, 3, 3, 'FD');
@@ -236,7 +241,7 @@ export function generatePartnershipPDF(): void {
   y = addBullets(solutionBullets, y);
 
   y += 10;
-  addHighlightBox('PLATAFORMA 100% PERSONALIZAVEL', [
+  addHighlightBox('PLATAFORMA 100% PERSONALIZÁVEL', [
     'Nome e identidade visual: Customizáveis',
     'Tipos de mercado: Configuráveis',
     'Taxas e comissões: Ajustáveis',
@@ -299,7 +304,7 @@ export function generatePartnershipPDF(): void {
   doc.text('Ranking com distribuição proporcional - 1º, 2º, 3º lugares', margin, y + 8);
 
   y += 25;
-  addHighlightBox('> Tipos, categorias e regras totalmente personalizaveis por parceiro', [], y);
+  addHighlightBox('> Tipos, categorias e regras totalmente personalizáveis por parceiro', [], y);
 
   addFooter();
 
@@ -365,7 +370,7 @@ export function generatePartnershipPDF(): void {
   });
 
   y += 50;
-  addHighlightBox('Todos os modulos sao configuraveis e podem ser ativados/desativados', [], y);
+  addHighlightBox('Todos os módulos são configuráveis e podem ser ativados/desativados', [], y);
 
   addFooter();
 
@@ -430,7 +435,7 @@ export function generatePartnershipPDF(): void {
     doc.text(`${label}:`, margin, y + i * 10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COLORS.dark);
-    doc.text(value, margin + 35, y + i * 10);
+    doc.text(value, margin + 40, y + i * 10);
   });
 
   addFooter();
@@ -471,8 +476,13 @@ export function generatePartnershipPDF(): void {
 
   doc.setFontSize(11);
   roadmapItems.forEach(([phase, description], i) => {
+    // Círculo marcador colorido
+    const isCurrentPhase = i === 0;
+    doc.setFillColor(...(isCurrentPhase ? COLORS.secondary : COLORS.primary));
+    doc.circle(margin - 5, y + i * 12 - 1, 2, 'F');
+    
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...COLORS.secondary);
+    doc.setTextColor(...(isCurrentPhase ? COLORS.secondary : COLORS.primary));
     doc.text(`${phase}:`, margin, y + i * 12);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COLORS.dark);
@@ -497,10 +507,10 @@ export function generatePartnershipPDF(): void {
   const partnershipPoints = [
     '> Primeiro mover no mercado brasileiro de prediction markets',
     '> Tecnologia pronta, testada e funcionando',
-    '> Modelo de negocio validado globalmente (Kalshi)',
-    '> Plataforma 100% personalizavel para diferentes parceiros',
-    '> Arquitetura preparada para expansao internacional',
-    '> Equipe tecnica dedicada e experiente',
+    '> Modelo de negócio validado globalmente (Kalshi)',
+    '> Plataforma 100% personalizável para diferentes parceiros',
+    '> Arquitetura preparada para expansão internacional',
+    '> Equipe técnica dedicada e experiente',
   ];
 
   partnershipPoints.forEach((point, i) => {

@@ -420,11 +420,12 @@ export function generatePartnershipPDF(): void {
 
   y = 55;
   const techItems = [
-    ['Frontend', 'React + TypeScript + Tailwind CSS'],
-    ['Backend', 'Supabase (PostgreSQL + Edge Functions)'],
-    ['Pagamentos', 'Stripe (cartão + PIX) + integrações adicionais'],
+    ['Frontend', 'React 18 + TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix), React Router, TanStack Query, Recharts, Lucide'],
+    ['Backend', 'Supabase (PostgreSQL + Edge Functions em Deno/TypeScript)'],
+    ['Pagamentos', 'Stripe (Payment Intents / Saved Cards) + PIX via Edge Functions'],
     ['Market Maker', 'Algoritmo LMSR para liquidez automática'],
     ['Tempo Real', 'WebSockets para atualizações instantâneas'],
+    ['Monitoramento', 'Sentry (error tracking) + Web Vitals'],
     ['Arquitetura', 'Modular - fácil de escalar e personalizar'],
   ];
 
@@ -466,12 +467,11 @@ export function generatePartnershipPDF(): void {
 
   y = 55;
   const roadmapItems = [
-    ['Fase Atual', 'Plataforma funcional completa (MVP Brasil)'],
-    ['Q1 2026', 'Integração automática com APIs de dados (BCB, internacionais)'],
-    ['Q2 2026', 'App mobile nativo (iOS + Android)'],
-    ['Q3 2026', 'Expansão para mercados de entretenimento e esportes'],
-    ['2027', 'Expansão LATAM (Argentina, México, Colômbia)'],
-    ['2028', 'Expansão global (Europa, Ásia)'],
+    ['Q1 2026', 'MVP funcional em ambiente controlado + integrações de dados essenciais'],
+    ['Q2 2026', 'Beta fechado com usuários convidados + melhorias de produto/segurança'],
+    ['Q3 2026', 'Beta público gradual (rollout por coortes) + parcerias iniciais'],
+    ['2027', 'Expansão LATAM (Argentina, México, Colômbia) + app mobile'],
+    ['2028', 'Expansão global (Europa, Ásia) + integração cripto (USDC, Polygon/Solana)'],
   ];
 
   doc.setFontSize(11);
@@ -488,6 +488,13 @@ export function generatePartnershipPDF(): void {
     doc.setTextColor(...COLORS.dark);
     doc.text(description, margin + 30, y + i * 12);
   });
+
+  y += 10;
+  addHighlightBox('ROADMAP CRIPTO (FUTURO)', [
+    'Custódia/ramps: Circle (USDC) e/ou Fireblocks/BitGo',
+    'Redes: Ethereum, Polygon, Solana',
+    'SDK: ethers.js ou viem',
+  ], y);
 
   addFooter();
 

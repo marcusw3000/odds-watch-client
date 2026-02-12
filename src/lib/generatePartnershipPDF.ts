@@ -489,7 +489,7 @@ export function generatePartnershipPDF(): void {
     doc.text(description, margin + 30, y + i * 12);
   });
 
-  y += 10;
+  y += roadmapItems.length * 12 + 10;
   addHighlightBox('ROADMAP CRIPTO (FUTURO)', [
     'Custódia/ramps: Circle (USDC) e/ou Fireblocks/BitGo',
     'Redes: Ethereum, Polygon, Solana',

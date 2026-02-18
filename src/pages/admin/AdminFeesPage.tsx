@@ -27,7 +27,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinancialRepository } from '@/services/FinancialRepository';
-import { FeeEngine } from '@/services/FeeEngine';
 import { useAuth } from '@/hooks/useAuth';
 import type { FeeRule, FeeType, FeeMode, FeeTier } from '@/types/financial';
 import { Plus, Edit, Power, Trash2 } from 'lucide-react';
@@ -128,28 +127,13 @@ export function AdminFeesPage() {
         
         const updated = await FinancialRepository.updateFeeRule(editingRule.id, ruleData);
         if (updated) {
-          // Record audit log
-          await FeeEngine.recordAuditLog({
-            actorUserId: user.id,
-            action: 'FEE_RULE_UPDATED',
-            entity: 'fee_rules',
-            entityId: editingRule.id,
-            beforeData: before as unknown as Record<string, unknown>,
-            afterData: updated as unknown as Record<string, unknown>
-          });
+          // Audit logging handled server-side via Edge Functions
           toast.success('Regra atualizada com sucesso');
         }
       } else {
         const created = await FinancialRepository.createFeeRule(ruleData);
         if (created) {
-          // Record audit log
-          await FeeEngine.recordAuditLog({
-            actorUserId: user.id,
-            action: 'FEE_RULE_CREATED',
-            entity: 'fee_rules',
-            entityId: created.id,
-            afterData: created as unknown as Record<string, unknown>
-          });
+          // Audit logging handled server-side via Edge Functions
           toast.success('Regra criada com sucesso');
         }
       }
@@ -168,14 +152,7 @@ export function AdminFeesPage() {
     const updated = await FinancialRepository.updateFeeRule(rule.id, { is_active: newStatus });
     
     if (updated) {
-      await FeeEngine.recordAuditLog({
-        actorUserId: user.id,
-        action: newStatus ? 'FEE_RULE_ACTIVATED' : 'FEE_RULE_DEACTIVATED',
-        entity: 'fee_rules',
-        entityId: rule.id,
-        beforeData: { is_active: rule.is_active },
-        afterData: { is_active: newStatus }
-      });
+      // Audit logging handled server-side via Edge Functions
       toast.success(newStatus ? 'Regra ativada' : 'Regra desativada');
       loadRules();
     }

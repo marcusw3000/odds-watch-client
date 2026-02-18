@@ -122,36 +122,9 @@ export function AdminMarketEventsPage() {
         }
       });
 
-      // Calculate and apply settlement fee
-      const rule = await FeeEngine.getActiveRule('SETTLEMENT');
-      if (rule) {
-        const { feeAmount } = FeeEngine.calculateFee(selectedMarket.total_volume, rule);
-        
-        // Create snapshot and record platform revenue
-        const snapshotId = await FeeEngine.createSnapshot(rule);
-        
-        await FeeEngine.recordLedgerEntry({
-          userId: null, // Platform
-          walletId: null,
-          refType: 'SETTLEMENT',
-          refId: selectedMarket.id,
-          direction: 'CREDIT',
-          amount: feeAmount,
-          feeAmount: 0,
-          netAmount: feeAmount,
-          platformRevenue: feeAmount,
-          feeSnapshotId: snapshotId,
-          status: 'COMPLETED',
-          meta: {
-            market_id: selectedMarket.id,
-            market_title: selectedMarket.title,
-            result: settlementResult,
-            total_volume: selectedMarket.total_volume
-          }
-        });
-
-        await FeeEngine.aggregateRevenue('SETTLEMENT', feeAmount);
-      }
+      // Settlement fee calculation and revenue aggregation
+      // are now handled server-side via Edge Functions (service_role)
+      // to prevent frontend manipulation of financial data
 
       toast.success('Mercado liquidado com sucesso');
       setSettleDialogOpen(false);

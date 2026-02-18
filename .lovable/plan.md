@@ -1,69 +1,112 @@
 
+# Analise de Vulnerabilidades: Grants Excessivos e Logica no Frontend
 
-# Correção de Vulnerabilidade Crítica: Escalação de Privilégios em `user_roles`
+## Descoberta Critica: Grants Abertos em TODAS as Tabelas
 
-## Problema Identificado
+A mesma vulnerabilidade corrigida em `user_roles` existe em **todas as 43 tabelas** do banco. Todos os roles `anon` e `authenticated` possuem `INSERT`, `UPDATE` e `DELETE` em todas as tabelas. A unica protecao e RLS, que e uma camada unica de defesa -- insuficiente.
 
-A tabela `user_roles` tem grants excessivos no nível do banco de dados:
+## Tabelas de Risco Critico (Financeiro/Integridade)
 
-| Role PostgreSQL | INSERT | UPDATE | DELETE |
-|---|---|---|---|
-| `anon` | SIM | SIM | - |
-| `authenticated` | SIM | SIM | SIM |
+### Nivel 1 -- Exploraveis AGORA (RLS com brechas)
 
-Embora as políticas RLS exijam `has_role(auth.uid(), 'admin')` para escrita, os grants brutos permitem que qualquer usuário tente manipular a tabela diretamente via o cliente Supabase no navegador.
+| Tabela | Vulnerabilidade | Impacto |
+|---|---|---|
+| `platform_revenue` | INSERT policy: `auth.uid() IS NOT NULL` (qualquer autenticado). UPDATE policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode inserir/alterar receita da plataforma |
+| `referral_commissions` | INSERT policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode criar comissoes falsas de indicacao |
+| `user_achievements` | INSERT policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode se auto-conceder conquistas |
+| `referrals` | UPDATE policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode alterar status de indicacoes |
+| `user_contracts` | Policy `Users can manage own contracts` FOR ALL com `user_id = auth.uid()` | Usuario pode fabricar contratos ficticios (posicoes inventadas) |
+| `transactions` | INSERT policy: `user_id = auth.uid()` | Usuario pode inserir transacoes falsas no historico |
 
-## Solução
+### Nivel 2 -- Protegidos por RLS mas grants desnecessarios
 
-### 1. Revogar Grants Desnecessários (Migration SQL)
+| Tabela | Risco |
+|---|---|
+| `wallets` | UPDATE restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
+| `markets` | ALL restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
+| `market_options` | ALL restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
+| `fee_rules` | ALL restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
+| `ledger_entries` | UPDATE/DELETE bloqueados por `false` -- seguro, mas grant deveria ser revogado |
+| `market_settlements` | ALL restrito a admin -- seguro, mas grant deveria ser revogado |
 
-Remover INSERT/UPDATE/DELETE dos roles `anon` e `authenticated`. Manter apenas SELECT (necessário para o `has_role()` funcionar via RLS).
+## Logica de Negocios no Frontend
 
-```sql
--- Revogar permissões de escrita
-REVOKE INSERT, UPDATE, DELETE ON public.user_roles FROM anon;
-REVOKE INSERT, UPDATE, DELETE ON public.user_roles FROM authenticated;
+### 1. FeeEngine (src/services/FeeEngine.ts) -- RISCO MEDIO
 
--- Garantir que SELECT permanece (para has_role funcionar)
-GRANT SELECT ON public.user_roles TO anon, authenticated;
+O `FeeEngine` no frontend tem metodos que **escrevem** no banco:
+- `updateWalletBalance()` -- atualiza wallets (bloqueado por RLS atualmente)
+- `recordLedgerEntry()` -- insere ledger entries
+- `aggregateRevenue()` -- upsert em platform_revenue (EXPLORAVEL!)
+- `processTransaction()` -- orquestra tudo acima
+
+Embora as operacoes criticas (trades) usem Edge Functions, o `FeeEngine` frontend ainda pode ser chamado para manipular `platform_revenue`.
+
+### 2. Validacao de Saldo no Frontend -- SEGURO (redundante)
+
+Os componentes `PurchaseModal`, `MinimalTradingCard` e `TradingModal` validam `userBalance` no frontend. Isso e apenas UX -- o Edge Function `execute-trade` faz a validacao real via `atomic_execute_trade` no PostgreSQL. **Nao e vulnerabilidade.**
+
+### 3. Admin Guard Apenas no Frontend -- RISCO BAIXO
+
+O `AdminLayout` verifica `isAdmin` via `has_role` RPC (SECURITY DEFINER). A verificacao e server-side via RPC, nao localStorage. As Edge Functions admin tambem verificam JWT. **Adequado.**
+
+## Plano de Correcao
+
+### Migration SQL Unica
+
+Revogar grants desnecessarios de todas as tabelas criticas em uma unica migration:
+
+```text
+GRUPO 1 -- Tabelas que NAO devem receber writes de anon/authenticated:
+  wallets, markets, market_options, fee_rules, market_settlements,
+  market_price_history, bcb_data_cache, daily_volume_snapshots,
+  copied_trades, copy_trade_commissions, achievements,
+  admin_audit_logs, event_templates
+
+  Acao: REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
+  Manter: GRANT SELECT (para RLS de leitura funcionar)
+
+GRUPO 2 -- Tabelas com policies "auth.uid() IS NOT NULL" que precisam correcao:
+  platform_revenue:
+    - REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
+    (writes feitos apenas via service_role em Edge Functions)
+
+  user_achievements:
+    - REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
+    (conquistas concedidas apenas via triggers/service_role)
+
+  referral_commissions:
+    - REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
+    (comissoes criadas apenas via service_role)
+
+  referrals (UPDATE):
+    - DROP a policy "System can update referrals" com auth.uid() IS NOT NULL
+    - Recriar com condicao mais restritiva ou remover UPDATE grant
+
+GRUPO 3 -- Tabelas com INSERT legitimamente necessario para authenticated:
+  transactions, user_contracts, payments, comments, comment_likes,
+  contestations, copy_subscriptions, ledger_entries, notifications,
+  profiles, referrals, support_tickets, support_messages,
+  market_suggestions, suggestion_votes, suggestion_comments,
+  notification_preferences, user_favorites, audit_logs,
+  fee_policy_snapshots, comment_reports, suggestion_comment_likes,
+  suggestion_comment_reports, copy_traders
+
+  Acao: Manter INSERT para authenticated (necessario para operacao normal)
+  REVOKE INSERT, UPDATE, DELETE FROM anon
+  Revisar se UPDATE/DELETE sao necessarios caso a caso
 ```
 
-### 2. Adicionar WITH CHECK Explícito na Política RLS
+### Remover FeeEngine.updateWalletBalance e .aggregateRevenue do Frontend
 
-Reforçar a política "Admins can manage roles" com WITH CHECK explícito:
+Esses metodos nao sao chamados diretamente no fluxo atual (trades usam Edge Functions), mas sua existencia e um risco. Devem ser removidos ou marcados como deprecated para evitar uso futuro.
 
-```sql
-DROP POLICY IF EXISTS "Admins can manage roles" ON public.user_roles;
+## Secao Tecnica -- SQL da Migration
 
-CREATE POLICY "Admins can manage roles"
-ON public.user_roles
-FOR ALL
-TO authenticated
-USING (public.has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
-```
+A migration vai conter aproximadamente:
 
-Mudancas importantes:
-- `TO authenticated` em vez de `TO public` (exclui `anon` completamente)
-- `WITH CHECK` explícito em vez de implícito (nil)
+1. REVOKE em massa para `anon` em todas as tabelas (exceto SELECT)
+2. REVOKE seletivo para `authenticated` nas tabelas do Grupo 1 e 2
+3. Recriacao de policies com `WITH CHECK` explicito onde ausente
+4. GRANT SELECT onde necessario para manter leitura
 
-### 3. Verificar Audit Trail
-
-Após aplicar, verificar se houve inserções não autorizadas:
-
-```sql
-SELECT * FROM user_roles 
-WHERE created_at > now() - interval '30 days'
-ORDER BY created_at DESC;
-```
-
-## Impacto
-
-- Nenhuma funcionalidade é afetada (todas as operações de escrita em `user_roles` são feitas via Edge Functions com `service_role`, que bypassa RLS e grants)
-- O `useAuth` hook continua funcionando normalmente (usa `has_role` RPC que é SECURITY DEFINER)
-- Segurança reforçada em duas camadas: grants + RLS
-
-## Arquivo Alterado
-
-- Nova migration SQL em `supabase/migrations/` com os comandos REVOKE/GRANT e recriação da policy
-
+Estimativa: ~60 linhas SQL, impacto zero em funcionalidade (todos os writes criticos usam `service_role` via Edge Functions).

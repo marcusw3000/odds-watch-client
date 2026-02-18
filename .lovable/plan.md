@@ -1,112 +1,131 @@
 
-# Analise de Vulnerabilidades: Grants Excessivos e Logica no Frontend
 
-## Descoberta Critica: Grants Abertos em TODAS as Tabelas
+# Vulnerabilidades Criticas Restantes -- Analise Completa
 
-A mesma vulnerabilidade corrigida em `user_roles` existe em **todas as 43 tabelas** do banco. Todos os roles `anon` e `authenticated` possuem `INSERT`, `UPDATE` e `DELETE` em todas as tabelas. A unica protecao e RLS, que e uma camada unica de defesa -- insuficiente.
+## Estado Atual dos Grants (pos-migrations anteriores)
 
-## Tabelas de Risco Critico (Financeiro/Integridade)
+A migration anterior removeu com sucesso os grants de `anon` em todas as tabelas e de `authenticated` em 8 tabelas criticas. Porem, **24 tabelas ainda possuem INSERT/UPDATE/DELETE para `authenticated`**, incluindo varias que deveriam ser restritas apenas a `service_role`.
 
-### Nivel 1 -- Exploraveis AGORA (RLS com brechas)
+## Vulnerabilidades Encontradas
 
-| Tabela | Vulnerabilidade | Impacto |
-|---|---|---|
-| `platform_revenue` | INSERT policy: `auth.uid() IS NOT NULL` (qualquer autenticado). UPDATE policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode inserir/alterar receita da plataforma |
-| `referral_commissions` | INSERT policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode criar comissoes falsas de indicacao |
-| `user_achievements` | INSERT policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode se auto-conceder conquistas |
-| `referrals` | UPDATE policy: `auth.uid() IS NOT NULL` | Qualquer usuario pode alterar status de indicacoes |
-| `user_contracts` | Policy `Users can manage own contracts` FOR ALL com `user_id = auth.uid()` | Usuario pode fabricar contratos ficticios (posicoes inventadas) |
-| `transactions` | INSERT policy: `user_id = auth.uid()` | Usuario pode inserir transacoes falsas no historico |
+### CRITICA 1: Escalacao de Privilegios via `raw_user_meta_data` (event_templates)
 
-### Nivel 2 -- Protegidos por RLS mas grants desnecessarios
+As 4 policies da tabela `event_templates` usam:
+```text
+EXISTS (SELECT 1 FROM auth.users u 
+  WHERE u.id = auth.uid() 
+  AND u.raw_user_meta_data ->> 'role' = 'admin')
+```
 
-| Tabela | Risco |
+O problema: usuarios podem modificar seu proprio `raw_user_meta_data` chamando `supabase.auth.updateUser({ data: { role: 'admin' } })` no console do navegador. Combinado com o fato de que `authenticated` tem INSERT/UPDATE/DELETE nesta tabela, **qualquer usuario pode criar, editar e deletar templates de eventos**.
+
+A mesma vulnerabilidade existe em `daily_volume_snapshots` (policy SELECT), mas la nao ha grants de escrita.
+
+### CRITICA 2: Fabricacao de Contratos (user_contracts)
+
+A policy `Users can manage own contracts` e FOR ALL com `user_id = auth.uid()` e **sem WITH CHECK**:
+- Usuario pode INSERT contratos ficticios (posicoes que nunca comprou)
+- Usuario pode UPDATE contratos existentes (alterar quantidade de shares, preco)
+- Usuario pode DELETE contratos (apagar posicoes perdedoras)
+
+Grants: INSERT, UPDATE, DELETE todos ativos para `authenticated`.
+
+### CRITICA 3: Fabricacao de Transacoes (transactions)
+
+A policy `Users can insert own transactions` permite INSERT com `auth.uid() = user_id`. Grants de INSERT/UPDATE/DELETE estao ativos. Usuario pode inserir transacoes falsas no historico.
+
+### CRITICA 4: Inseracao de Ledger Entries (ledger_entries)
+
+A policy `Users can insert own ledger entries` com `auth.uid() = user_id` permite qualquer usuario autenticado inserir entradas no ledger. Grants de INSERT ativos. UPDATE/DELETE bloqueados por policy `false` (seguro).
+
+### CRITICA 5: Fee Policy Snapshots abertos (fee_policy_snapshots)
+
+Policy INSERT: `auth.uid() IS NOT NULL` -- qualquer autenticado pode inserir snapshots de fee policy.
+
+### MEDIO: Tabelas admin-only com grants desnecessarios
+
+As seguintes tabelas tem RLS restrito a admin mas grants abertos para `authenticated`:
+
+| Tabela | Grants Ativos |
 |---|---|
-| `wallets` | UPDATE restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
-| `markets` | ALL restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
-| `market_options` | ALL restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
-| `fee_rules` | ALL restrito a admin via RLS -- seguro, mas grant deveria ser revogado |
-| `ledger_entries` | UPDATE/DELETE bloqueados por `false` -- seguro, mas grant deveria ser revogado |
-| `market_settlements` | ALL restrito a admin -- seguro, mas grant deveria ser revogado |
+| achievements | INSERT, UPDATE, DELETE |
+| admin_audit_logs | INSERT, UPDATE, DELETE |
+| fee_rules | INSERT, UPDATE, DELETE |
+| market_options | INSERT, UPDATE, DELETE |
+| market_settlements | INSERT, UPDATE, DELETE |
+| markets | INSERT, UPDATE, DELETE |
+| copy_trade_settings | INSERT, UPDATE, DELETE |
+| referral_settings | INSERT, UPDATE, DELETE |
 
-## Logica de Negocios no Frontend
+### MEDIO: FeeEngine frontend ainda escreve no banco
 
-### 1. FeeEngine (src/services/FeeEngine.ts) -- RISCO MEDIO
-
-O `FeeEngine` no frontend tem metodos que **escrevem** no banco:
-- `updateWalletBalance()` -- atualiza wallets (bloqueado por RLS atualmente)
-- `recordLedgerEntry()` -- insere ledger entries
-- `aggregateRevenue()` -- upsert em platform_revenue (EXPLORAVEL!)
-- `processTransaction()` -- orquestra tudo acima
-
-Embora as operacoes criticas (trades) usem Edge Functions, o `FeeEngine` frontend ainda pode ser chamado para manipular `platform_revenue`.
-
-### 2. Validacao de Saldo no Frontend -- SEGURO (redundante)
-
-Os componentes `PurchaseModal`, `MinimalTradingCard` e `TradingModal` validam `userBalance` no frontend. Isso e apenas UX -- o Edge Function `execute-trade` faz a validacao real via `atomic_execute_trade` no PostgreSQL. **Nao e vulnerabilidade.**
-
-### 3. Admin Guard Apenas no Frontend -- RISCO BAIXO
-
-O `AdminLayout` verifica `isAdmin` via `has_role` RPC (SECURITY DEFINER). A verificacao e server-side via RPC, nao localStorage. As Edge Functions admin tambem verificam JWT. **Adequado.**
+O `FeeEngine.ts` ainda possui:
+- `recordLedgerEntry()` -- insere em `ledger_entries` (grant ativo + RLS permite)
+- `createSnapshot()` -- insere em `fee_policy_snapshots` (grant ativo + RLS permite)
+- `recordAuditLog()` -- insere em `admin_audit_logs` (grant ativo, RLS restringe a admin)
 
 ## Plano de Correcao
 
-### Migration SQL Unica
+### Migration SQL
 
-Revogar grants desnecessarios de todas as tabelas criticas em uma unica migration:
-
+**Grupo A -- Revogar grants de tabelas admin-only:**
 ```text
-GRUPO 1 -- Tabelas que NAO devem receber writes de anon/authenticated:
-  wallets, markets, market_options, fee_rules, market_settlements,
-  market_price_history, bcb_data_cache, daily_volume_snapshots,
-  copied_trades, copy_trade_commissions, achievements,
-  admin_audit_logs, event_templates
-
-  Acao: REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
-  Manter: GRANT SELECT (para RLS de leitura funcionar)
-
-GRUPO 2 -- Tabelas com policies "auth.uid() IS NOT NULL" que precisam correcao:
-  platform_revenue:
-    - REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
-    (writes feitos apenas via service_role em Edge Functions)
-
-  user_achievements:
-    - REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
-    (conquistas concedidas apenas via triggers/service_role)
-
-  referral_commissions:
-    - REVOKE INSERT, UPDATE, DELETE FROM anon, authenticated
-    (comissoes criadas apenas via service_role)
-
-  referrals (UPDATE):
-    - DROP a policy "System can update referrals" com auth.uid() IS NOT NULL
-    - Recriar com condicao mais restritiva ou remover UPDATE grant
-
-GRUPO 3 -- Tabelas com INSERT legitimamente necessario para authenticated:
-  transactions, user_contracts, payments, comments, comment_likes,
-  contestations, copy_subscriptions, ledger_entries, notifications,
-  profiles, referrals, support_tickets, support_messages,
-  market_suggestions, suggestion_votes, suggestion_comments,
-  notification_preferences, user_favorites, audit_logs,
-  fee_policy_snapshots, comment_reports, suggestion_comment_likes,
-  suggestion_comment_reports, copy_traders
-
-  Acao: Manter INSERT para authenticated (necessario para operacao normal)
-  REVOKE INSERT, UPDATE, DELETE FROM anon
-  Revisar se UPDATE/DELETE sao necessarios caso a caso
+REVOKE INSERT, UPDATE, DELETE ON 
+  achievements, admin_audit_logs, event_templates, fee_rules,
+  market_options, market_settlements, markets, copy_trade_settings,
+  referral_settings
+FROM authenticated;
 ```
 
-### Remover FeeEngine.updateWalletBalance e .aggregateRevenue do Frontend
+**Grupo B -- Revogar grants de tabelas que so devem receber writes via service_role:**
+```text
+REVOKE INSERT, UPDATE, DELETE ON 
+  transactions, user_contracts, ledger_entries, fee_policy_snapshots
+FROM authenticated;
+```
 
-Esses metodos nao sao chamados diretamente no fluxo atual (trades usam Edge Functions), mas sua existencia e um risco. Devem ser removidos ou marcados como deprecated para evitar uso futuro.
+**Grupo C -- Corrigir policies que usam raw_user_meta_data:**
+```text
+DROP 4 policies de event_templates que usam raw_user_meta_data
+RECRIAR usando has_role(auth.uid(), 'admin'::app_role)
 
-## Secao Tecnica -- SQL da Migration
+DROP policy "Admins can read snapshots" de daily_volume_snapshots
+(ja existe outra policy correta usando has_role)
+```
 
-A migration vai conter aproximadamente:
+**Grupo D -- Corrigir policy permissiva de user_contracts:**
+```text
+DROP policy "Users can manage own contracts" (FOR ALL sem WITH CHECK)
+RECRIAR como SELECT-only: "Users can view own contracts" (ja existe)
+Manter apenas a policy de admin e service_role para writes
+```
 
-1. REVOKE em massa para `anon` em todas as tabelas (exceto SELECT)
-2. REVOKE seletivo para `authenticated` nas tabelas do Grupo 1 e 2
-3. Recriacao de policies com `WITH CHECK` explicito onde ausente
-4. GRANT SELECT onde necessario para manter leitura
+### Limpeza do FeeEngine Frontend
 
-Estimativa: ~60 linhas SQL, impacto zero em funcionalidade (todos os writes criticos usam `service_role` via Edge Functions).
+Remover os 3 metodos que ainda escrevem no banco:
+- `recordLedgerEntry()` -- deletar (ledger entries sao criados via Edge Functions)
+- `createSnapshot()` -- deletar (snapshots sao criados via Edge Functions)
+- `recordAuditLog()` -- deletar (audit logs sao criados via Edge Functions)
+
+Manter apenas metodos de calculo (read-only): `getActiveRule()`, `calculateFee()`, `calculateTradingFee()`, `calculateTradeFee()`
+
+### Verificar chamadas antes de remover
+
+Buscar todas as referencias a esses metodos no codigo para garantir que nao quebra funcionalidade existente.
+
+## Impacto
+
+- **Zero downtime**: Todas as operacoes criticas (trades, settlements, deposits) ja usam Edge Functions com `service_role`
+- **Funcionalidade preservada**: SELECT permanece em todas as tabelas
+- **13 tabelas protegidas** nesta migration
+- **5 policies corrigidas** (4 event_templates + 1 daily_volume_snapshots)
+- **1 policy removida** (user_contracts FOR ALL)
+
+## Secao Tecnica -- Resumo SQL
+
+A migration tera aproximadamente 40 linhas:
+1. REVOKE em massa para 13 tabelas
+2. DROP + CREATE de 5 policies com `has_role()` em vez de `raw_user_meta_data`
+3. DROP da policy permissiva de user_contracts
+4. GRANT SELECT explicito onde necessario
+

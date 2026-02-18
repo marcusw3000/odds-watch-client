@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinancialRepository } from '@/services/FinancialRepository';
-import { FeeEngine } from '@/services/FeeEngine';
+
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -108,24 +108,7 @@ export function AdminMarketEventsPage() {
     );
 
     if (success) {
-      // Record audit log
-      await FeeEngine.recordAuditLog({
-        actorUserId: user.id,
-        action: 'MARKET_SETTLED',
-        entity: 'markets',
-        entityId: selectedMarket.id,
-        beforeData: { status: selectedMarket.status },
-        afterData: { 
-          status: 'SETTLED',
-          result: settlementResult,
-          evidence_url: evidenceUrl
-        }
-      });
-
-      // Settlement fee calculation and revenue aggregation
-      // are now handled server-side via Edge Functions (service_role)
-      // to prevent frontend manipulation of financial data
-
+      // Audit logging is now handled server-side via Edge Functions (service_role)
       toast.success('Mercado liquidado com sucesso');
       setSettleDialogOpen(false);
       loadMarkets();
@@ -143,15 +126,7 @@ export function AdminMarketEventsPage() {
       .eq('id', market.id);
 
     if (!error) {
-      await FeeEngine.recordAuditLog({
-        actorUserId: user.id,
-        action: 'MARKET_CLOSED',
-        entity: 'markets',
-        entityId: market.id,
-        beforeData: { status: market.status },
-        afterData: { status: 'PENDING' }
-      });
-
+      // Audit logging is now handled server-side via Edge Functions (service_role)
       toast.success('Mercado fechado - aguardando liquidação');
       loadMarkets();
     } else {

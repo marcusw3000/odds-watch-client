@@ -85,40 +85,21 @@ export class ReferralService {
   }
 
   /**
-   * Link a new user to a referral code
+   * Link a new user to a referral code via Edge Function (server-side)
    */
-  static async linkReferral(referredId: string, code: string): Promise<{ success: boolean; error: string | null }> {
+  static async linkReferral(_referredId: string, code: string): Promise<{ success: boolean; error: string | null }> {
     try {
-      const referral = await this.getReferralByCode(code);
-      
-      if (!referral) {
-        return { success: false, error: 'Código de indicação inválido ou já utilizado' };
-      }
-
-      // Prevent self-referral
-      if (referral.referrer_id === referredId) {
-        return { success: false, error: 'Você não pode usar seu próprio código' };
-      }
-
-      // Get settings for discount duration
-      const settings = await this.getSettings();
-      const discountDays = settings?.discount_duration_days ?? 30;
-      
-      const discountExpiresAt = new Date();
-      discountExpiresAt.setDate(discountExpiresAt.getDate() + discountDays);
-
-      // Update the referral with the referred user
-      const { error } = await supabase
-        .from('referrals')
-        .update({
-          referred_id: referredId,
-          discount_expires_at: discountExpiresAt.toISOString()
-        })
-        .eq('id', referral.id);
+      const { data, error } = await supabase.functions.invoke('link-referral', {
+        body: { referral_code: code },
+      });
 
       if (error) {
         console.error('Error linking referral:', error);
         return { success: false, error: 'Erro ao vincular indicação' };
+      }
+
+      if (data?.error) {
+        return { success: false, error: data.error };
       }
 
       return { success: true, error: null };
@@ -233,55 +214,8 @@ export class ReferralService {
     return data as Referral;
   }
 
-  /**
-   * Process commission for a trade (called from FeeEngine)
-   */
-  static async processCommission(
-    referralId: string,
-    ledgerEntryId: string,
-    tradeAmount: number,
-    feeAmount: number,
-    commissionPercent: number
-  ): Promise<{ success: boolean; commissionAmount: number }> {
-    try {
-      const commissionAmount = feeAmount * commissionPercent;
-
-      // Record commission
-      const { error: commError } = await supabase
-        .from('referral_commissions')
-        .insert({
-          referral_id: referralId,
-          ledger_entry_id: ledgerEntryId,
-          trade_amount: tradeAmount,
-          fee_amount: feeAmount,
-          commission_amount: commissionAmount
-        });
-
-      if (commError) {
-        console.error('Error recording commission:', commError);
-        return { success: false, commissionAmount: 0 };
-      }
-
-      // Update total commission earned
-      const { data: referral } = await supabase
-        .from('referrals')
-        .select('total_commission_earned')
-        .eq('id', referralId)
-        .single();
-
-      const newTotal = (referral?.total_commission_earned ?? 0) + commissionAmount;
-
-      await supabase
-        .from('referrals')
-        .update({ total_commission_earned: newTotal })
-        .eq('id', referralId);
-
-      return { success: true, commissionAmount };
-    } catch (error) {
-      console.error('Error processing commission:', error);
-      return { success: false, commissionAmount: 0 };
-    }
-  }
+  // NOTE: processCommission() was removed — commission processing is handled
+  // entirely by the database trigger `process_referral_commission`.
 
   // ============ ADMIN METHODS ============
 
@@ -304,25 +238,24 @@ export class ReferralService {
   }
 
   /**
-   * Update global referral settings (admin only)
+   * Update global referral settings via Edge Function (admin only)
    */
   static async updateSettings(
     settings: Partial<ReferralSettings>,
-    adminUserId: string
+    _adminUserId: string
   ): Promise<{ success: boolean; error: string | null }> {
     try {
-      const { error } = await supabase
-        .from('referral_settings')
-        .update({
-          ...settings,
-          updated_by: adminUserId,
-          updated_at: new Date().toISOString()
-        })
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all rows
+      const { data, error } = await supabase.functions.invoke('update-referral-settings', {
+        body: settings,
+      });
 
       if (error) {
         console.error('Error updating settings:', error);
         return { success: false, error: 'Erro ao atualizar configurações' };
+      }
+
+      if (data?.error) {
+        return { success: false, error: data.error };
       }
 
       return { success: true, error: null };

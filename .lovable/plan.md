@@ -1,75 +1,93 @@
 
 
-# Restaurar Grants de Admin e Corrigir Vulnerabilidades Restantes
+# Corrigir Vulnerabilidade de Booleans Interceptaveis em `profiles`
 
-## Diagnostico Real (Dados do Banco)
+## Problema
 
-A analise dos ACLs reais do banco mostra que a situacao NAO e tao grave quanto estimado anteriormente. As tabelas de usuario (comments, profiles, notifications, etc.) ja possuem grants de escrita funcionando. O que esta quebrado sao apenas as **tabelas admin**, que tiveram seus grants revogados impedindo que paginas como AdminFeesPage e AdminMarketEventsPage funcionem.
+A tabela `profiles` permite UPDATE pelo proprio usuario (`auth.uid() = id`), porem **todos os campos** ficam editaveis, incluindo booleans sensiveis como `is_blocked` e `is_copy_trader`. Um usuario pode manipular esses valores diretamente via console do navegador.
 
-### Estado Atual dos Grants
+### Campos Vulneraveis
 
-**Tabelas com escrita bloqueada (SELECT only para authenticated):**
-- fee_rules, markets, event_templates, market_options, market_settlements
-- achievements, admin_audit_logs, copy_trade_settings
-- wallets, transactions, user_contracts, ledger_entries (service_role only -- correto)
-- platform_revenue, copied_trades, etc. (service_role only -- correto)
+- **is_blocked** (CRITICO): usuario bloqueado pode se desbloquear
+- **is_copy_trader** (ALTO): usuario pode pular o fluxo de aprovacao
+- **has_night_trade, has_early_trade, has_speed_trade, has_contrarian_trade** (MEDIO): inflar conquistas
 
-**Tabelas com escrita aberta (INSERT/UPDATE/DELETE para authenticated):**
-- comments, profiles, notifications, payments, etc. -- correto, protegidas por RLS
-- **referral_settings** -- VULNERAVEL: grants de escrita abertos, mas deveria ser admin-only
+### Campos Seguros (preferencias do usuario)
 
-### Vulnerabilidade: referral_settings
+- is_public, show_profit, show_roi, show_trades, show_volume
 
-A tabela `referral_settings` tem grants INSERT/UPDATE/DELETE abertos para `authenticated`. Embora o RLS tenha uma policy ALL restrita a `has_role(admin)`, a melhor pratica e tambem revogar os grants, mantendo defesa em profundidade.
+## Solucao: Trigger BEFORE UPDATE
 
-## Plano de Correcao
+Criar uma trigger PostgreSQL que, quando o usuario (nao-admin) tenta fazer UPDATE no proprio perfil, **reseta automaticamente os campos protegidos** ao valor original, impedindo manipulacao.
 
-### 1. Migration SQL
+Essa abordagem:
+- Nao quebra nenhuma funcionalidade existente
+- Permite que admins continuem editando todos os campos
+- Permite que Edge Functions com service_role continuem atualizando stats
+- E transparente para o usuario (o UPDATE "funciona" mas os campos protegidos nao mudam)
 
-**Restaurar grants em tabelas admin (8 tabelas):**
+## Detalhes Tecnicos
 
-Essas tabelas ja possuem policies RLS com `has_role(auth.uid(), 'admin')`. Restaurar os grants permite que as paginas admin funcionem via client-side, pois o RLS garante que apenas admins conseguem escrever.
+### Migration SQL
 
-Tabelas: fee_rules, markets, event_templates, market_options, market_settlements, achievements, admin_audit_logs, copy_trade_settings
-
-**Revogar grants de referral_settings:**
-
-REVOKE INSERT, UPDATE, DELETE para authenticated (defesa em profundidade).
-
-### 2. Limpeza do FinancialRepository
-
-Remover 2 metodos que escrevem em tabelas service_role-only (ja possuem Edge Functions equivalentes):
-- `createWallet()` -- nunca chamado no codigo, Edge Function existente
-- `adjustWalletBalance()` -- Edge Function `adjust-wallet-balance` ja existe
-
-Manter os metodos de fee rules e settlement, pois com os grants restaurados e RLS admin, continuam funcionando para admins.
-
-## Secao Tecnica
-
-### Migration SQL (~15 linhas)
+Criar uma funcao e trigger:
 
 ```text
--- Restaurar grants admin (RLS ja protege com has_role)
-GRANT INSERT, UPDATE, DELETE ON fee_rules, markets, event_templates,
-  market_options, market_settlements, achievements, copy_trade_settings
-  TO authenticated;
-GRANT INSERT ON admin_audit_logs TO authenticated;
+CREATE FUNCTION protect_profile_fields()
+  -- Se o usuario atual NAO e admin e esta editando o proprio perfil:
+  --   NEW.is_blocked = OLD.is_blocked
+  --   NEW.is_copy_trader = OLD.is_copy_trader
+  --   NEW.copy_trader_id = OLD.copy_trader_id
+  --   NEW.blocked_at = OLD.blocked_at
+  --   NEW.blocked_by = OLD.blocked_by
+  --   NEW.blocked_reason = OLD.blocked_reason
+  --   NEW.has_night_trade = OLD.has_night_trade
+  --   NEW.has_early_trade = OLD.has_early_trade
+  --   NEW.has_speed_trade = OLD.has_speed_trade
+  --   NEW.has_contrarian_trade = OLD.has_contrarian_trade
+  --   NEW.total_trades = OLD.total_trades
+  --   NEW.winning_trades = OLD.winning_trades
+  --   NEW.total_profit = OLD.total_profit
+  --   NEW.total_volume = OLD.total_volume
+  --   NEW.roi_percent = OLD.roi_percent
+  --   NEW.current_streak = OLD.current_streak
+  --   NEW.best_streak = OLD.best_streak
+  --   NEW.best_trade_profit = OLD.best_trade_profit
+  --   NEW.markets_won_streak = OLD.markets_won_streak
+  --   NEW.best_markets_won_streak = OLD.best_markets_won_streak
+  --   NEW.weekend_trades = OLD.weekend_trades
+  --   NEW.total_referrals = OLD.total_referrals
+  --   NEW.activated_referrals = OLD.activated_referrals
+  --   NEW.total_referral_commission = OLD.total_referral_commission
+  --   NEW.suggestions_created = OLD.suggestions_created
+  --   NEW.suggestions_approved = OLD.suggestions_approved
+  --   NEW.suggestions_implemented = OLD.suggestions_implemented
+  --   NEW.best_suggestion_score = OLD.best_suggestion_score
+  -- Admins e service_role passam sem restricao
 
--- Revogar grants desnecessarios
-REVOKE INSERT, UPDATE, DELETE ON referral_settings FROM authenticated;
+CREATE TRIGGER protect_profile_fields_trigger
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION protect_profile_fields();
 ```
 
-### FinancialRepository.ts
+### Campos protegidos (usuario nao pode alterar)
 
-- Remover `createWallet()` (linhas ~222-233)
-- Remover `adjustWalletBalance()` (linhas ~235-270)
-- Remover import `TablesInsert` se nao usado por outros metodos
-- Manter todos os metodos de leitura e os metodos admin (createFeeRule, updateFeeRule, etc.)
+**Moderacao**: is_blocked, blocked_at, blocked_by, blocked_reason
+**Copy Trade**: is_copy_trader, copy_trader_id
+**Estatisticas**: total_trades, winning_trades, total_profit, total_volume, roi_percent, current_streak, best_streak, best_trade_profit, markets_won_streak, best_markets_won_streak, weekend_trades
+**Conquistas**: has_night_trade, has_early_trade, has_speed_trade, has_contrarian_trade
+**Referrals**: total_referrals, activated_referrals, total_referral_commission
+**Sugestoes**: suggestions_created, suggestions_approved, suggestions_implemented, best_suggestion_score
+
+### Campos permitidos (usuario pode alterar)
+
+display_name, full_name, bio, avatar_url, phone, email, cpf, is_public, show_profit, show_roi, show_trades, show_volume
 
 ### Impacto
 
-- AdminFeesPage volta a funcionar (criar/editar fee rules)
-- AdminMarketEventsPage volta a funcionar (liquidar mercados)
-- referral_settings protegido por grant + RLS (defesa dupla)
-- Zero impacto em funcionalidades de usuario comum
+- Zero mudanca no frontend (updates de perfil continuam funcionando normalmente)
+- Edge Functions com service_role nao sao afetadas (trigger verifica role)
+- Admins nao sao afetados (trigger verifica has_role)
+- Apenas manipulacao direta pelo usuario e bloqueada
 

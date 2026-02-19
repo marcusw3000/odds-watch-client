@@ -1,148 +1,72 @@
 
-
-# Plano de Mitigacao de Vulnerabilidades via DevTools
+# Plano: Mitigacao de Vulnerabilidades Remanescentes (Fase 2)
 
 ## Resumo
 
-Este plano cobre 4 vulnerabilidades identificadas que podem ser exploradas via DevTools/console do navegador, organizadas por criticidade.
+Auditoria completa do codebase contra o principio "toda operacao sensivel deve ser autorizada no servidor". Encontradas 4 vulnerabilidades adicionais alem das ja corrigidas na Fase 1.
 
 ---
 
-## Vulnerabilidade 1: Campos protegidos em `profiles` (CRITICA)
+## Vulnerabilidade 1: copy_subscriptions UPDATE sem restricao de campos (ALTA)
 
-**Problema**: A policy RLS `auth.uid() = id` permite que o usuario edite qualquer coluna do proprio perfil, incluindo `is_blocked`, `is_copy_trader`, estatisticas e conquistas.
+**Problema**: A policy RLS de UPDATE permite `follower_id = auth.uid()`, ou seja, o usuario pode alterar qualquer coluna da propria assinatura via DevTools, incluindo:
+- `status`: reativar assinatura cancelada (de `CANCELLED` para `ACTIVE`)
+- `total_trades_copied`, `total_profit`, `total_commission_paid`: inflar estatisticas
+- `stripe_subscription_id`, `stripe_customer_id`: alterar dados de pagamento
 
-**Solucao**: Criar uma trigger `BEFORE UPDATE` que reseta campos protegidos ao valor original quando o usuario nao e admin nem service_role.
+**Solucao**: Criar trigger `BEFORE UPDATE` na tabela `copy_subscriptions` similar ao que fizemos para `profiles` e `copy_traders`.
 
-**Migration SQL**:
-- Funcao `protect_profile_fields()` com `SECURITY DEFINER`
-- Verifica se `current_setting('role')` e `service_role` (passa direto)
-- Verifica se o usuario tem role `admin` via `has_role()` (passa direto)
-- Para usuarios comuns: forca `NEW.campo = OLD.campo` nos 27 campos protegidos
-- Campos protegidos: is_blocked, blocked_at, blocked_by, blocked_reason, is_copy_trader, copy_trader_id, todas as estatisticas, conquistas, referrals e sugestoes
-- Campos permitidos: display_name, full_name, bio, avatar_url, phone, email, cpf, is_public, show_profit, show_roi, show_trades, show_volume
+**Campos protegidos** (somente admin/service_role):
+- status, cancelled_at, total_trades_copied, total_profit, total_commission_paid, monthly_fee_paid, last_payment_at, current_period_start, current_period_end, stripe_subscription_id, stripe_customer_id, payment_method
 
----
-
-## Vulnerabilidade 2: Auto-aprovacao em `copy_traders` (ALTA)
-
-**Problema**: A policy RLS de UPDATE permite `user_id = auth.uid()`, ou seja, o usuario pode fazer `update({ status: 'APPROVED' })` no proprio registro.
-
-**Solucao**: Criar uma trigger `BEFORE UPDATE` na tabela `copy_traders` que impede o usuario de alterar campos administrativos.
-
-**Migration SQL**:
-- Funcao `protect_copy_trader_fields()` com `SECURITY DEFINER`
-- Campos protegidos (somente admin/service_role pode alterar): status, approved_by, approved_at, rejection_reason, suspended_at, custom_trader_split, custom_platform_split, total_followers, total_trades_copied, total_earnings, win_rate
-- Campos permitidos (trader pode alterar): display_name, bio, avatar_url, monthly_fee, profit_share_percent, stripe_product_id, stripe_price_id
+**Campos permitidos** (follower pode alterar):
+- auto_copy, max_trade_amount, copy_percentage
 
 ---
 
-## Vulnerabilidade 3: Metodos de escrita "mortos" no client-side (MEDIA)
+## Vulnerabilidade 2: linkReferral() falha silenciosamente (MEDIA)
 
-**Problema**: `FinancialRepository.ts` contem metodos `createWallet()` e `adjustWalletBalance()` que tentam escrever em `wallets` e `ledger_entries`. Embora os grants de banco bloqueiem a execucao, manter esses metodos no codigo:
-- Confunde desenvolvedores sobre a arquitetura real
-- Pode mascarar erros silenciosos (falha sem feedback claro)
+**Problema**: O metodo `ReferralService.linkReferral()` e chamado em `AuthPage.tsx` apos signup para vincular um codigo de indicacao. Ele tenta fazer `.update()` na tabela `referrals`, mas nao existe policy RLS de UPDATE para usuarios comuns. Resultado: **a vinculacao de indicacao nunca funciona** -- falha silenciosamente.
 
-**Solucao**: Remover os metodos `createWallet()` (linhas 268-281) e `adjustWalletBalance()` (linhas 283-325) do `FinancialRepository.ts`. Essas operacoes ja sao feitas exclusivamente via Edge Functions (`adjust-wallet-balance`, `create-deposit`).
+O metodo `processCommission()` tambem e codigo morto -- tenta INSERT em `referral_commissions` que tem grants SELECT-only.
+
+**Solucao**: Criar Edge Function `link-referral` que:
+1. Recebe `referral_code` no body
+2. Valida o JWT do usuario
+3. Usa `service_role` para fazer o UPDATE na tabela `referrals`
+4. Retorna sucesso/erro
+
+Atualizar `AuthPage.tsx` para chamar a Edge Function em vez de `ReferralService.linkReferral()`.
+
+Remover `processCommission()` de `ReferralService.ts` (ja e feito via trigger `process_referral_commission` no banco).
 
 ---
 
-## Vulnerabilidade 4: Notificacoes falsas via client-side INSERT (BAIXA)
+## Vulnerabilidade 3: referral_settings com grants de escrita (MEDIA)
 
-**Problema**: `NotificationService.ts` usa `supabase.from('notifications').insert()` direto do client. A policy RLS permite `auth.uid() = user_id`, entao um usuario pode criar notificacoes falsas no proprio feed (ex: "Deposito Confirmado R$1000").
+**Problema**: A tabela `referral_settings` tem grants `arwdDxtm` (escrita completa) para o role `authenticated`. Embora a RLS exija admin, os grants deveriam ser SELECT-only como defesa em profundidade, seguindo o padrao do projeto.
 
-**Analise de risco**: O impacto real e baixo porque:
-- O usuario so pode criar notificacoes para si mesmo
-- Nao afeta saldo, trades ou outros usuarios
-- Notificacoes falsas nao enganam o sistema, apenas o proprio feed
+**Solucao**: Migration SQL para revogar INSERT/UPDATE/DELETE do `authenticated` e `anon`.
 
-**Solucao recomendada**: Nao e urgente. Futuramente, migrar a criacao de notificacoes para Edge Functions. Por agora, documentar como risco aceito.
+---
+
+## Vulnerabilidade 4: Metodo updateSettings() client-side (BAIXA)
+
+**Problema**: `ReferralService.updateSettings()` faz UPDATE em `referral_settings` direto do client. A RLS protege (exige admin), mas apos revogar os grants (Vuln 3) este metodo parara de funcionar mesmo para admins.
+
+**Solucao**: Manter o metodo pois admins autenticados passam pela RLS. Apos revogar grants, este metodo tambem se tornara codigo morto e devera ser migrado para Edge Function.
+
+Alternativa mais limpa: ja revogar os grants e migrar para Edge Function de uma vez.
 
 ---
 
 ## Sequencia de Implementacao
 
-1. **Migration SQL** (uma unica migration com as duas triggers):
-   - `protect_profile_fields()` + trigger
-   - `protect_copy_trader_fields()` + trigger
-
-2. **Limpeza de codigo**:
-   - Remover `createWallet()` e `adjustWalletBalance()` de `FinancialRepository.ts`
-   - Verificar que nenhum codigo chama esses metodos antes de remover
-
-3. **Validacao**:
-   - Testar que updates de perfil (nome, bio, avatar) continuam funcionando
-   - Testar que admin pode alterar `is_blocked` e `status` normalmente
-   - Testar que Edge Functions de trade/settlement continuam atualizando stats
-
-## Detalhes Tecnicos da Migration
+### Passo 1: Migration SQL (uma unica migration)
 
 ```text
--- Funcao 1: Proteger campos do perfil
-CREATE OR REPLACE FUNCTION protect_profile_fields()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  -- service_role bypassa completamente
-  IF current_setting('role') = 'service_role' THEN
-    RETURN NEW;
-  END IF;
-
-  -- Admins podem editar tudo
-  IF has_role(auth.uid(), 'admin') THEN
-    RETURN NEW;
-  END IF;
-
-  -- Usuario comum: resetar campos protegidos
-  -- Moderacao
-  NEW.is_blocked := OLD.is_blocked;
-  NEW.blocked_at := OLD.blocked_at;
-  NEW.blocked_by := OLD.blocked_by;
-  NEW.blocked_reason := OLD.blocked_reason;
-  -- Copy Trade
-  NEW.is_copy_trader := OLD.is_copy_trader;
-  NEW.copy_trader_id := OLD.copy_trader_id;
-  -- Estatisticas (27 campos no total)
-  NEW.total_trades := OLD.total_trades;
-  NEW.winning_trades := OLD.winning_trades;
-  NEW.total_profit := OLD.total_profit;
-  NEW.total_volume := OLD.total_volume;
-  NEW.roi_percent := OLD.roi_percent;
-  NEW.current_streak := OLD.current_streak;
-  NEW.best_streak := OLD.best_streak;
-  NEW.best_trade_profit := OLD.best_trade_profit;
-  NEW.markets_won_streak := OLD.markets_won_streak;
-  NEW.best_markets_won_streak := OLD.best_markets_won_streak;
-  NEW.weekend_trades := OLD.weekend_trades;
-  -- Conquistas
-  NEW.has_night_trade := OLD.has_night_trade;
-  NEW.has_early_trade := OLD.has_early_trade;
-  NEW.has_speed_trade := OLD.has_speed_trade;
-  NEW.has_contrarian_trade := OLD.has_contrarian_trade;
-  -- Referrals
-  NEW.total_referrals := OLD.total_referrals;
-  NEW.activated_referrals := OLD.activated_referrals;
-  NEW.total_referral_commission := OLD.total_referral_commission;
-  -- Sugestoes
-  NEW.suggestions_created := OLD.suggestions_created;
-  NEW.suggestions_approved := OLD.suggestions_approved;
-  NEW.suggestions_implemented := OLD.suggestions_implemented;
-  NEW.best_suggestion_score := OLD.best_suggestion_score;
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER protect_profile_fields_trigger
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION protect_profile_fields();
-
--- Funcao 2: Proteger campos do copy_traders
-CREATE OR REPLACE FUNCTION protect_copy_trader_fields()
+-- 1. Trigger para proteger copy_subscriptions
+CREATE OR REPLACE FUNCTION protect_copy_subscription_fields()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -157,34 +81,56 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Trader nao pode alterar campos administrativos
+  -- Follower so pode alterar configuracoes de copia
   NEW.status := OLD.status;
-  NEW.approved_by := OLD.approved_by;
-  NEW.approved_at := OLD.approved_at;
-  NEW.rejection_reason := OLD.rejection_reason;
-  NEW.suspended_at := OLD.suspended_at;
-  NEW.custom_trader_split := OLD.custom_trader_split;
-  NEW.custom_platform_split := OLD.custom_platform_split;
-  NEW.total_followers := OLD.total_followers;
+  NEW.cancelled_at := OLD.cancelled_at;
   NEW.total_trades_copied := OLD.total_trades_copied;
-  NEW.total_earnings := OLD.total_earnings;
-  NEW.win_rate := OLD.win_rate;
+  NEW.total_profit := OLD.total_profit;
+  NEW.total_commission_paid := OLD.total_commission_paid;
+  NEW.monthly_fee_paid := OLD.monthly_fee_paid;
+  NEW.last_payment_at := OLD.last_payment_at;
+  NEW.current_period_start := OLD.current_period_start;
+  NEW.current_period_end := OLD.current_period_end;
+  NEW.stripe_subscription_id := OLD.stripe_subscription_id;
+  NEW.stripe_customer_id := OLD.stripe_customer_id;
+  NEW.payment_method := OLD.payment_method;
+  NEW.trader_id := OLD.trader_id;
+  NEW.follower_id := OLD.follower_id;
 
   RETURN NEW;
 END;
 $$;
 
-CREATE TRIGGER protect_copy_trader_fields_trigger
-  BEFORE UPDATE ON copy_traders
+CREATE TRIGGER protect_copy_subscription_fields_trigger
+  BEFORE UPDATE ON copy_subscriptions
   FOR EACH ROW
-  EXECUTE FUNCTION protect_copy_trader_fields();
+  EXECUTE FUNCTION protect_copy_subscription_fields();
+
+-- 2. Revogar grants de escrita em referral_settings
+REVOKE INSERT, UPDATE, DELETE ON public.referral_settings
+  FROM anon, authenticated;
 ```
 
-### Limpeza de Codigo
+### Passo 2: Edge Function link-referral
 
-Remover de `FinancialRepository.ts`:
-- Metodo `createWallet()` (linhas 268-281)
-- Metodo `adjustWalletBalance()` (linhas 283-325)
+Nova Edge Function que:
+- Recebe `{ referral_code: string }` no body
+- Autentica o usuario via JWT
+- Busca o referral pelo codigo (service_role)
+- Valida que nao e auto-referral
+- Faz o UPDATE vinculando referred_id e discount_expires_at
+- Retorna sucesso/erro
 
-Verificar que nenhum outro arquivo importa/chama esses metodos diretamente (o ajuste de saldo ja usa a Edge Function `adjust-wallet-balance`).
+### Passo 3: Limpeza de codigo
 
+- Remover `processCommission()` de `ReferralService.ts` (codigo morto, ja feito via trigger no banco)
+- Remover `linkReferral()` de `ReferralService.ts` (substituido pela Edge Function)
+- Atualizar `AuthPage.tsx` para chamar `supabase.functions.invoke('link-referral', ...)` 
+- Remover `updateSettings()` de `ReferralService.ts` (bloqueado apos revogar grants, criar Edge Function `update-referral-settings` para admins)
+
+### Passo 4: Validacao
+
+- Testar que signup com codigo de indicacao funciona via nova Edge Function
+- Testar que follower pode alterar auto_copy e max_trade_amount normalmente
+- Testar que follower NAO consegue reativar assinatura cancelada via DevTools
+- Testar que admin continua gerenciando referral_settings

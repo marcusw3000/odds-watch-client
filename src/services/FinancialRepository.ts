@@ -265,64 +265,9 @@ export class FinancialRepository {
     return data as unknown as Wallet;
   }
 
-  static async createWallet(userId: string): Promise<Wallet | null> {
-    const { data, error } = await supabase
-      .from('wallets')
-      .insert({ user_id: userId })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating wallet:', error);
-      return null;
-    }
-
-    return data as unknown as Wallet;
-  }
-
-  static async adjustWalletBalance(
-    walletId: string,
-    amount: number,
-    reason: string,
-    adminUserId: string
-  ): Promise<boolean> {
-    // Get current wallet
-    const { data: wallet, error: fetchError } = await supabase
-      .from('wallets')
-      .select('*')
-      .eq('id', walletId)
-      .single();
-
-    if (fetchError || !wallet) return false;
-
-    const newBalance = Number(wallet.balance_available) + amount;
-
-    // Update wallet
-    const { error: updateError } = await supabase
-      .from('wallets')
-      .update({ balance_available: newBalance })
-      .eq('id', walletId);
-
-    if (updateError) return false;
-
-    // Record ledger entry
-    const ledgerData: TablesInsert<'ledger_entries'> = {
-      user_id: wallet.user_id,
-      wallet_id: walletId,
-      ref_type: 'ADJUSTMENT',
-      direction: amount >= 0 ? 'CREDIT' : 'DEBIT',
-      amount: Math.abs(amount),
-      fee_amount: 0,
-      net_amount: Math.abs(amount),
-      platform_revenue: 0,
-      status: 'COMPLETED',
-      meta: { reason, adjusted_by: adminUserId } as Json
-    };
-    
-    await supabase.from('ledger_entries').insert(ledgerData);
-
-    return true;
-  }
+  // NOTE: createWallet() and adjustWalletBalance() were removed.
+  // These operations are handled exclusively via Edge Functions
+  // (adjust-wallet-balance, create-deposit, handle_new_user_wallet trigger).
 
   // ==================== PLATFORM REVENUE ====================
 

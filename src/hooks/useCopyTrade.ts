@@ -591,17 +591,12 @@ export function useCancelCopySubscription() {
 
   return useMutation({
     mutationFn: async (subscriptionId: string) => {
-      const { data, error } = await supabase
-        .from('copy_subscriptions')
-        .update({
-          status: 'CANCELLED',
-          cancelled_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('cancel-copy-subscription', {
+        body: { subscription_id: subscriptionId },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {

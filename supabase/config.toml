@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.update-referral-settings]
 verify_jwt = false
+
+[functions.cancel-copy-subscription]
+verify_jwt = false

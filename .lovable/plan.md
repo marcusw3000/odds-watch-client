@@ -1,51 +1,48 @@
 
 
-# Plano: Corrigir cancelamento de copy subscription quebrado pela trigger
+# Adicionar Timer Visivel em Todos os Cards
 
-## Problema
+## Problema Atual
 
-A trigger `protect_copy_subscription_fields` (criada na Fase 2) protege o campo `status` de alteracoes por usuarios comuns. Porem, o hook `useCancelCopySubscription()` em `src/hooks/useCopyTrade.ts` faz um `.update({ status: 'CANCELLED' })` diretamente do client-side. A trigger agora reseta `status` para o valor original, **quebrando silenciosamente a funcionalidade de cancelamento**.
+Os cards ja usam `MarketStatusBadge` na Zone 2, que tem logica de countdown interna, mas:
+1. Os cards passam `timeToEvent` mas **nao passam `timeToHalt`**, entao o countdown para mercados OPEN nunca aparece
+2. O countdown e sutil (texto pequeno anexado ao label do badge)
+3. O usuario quer um timer dedicado e visivel em todos os estilos de card
 
 ## Solucao
 
-Criar uma Edge Function `cancel-copy-subscription` que:
-1. Autentica o usuario via JWT
-2. Verifica que a subscription pertence ao usuario (`follower_id = userId`)
-3. Usa `service_role` para fazer o UPDATE de `status` e `cancelled_at`
-4. Retorna sucesso/erro
+Criar um componente `CardCountdown` compacto e adiciona-lo na Zone 2 (status row) de todos os 4 card styles, ao lado do `MarketStatusBadge`.
 
-Atualizar `useCancelCopySubscription()` para chamar a Edge Function em vez de fazer update direto.
+### Comportamento do timer por status:
+- **OPEN**: mostra tempo ate halt (ex: "⏱ 02:34:15") em cor verde
+- **HALTED**: mostra tempo ate evento (ex: "⏱ 00:45:30") em cor amarela  
+- **CONTESTED**: mostra tempo restante de contestacao em cor amarela
+- **PENDING**: mostra "Aguardando" sem countdown
+- **SETTLED**: nao mostra timer
 
----
+### Layout
 
-## Detalhes Tecnicos
+A Zone 2 atual tem 32px de altura com `flex items-center gap-2`. O timer sera um badge compacto com icone de relogio + countdown formatado, ocupando o espaco restante apos o status badge. Para caber, o grid row de status aumenta de `32px` para `auto` (com min-height).
 
-### 1. Nova Edge Function: `cancel-copy-subscription`
-
-- Recebe `{ subscription_id: string }` no body
-- Valida JWT com `getClaims(token)`
-- Cria client `service_role` para buscar a subscription e verificar que `follower_id` corresponde ao usuario
-- Faz o UPDATE com `service_role`: `{ status: 'CANCELLED', cancelled_at: now() }`
-- Retorna `{ success: true }` ou `{ error: "..." }`
-
-### 2. Atualizar `supabase/config.toml`
-
-Adicionar:
-```
-[functions.cancel-copy-subscription]
-verify_jwt = false
+```text
+Zone 2 (status row):
+[StatusBadge] [RecurrenceLabel?] -----> [⏱ 02:34:15]
 ```
 
-### 3. Atualizar `useCancelCopySubscription()` em `src/hooks/useCopyTrade.ts`
+## Arquivos Modificados
 
-Substituir o `.from('copy_subscriptions').update(...)` por `supabase.functions.invoke('cancel-copy-subscription', { body: { subscription_id } })`.
+### 1. Novo: `src/components/market/cards/CardCountdown.tsx`
+- Componente que recebe `statusInfo` do `useMarketStatus`
+- Usa `formatCountdown()` para formatar o tempo
+- Icone `Timer` do lucide + texto mono
+- Cores contextuais (verde para OPEN, amarelo para HALTED/CONTESTED)
+- Pisca (`animate-pulse`) quando urgente (< 5 min)
 
-### 4. Nenhuma outra alteracao pendente
+### 2. `src/components/market/cards/CardGridLayout.tsx`
+- Alterar grid de `grid-rows-[auto_32px_48px_48px_40px]` para `grid-rows-[auto_auto_48px_48px_40px]` para que a Zone 2 acomode o timer sem cortar
 
-Todas as outras operacoes client-side estao cobertas:
-- Updates de perfil (nome, bio, avatar): permitidos pela trigger
-- Updates de subscription settings (auto_copy, max_trade_amount, copy_percentage): permitidos pela trigger
-- Admin operations (approve/reject trader, update settings): permitidos pela trigger (verifica admin)
-- Notifications INSERT: risco aceito (usuario so afeta proprio feed)
-- Comments, suggestions, favorites, support tickets: protegidos por RLS com owner-check, sem campos sensiveis a proteger
+### 3. Todos os 4 card styles (Default, Buttons, Simple, Minimal)
+- Importar `CardCountdown`
+- Adicionar na Zone 2, posicionado a direita com `ml-auto`
+- Passar `statusInfo` que ja existe em cada card
 

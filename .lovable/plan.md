@@ -1,49 +1,37 @@
 
+Problema real identificado: não é só o chat. O preview ainda está preso em skeletons porque o browser continua tentando carregar o módulo antigo `src/hooks/useAuth.ts` e recebe 404. Eu confirmei isso no console remoto:
 
-## Problem
-
-The screenshot shows the app stuck on skeleton cards with no GlobalChat button visible. The `ChatErrorBoundary` currently renders **nothing** (`null`) when GlobalChat crashes, making the chat button completely invisible. When the error keeps recurring on retry, the button never appears.
-
-The most likely crash cause: during page refresh, a Vite module resolution conflict between the renamed `useAuth.ts` → `useAuth.tsx` causes the `AuthContext` read by `useGlobalChat` to be `null`, triggering `useAuth()` to throw.
-
-## Plan
-
-### 1. ChatErrorBoundary renders a fallback button instead of nothing (Layout.tsx)
-
-Instead of rendering `null` on error, render a disabled chat button so the user always sees it. Add a max retry counter (3 attempts) to avoid infinite error loops.
-
-### 2. Guard useAuth against missing context (useAuth.tsx)
-
-Instead of throwing when context is null, return a safe default state (`user: null, loading: true`). This prevents any component from crashing if the AuthProvider hasn't mounted yet or if there's a module resolution mismatch.
-
-**Current:**
-```tsx
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
-  return ctx;
-}
+```text
+Failed to load resource: 404 ()
+.../src/hooks/useAuth.ts?t=...
 ```
 
-**Proposed:**
-```tsx
-const defaultAuthState: AuthState = {
-  user: null, session: null, isAdmin: false, loading: true,
-  signIn: async () => ({ error: new Error('Auth not ready') }),
-  signUp: async () => ({ error: new Error('Auth not ready') }),
-  signOut: async () => ({ error: new Error('Auth not ready') }),
-};
+Como consequência, a árvore de auth quebra antes de estabilizar, vários componentes não inicializam corretamente e a tela fica no estado de carregamento.
 
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext);
-  return ctx ?? defaultAuthState;
-}
-```
+Plano mínimo e seguro:
 
-This is the minimal change that prevents cascading crashes throughout the app.
+1. Restaurar um ponto de import estável para `@/hooks/useAuth`
+   - Criar `src/hooks/useAuth.ts` novamente como arquivo “shim” estável.
+   - Esse arquivo deve apenas reexportar `useAuth` e `AuthProvider` de um novo arquivo base, sem JSX.
 
-## Files Changed
+2. Mover a implementação atual para um nome novo
+   - Renomear a implementação atual para algo como `src/hooks/useAuthContext.tsx`.
+   - Manter ali toda a lógica existente de `AuthProvider`, `AuthContext`, `defaultAuthState` e `useAuth`.
 
-- `src/hooks/useAuth.tsx` — Return safe default instead of throwing
-- `src/components/layout/Layout.tsx` — ErrorBoundary renders fallback chat button with retry limit
+3. Atualizar imports para usar o ponto estável
+   - Padronizar imports do app para continuarem apontando para `@/hooks/useAuth`.
+   - `App.tsx` continuará importando `AuthProvider` desse caminho estável.
 
+4. Preservar os guards já adicionados
+   - Manter `useAuth()` retornando `defaultAuthState` quando o contexto ainda não estiver disponível.
+   - Manter o `ChatErrorBoundary` com botão fallback, porque isso continua sendo útil se o chat falhar isoladamente.
+
+5. Verificação esperada após a correção
+   - O 404 de `useAuth.ts` desaparece.
+   - A home deixa de ficar presa em skeletons.
+   - O botão do chat volta a aparecer após recarregar com F5.
+   - O problema fica resolvido de forma robusta, sem depender de limpar cache/HMR manualmente.
+
+Detalhe técnico importante:
+- A correção anterior atacou o sintoma, mas não a compatibilidade do caminho antigo.
+- O jeito mais seguro é reintroduzir `src/hooks/useAuth.ts` como “entrypoint” permanente e mover a implementação JSX para outro arquivo com nome diferente. Assim, mesmo que o navegador/dev server ainda peça `useAuth.ts`, o arquivo existe e responde corretamente.

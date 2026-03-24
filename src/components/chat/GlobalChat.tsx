@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Wifi, WifiOff } from 'lucide-react';
+import { MessageCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { ChatMessageItem } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -17,6 +16,8 @@ export function GlobalChat() {
 
   const {
     messages,
+    isLoading,
+    error,
     isConnected,
     sendMessage,
     reportMessage,
@@ -41,7 +42,6 @@ export function GlobalChat() {
   useEffect(() => {
     if (isOpen && scrollRef.current) {
       const el = scrollRef.current;
-      // Only auto-scroll if user is near bottom
       const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
       if (isNearBottom) {
         requestAnimationFrame(() => {
@@ -80,7 +80,7 @@ export function GlobalChat() {
             <div className="flex items-center gap-2">
               <SheetTitle className="text-base">Chat Global</SheetTitle>
               {isConnected ? (
-                <Wifi className="h-3.5 w-3.5 text-success" />
+                <Wifi className="h-3.5 w-3.5 text-primary" />
               ) : (
                 <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -92,7 +92,15 @@ export function GlobalChat() {
             ref={scrollRef}
             className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3"
           >
-            {messages.length === 0 ? (
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : error ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-sm text-destructive text-center">{error}</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-sm text-muted-foreground text-center">
                   Nenhuma mensagem ainda.<br />

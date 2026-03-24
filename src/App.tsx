@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Layout } from "./components/layout/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useWebVitals } from "@/hooks/useWebVitals";
+import { AuthProvider } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -181,6 +182,7 @@ function WebVitalsTracker() {
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
       <TooltipProvider>
         <WebVitalsTracker />
         <Toaster />
@@ -253,6 +255,7 @@ const App = () => (
           </OAuthCallbackHandler>
         </BrowserRouter>
       </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

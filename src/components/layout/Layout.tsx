@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, Component, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
@@ -8,6 +8,35 @@ import { GlobalChat } from '@/components/chat/GlobalChat';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
 import { queryKeys } from '@/lib/queryKeys';
+
+// Silent ErrorBoundary for GlobalChat - renders nothing on error, auto-retries
+class ChatErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('[GlobalChat] Caught error, will retry:', error.message);
+    this.retryTimer = setTimeout(() => {
+      this.setState({ hasError: false });
+    }, 3000);
+  }
+
+  componentWillUnmount() {
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
 
 export function Layout() {
   const location = useLocation();
@@ -55,7 +84,9 @@ export function Layout() {
       </main>
       <Footer />
       <BottomNav />
-      <GlobalChat />
+      <ChatErrorBoundary>
+        <GlobalChat />
+      </ChatErrorBoundary>
     </div>
   );
 }

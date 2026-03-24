@@ -333,11 +333,16 @@ export function MarketDetailPage() {
                   <Clock className="h-4 w-4" />
                   Halt de Trading
                 </div>
-                <p className="font-semibold">
+                <p className={cn(
+                  "font-semibold",
+                  statusInfo.timeToHalt !== null && statusInfo.timeToHalt > 0 && statusInfo.timeToHalt < 86400 && "font-mono tabular-nums text-warning",
+                  statusInfo.isUrgent && "animate-pulse"
+                )}>
                   {(() => {
-                    const days = differenceInDays(event.tradingHaltAt, new Date());
-                    if (days < 0) return 'Encerrado';
-                    if (days === 0) return 'Hoje';
+                    const s = statusInfo.timeToHalt;
+                    if (s === null || s <= 0) return 'Encerrado';
+                    if (s < 86400) return formatCountdown(s);
+                    const days = Math.floor(s / 86400);
                     if (days === 1) return 'Amanhã';
                     return `em ${days} dias`;
                   })()}

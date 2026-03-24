@@ -654,9 +654,10 @@ export const CommentService = {
 
     // If action is to hide or delete the comment
     if (actionTaken === 'hidden' || actionTaken === 'deleted') {
+      const selectCol = source === 'chat' ? 'message_id' : 'comment_id';
       const { data: report } = await supabase
         .from(tableName)
-        .select('comment_id')
+        .select(selectCol)
         .eq('id', reportId)
         .single();
 

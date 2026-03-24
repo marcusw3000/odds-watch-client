@@ -152,6 +152,38 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_reports: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          reason?: string
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comment_likes: {
         Row: {
           comment_id: string

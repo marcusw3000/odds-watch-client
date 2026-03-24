@@ -11,14 +11,14 @@ if (!stripePublishableKey) {
 let stripePromiseCache: Promise<Stripe | null> | null = null;
 
 // Lazy loader function - only loads Stripe SDK when actually needed
+// Uses /pure entry point to prevent auto-injection of Stripe's <script> tag
 export const getStripePromise = (): Promise<Stripe | null> => {
   if (!stripePublishableKey) {
     return Promise.resolve(null);
   }
   
   if (!stripePromiseCache) {
-    // Dynamically import loadStripe to defer SDK loading
-    stripePromiseCache = import('@stripe/stripe-js').then(({ loadStripe }) => 
+    stripePromiseCache = import('@stripe/stripe-js/pure').then(({ loadStripe }) => 
       loadStripe(stripePublishableKey)
     );
   }

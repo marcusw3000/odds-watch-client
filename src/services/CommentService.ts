@@ -661,16 +661,18 @@ export const CommentService = {
         .single();
 
       if (report) {
-        if (actionTaken === 'hidden') {
+        const refColumn = source === 'chat' ? 'message_id' : 'comment_id';
+        const targetId = (report as any)[refColumn];
+        if (actionTaken === 'hidden' && source !== 'chat') {
           await supabase
             .from(commentsTable)
             .update({ is_hidden: true })
-            .eq('id', report.comment_id);
+            .eq('id', targetId);
         } else if (actionTaken === 'deleted') {
           await supabase
             .from(commentsTable)
             .delete()
-            .eq('id', report.comment_id);
+            .eq('id', targetId);
         }
       }
     }

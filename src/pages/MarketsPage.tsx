@@ -70,7 +70,7 @@ export function MarketsPage() {
   const [trendingIndex, setTrendingIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
-  const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+  const autoPlayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   
   // Viewport-aware skeletons

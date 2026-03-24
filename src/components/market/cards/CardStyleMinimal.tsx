@@ -10,6 +10,7 @@ import { PriceSparkline } from '@/components/market/PriceSparkline';
 import { formatVolume, optimizeImageUrl } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { gridClasses, getCategoryIcon, OptionRow, LeaderOptionRow } from './CardGridLayout';
+import { CardCountdown } from './CardCountdown';
 
 interface CardStyleMinimalProps {
   event: MarketEvent;
@@ -102,6 +103,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
         {event.recurrenceType && event.recurrenceType !== 'none' && (
           <RecurrenceLabel type={event.recurrenceType} size="sm" />
         )}
+        <CardCountdown statusInfo={statusInfo} />
       </div>
 
       {/* Zone 3: Options */}

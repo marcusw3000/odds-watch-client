@@ -50,7 +50,7 @@ export function SellModal({
   const [confirmCountdown, setConfirmCountdown] = useState(CONFIRM_COUNTDOWN_SECONDS);
   const [lockedPrice, setLockedPrice] = useState<number | null>(null);
   const [slippageTolerance, setSlippageTolerance] = useState(DEFAULT_SLIPPAGE_TOLERANCE);
-  const confirmTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isYes = contract.outcome === 'YES';
   const purchaseCost = (contract.priceAtPurchase / 100) * contract.quantity;

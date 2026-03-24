@@ -34,7 +34,7 @@ export function useViewportSkeletons(cardHeight = 280) {
     handleResize();
 
     // Debounced resize handler
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
     const debouncedResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(handleResize, 100);

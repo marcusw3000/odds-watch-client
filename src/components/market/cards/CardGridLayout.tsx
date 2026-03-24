@@ -17,7 +17,7 @@ export const CARD_GRID = {
 
 // Reusable grid CSS classes
 export const gridClasses = {
-  container: "grid grid-rows-[auto_32px_48px_48px_40px] min-h-[280px] p-4 rounded-xl border border-border bg-card overflow-hidden relative transition-all duration-200 hover:border-primary/30 hover:shadow-md hover:scale-[1.01]",
+  container: "grid grid-rows-[auto_auto_48px_48px_40px] min-h-[280px] p-4 rounded-xl border border-border bg-card overflow-hidden relative transition-all duration-200 hover:border-primary/30 hover:shadow-md hover:scale-[1.01]",
   header: "flex items-start gap-3",
   status: "flex items-center gap-2",
   options: "flex flex-col justify-center gap-1",

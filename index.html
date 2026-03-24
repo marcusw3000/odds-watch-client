@@ -58,7 +58,17 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static above-the-fold content for instant LCP before React hydrates -->
+      <div style="display:flex;flex-direction:column;min-height:100vh;background:hsl(222 47% 6%)">
+        <header style="height:64px;border-bottom:1px solid hsl(215 20% 15%);display:flex;align-items:center;padding:0 1rem">
+          <h1 style="font-size:1.25rem;font-weight:700;color:hsl(210 40% 98%);margin:0">Mercado de Previsões</h1>
+        </header>
+        <main style="flex:1;display:flex;align-items:center;justify-content:center">
+          <p style="color:hsl(215 20% 65%);font-size:0.875rem">Carregando...</p>
+        </main>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

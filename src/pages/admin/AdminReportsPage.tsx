@@ -221,7 +221,7 @@ export function AdminReportsPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Flag className="h-6 w-6" />
-            Denúncias de Comentários
+            Denúncias de Comentários e Chat
           </h1>
           <p className="text-muted-foreground mt-1">
             Gerencie denúncias e modere comentários da comunidade

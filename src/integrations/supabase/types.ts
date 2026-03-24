@@ -154,25 +154,40 @@ export type Database = {
       }
       chat_reports: {
         Row: {
+          action_taken: string | null
           created_at: string
+          description: string | null
           id: string
           message_id: string
           reason: string
           reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
         }
         Insert: {
+          action_taken?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           message_id: string
           reason?: string
           reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
         }
         Update: {
+          action_taken?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           message_id?: string
           reason?: string
           reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
         }
         Relationships: [
           {

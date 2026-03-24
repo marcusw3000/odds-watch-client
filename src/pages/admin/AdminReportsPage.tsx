@@ -210,7 +210,8 @@ export function AdminReportsPage() {
       report.comment?.content?.toLowerCase().includes(query) ||
       report.commentAuthorName?.toLowerCase().includes(query) ||
       report.reporterName?.toLowerCase().includes(query) ||
-      report.marketTitle?.toLowerCase().includes(query)
+      report.marketTitle?.toLowerCase().includes(query) ||
+      report.suggestionTitle?.toLowerCase().includes(query)
     );
   });
 
@@ -221,7 +222,7 @@ export function AdminReportsPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Flag className="h-6 w-6" />
-            Denúncias de Comentários
+            Denúncias de Comentários e Chat
           </h1>
           <p className="text-muted-foreground mt-1">
             Gerencie denúncias e modere comentários da comunidade
@@ -365,8 +366,8 @@ export function AdminReportsPage() {
                     <TableCell className="max-w-xs">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <Badge variant={report.source === 'suggestion' ? 'outline' : 'secondary'} className="text-xs">
-                            {report.source === 'suggestion' ? 'Sugestão' : 'Mercado'}
+                          <Badge variant={report.source === 'chat' ? 'default' : report.source === 'suggestion' ? 'outline' : 'secondary'} className="text-xs">
+                            {report.source === 'chat' ? '💬 Chat' : report.source === 'suggestion' ? 'Sugestão' : 'Mercado'}
                           </Badge>
                         </div>
                         <p className="text-sm font-medium truncate">

@@ -464,9 +464,31 @@ export const CommentService = {
       suggestionQuery = suggestionQuery.eq('reason', reason);
     }
 
-    const [marketResult, suggestionResult] = await Promise.all([
+    // Fetch from chat_reports
+    let chatQuery = supabase
+      .from('chat_reports')
+      .select(`
+        *,
+        messages:message_id (
+          id,
+          content,
+          user_id,
+          username
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (status) {
+      chatQuery = chatQuery.eq('status', status);
+    }
+    if (reason) {
+      chatQuery = chatQuery.eq('reason', reason);
+    }
+
+    const [marketResult, suggestionResult, chatResult] = await Promise.all([
       marketQuery,
-      suggestionQuery
+      suggestionQuery,
+      chatQuery
     ]);
 
     if (marketResult.error) {
@@ -475,21 +497,27 @@ export const CommentService = {
     if (suggestionResult.error) {
       console.error('Error fetching suggestion reports:', suggestionResult.error);
     }
+    if (chatResult.error) {
+      console.error('Error fetching chat reports:', chatResult.error);
+    }
 
     const marketData = marketResult.data || [];
     const suggestionData = suggestionResult.data || [];
+    const chatData = chatResult.data || [];
 
     // Collect all unique user IDs for display info
     const marketReporterIds = marketData.map(r => r.reporter_id);
     const marketAuthorIds = marketData.map(r => (r.comments as any)?.user_id).filter(Boolean);
     const suggestionReporterIds = suggestionData.map(r => r.reporter_id);
     const suggestionAuthorIds = suggestionData.map(r => (r.suggestion_comments as any)?.user_id).filter(Boolean);
+    const chatReporterIds = chatData.map(r => r.reporter_id);
     
     const allUserIds = [...new Set([
       ...marketReporterIds, 
       ...marketAuthorIds, 
       ...suggestionReporterIds, 
-      ...suggestionAuthorIds
+      ...suggestionAuthorIds,
+      ...chatReporterIds
     ])];
 
     const displayInfoMap = new Map<string, string>();
@@ -556,8 +584,34 @@ export const CommentService = {
       } as any : undefined,
     }));
 
+    // Map chat reports
+    const chatReports: CommentReport[] = chatData.map(report => {
+      const msg = report.messages as any;
+      return {
+        id: report.id,
+        commentId: report.message_id,
+        reporterId: report.reporter_id,
+        reason: (report.reason || 'other') as CommentReport['reason'],
+        description: report.description || undefined,
+        status: (report.status || 'PENDING') as CommentReport['status'],
+        reviewedBy: report.reviewed_by || undefined,
+        reviewedAt: report.reviewed_at ? new Date(report.reviewed_at) : undefined,
+        actionTaken: report.action_taken as CommentReport['actionTaken'],
+        createdAt: new Date(report.created_at),
+        reporterName: getName(report.reporter_id),
+        commentAuthorName: msg?.username || 'Usuário',
+        source: 'chat' as const,
+        comment: msg ? {
+          id: msg.id,
+          content: msg.content,
+          userId: msg.user_id,
+          marketId: undefined,
+        } as any : undefined,
+      };
+    });
+
     // Combine and sort by created_at desc
-    const allReports = [...marketReports, ...suggestionReports];
+    const allReports = [...marketReports, ...suggestionReports, ...chatReports];
     allReports.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     return allReports;
@@ -568,7 +622,7 @@ export const CommentService = {
     reportId: string, 
     status: CommentReport['status'],
     actionTaken?: CommentReport['actionTaken'],
-    source: 'market' | 'suggestion' = 'market'
+    source: 'market' | 'suggestion' | 'chat' = 'market'
   ): Promise<void> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -585,8 +639,8 @@ export const CommentService = {
       updateData.action_taken = actionTaken;
     }
 
-    const tableName = source === 'suggestion' ? 'suggestion_comment_reports' : 'comment_reports';
-    const commentsTable = source === 'suggestion' ? 'suggestion_comments' : 'comments';
+    const tableName = source === 'chat' ? 'chat_reports' : source === 'suggestion' ? 'suggestion_comment_reports' : 'comment_reports';
+    const commentsTable = source === 'chat' ? 'messages' : source === 'suggestion' ? 'suggestion_comments' : 'comments';
 
     const { error } = await supabase
       .from(tableName)
@@ -600,23 +654,26 @@ export const CommentService = {
 
     // If action is to hide or delete the comment
     if (actionTaken === 'hidden' || actionTaken === 'deleted') {
+      const selectCol = source === 'chat' ? 'message_id' : 'comment_id';
       const { data: report } = await supabase
         .from(tableName)
-        .select('comment_id')
+        .select(selectCol)
         .eq('id', reportId)
         .single();
 
       if (report) {
-        if (actionTaken === 'hidden') {
+        const refColumn = source === 'chat' ? 'message_id' : 'comment_id';
+        const targetId = (report as any)[refColumn];
+        if (actionTaken === 'hidden' && source !== 'chat') {
           await supabase
             .from(commentsTable)
             .update({ is_hidden: true })
-            .eq('id', report.comment_id);
+            .eq('id', targetId);
         } else if (actionTaken === 'deleted') {
           await supabase
             .from(commentsTable)
             .delete()
-            .eq('id', report.comment_id);
+            .eq('id', targetId);
         }
       }
     }
@@ -645,13 +702,17 @@ export const CommentService = {
 
   // Admin: Get pending reports count (from both tables)
   async getPendingReportsCount(): Promise<number> {
-    const [marketCount, suggestionCount] = await Promise.all([
+    const [marketCount, suggestionCount, chatCount] = await Promise.all([
       supabase
         .from('comment_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'PENDING'),
       supabase
         .from('suggestion_comment_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'PENDING'),
+      supabase
+        .from('chat_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'PENDING')
     ]);
@@ -662,7 +723,10 @@ export const CommentService = {
     if (suggestionCount.error) {
       console.error('Error fetching suggestion pending reports count:', suggestionCount.error);
     }
+    if (chatCount.error) {
+      console.error('Error fetching chat pending reports count:', chatCount.error);
+    }
 
-    return (marketCount.count || 0) + (suggestionCount.count || 0);
+    return (marketCount.count || 0) + (suggestionCount.count || 0) + (chatCount.count || 0);
   },
 };

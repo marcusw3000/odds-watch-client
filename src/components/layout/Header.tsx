@@ -357,7 +357,9 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
 
       {/* Deposit Modal */}
       {showDepositModal && (
-        <DepositModal onClose={() => setShowDepositModal(false)} />
+        <Suspense fallback={null}>
+          <DepositModal onClose={() => setShowDepositModal(false)} />
+        </Suspense>
       )}
     </header>
   );

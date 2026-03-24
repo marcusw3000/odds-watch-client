@@ -232,7 +232,9 @@ export function PortfolioPage() {
 
       {/* Modals */}
       {showDepositModal && (
-        <DepositModal onClose={() => setShowDepositModal(false)} />
+        <Suspense fallback={null}>
+          <DepositModal onClose={() => setShowDepositModal(false)} />
+        </Suspense>
       )}
       {showWithdrawModal && (
         <WithdrawModal 

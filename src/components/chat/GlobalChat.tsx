@@ -80,7 +80,7 @@ export function GlobalChat() {
             <div className="flex items-center gap-2">
               <SheetTitle className="text-base">Chat Global</SheetTitle>
               {isConnected ? (
-                <Wifi className="h-3.5 w-3.5 text-green-500" />
+                <Wifi className="h-3.5 w-3.5 text-primary" />
               ) : (
                 <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
               )}

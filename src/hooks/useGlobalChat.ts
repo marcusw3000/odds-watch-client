@@ -139,9 +139,24 @@ export function useGlobalChat() {
     }
   }, [user, username]);
 
-  const reportMessage = useCallback((messageId: string) => {
-    toast.success('Mensagem reportada. Obrigado!');
-  }, []);
+  const reportMessage = useCallback(async (messageId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('chat_reports')
+        .insert({ message_id: messageId, reporter_id: user.id });
+      if (error?.code === '23505') {
+        toast.info('Você já reportou esta mensagem');
+      } else if (error) {
+        throw error;
+      } else {
+        toast.success('Mensagem reportada. Obrigado!');
+      }
+    } catch (err) {
+      console.error('[GlobalChat] Report failed:', err);
+      toast.error('Erro ao reportar mensagem');
+    }
+  }, [user]);
 
   return {
     messages,

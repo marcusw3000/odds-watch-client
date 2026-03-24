@@ -84,7 +84,9 @@ export function Layout() {
       </main>
       <Footer />
       <BottomNav />
-      <GlobalChat />
+      <ChatErrorBoundary>
+        <GlobalChat />
+      </ChatErrorBoundary>
     </div>
   );
 }

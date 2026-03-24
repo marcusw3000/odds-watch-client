@@ -584,8 +584,34 @@ export const CommentService = {
       } as any : undefined,
     }));
 
+    // Map chat reports
+    const chatReports: CommentReport[] = chatData.map(report => {
+      const msg = report.messages as any;
+      return {
+        id: report.id,
+        commentId: report.message_id,
+        reporterId: report.reporter_id,
+        reason: (report.reason || 'other') as CommentReport['reason'],
+        description: report.description || undefined,
+        status: (report.status || 'PENDING') as CommentReport['status'],
+        reviewedBy: report.reviewed_by || undefined,
+        reviewedAt: report.reviewed_at ? new Date(report.reviewed_at) : undefined,
+        actionTaken: report.action_taken as CommentReport['actionTaken'],
+        createdAt: new Date(report.created_at),
+        reporterName: getName(report.reporter_id),
+        commentAuthorName: msg?.username || 'Usuário',
+        source: 'chat' as const,
+        comment: msg ? {
+          id: msg.id,
+          content: msg.content,
+          userId: msg.user_id,
+          marketId: undefined,
+        } as any : undefined,
+      };
+    });
+
     // Combine and sort by created_at desc
-    const allReports = [...marketReports, ...suggestionReports];
+    const allReports = [...marketReports, ...suggestionReports, ...chatReports];
     allReports.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     return allReports;

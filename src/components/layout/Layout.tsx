@@ -55,6 +55,7 @@ export function Layout() {
       </main>
       <Footer />
       <BottomNav />
+      <GlobalChat />
     </div>
   );
 }

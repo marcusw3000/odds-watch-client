@@ -182,6 +182,7 @@ function WebVitalsTracker() {
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
       <TooltipProvider>
         <WebVitalsTracker />
         <Toaster />
@@ -254,6 +255,7 @@ const App = () => (
           </OAuthCallbackHandler>
         </BrowserRouter>
       </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

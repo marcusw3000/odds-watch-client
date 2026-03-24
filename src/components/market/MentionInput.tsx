@@ -38,7 +38,7 @@ export function MentionInput({
   const mentionsRef = useRef<Map<string, string>>(new Map()); // displayName -> userId
 
   // Debounced search
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const searchUsers = useCallback(async (query: string) => {
     if (!query || query.length < 2) {

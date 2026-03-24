@@ -52,7 +52,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
   const [copied, setCopied] = useState(false);
   const [pixConfirmed, setPixConfirmed] = useState(false);
   
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const createPaymentIntent = useCreatePaymentIntent();
   const confirmPayment = useConfirmPayment();

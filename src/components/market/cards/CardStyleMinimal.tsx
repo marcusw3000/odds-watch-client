@@ -103,6 +103,7 @@ export const CardStyleMinimal = memo(function CardStyleMinimal({
         {event.recurrenceType && event.recurrenceType !== 'none' && (
           <RecurrenceLabel type={event.recurrenceType} size="sm" />
         )}
+        <CardCountdown statusInfo={statusInfo} />
       </div>
 
       {/* Zone 3: Options */}

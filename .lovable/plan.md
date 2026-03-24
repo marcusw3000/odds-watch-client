@@ -1,40 +1,61 @@
 
 
-# Melhorar formato do timer na pagina de detalhe do mercado
+# Chat Global em Tempo Real (Sem Banco de Dados)
 
-## Problema
+## Resumo
 
-Na pagina de detalhe (`MarketDetailPage.tsx`), os cards de "Halt de Trading" e "Evento" usam `differenceInDays()` e sempre mostram "em X dias", sem granularidade para horas ou minutos. Quando falta menos de 1 dia, mostra apenas "Hoje" — sem countdown.
+Chat global opcional acessivel por um botao flutuante na lateral direita. Usa Supabase Realtime Broadcast (sem persistencia em banco). Mensagens resetam a cada hora. Apenas texto e emojis. Exibe display_name do usuario. Opcao de reportar mensagens.
 
-Ja nos cards da listagem, o `formatCountdown()` mostra `HH:MM:SS` quando falta menos de 24h.
+## Arquitetura
 
-## Solucao
+**Supabase Realtime Broadcast** -- canal `global-chat` com eventos `new-message`. Cada cliente envia e recebe mensagens via broadcast, sem INSERT em tabela. Mensagens ficam apenas em memoria (state local). Um `setInterval` a cada hora limpa o array local.
 
-Substituir a logica inline de `differenceInDays` nos dois cards por uma funcao reutilizavel que:
-- **> 30 dias**: mostra "em ~X meses" ou "em X dias"
-- **1-30 dias**: mostra "em X dias"  
-- **< 24h**: mostra countdown `HH:MM:SS` atualizado em tempo real
-- **< 1h**: mostra `MM:SS` com destaque de urgencia
-- **Passado**: mostra "Encerrado"
+```text
+[User A] --broadcast--> Supabase Realtime Channel <--broadcast-- [User B]
+                              (no DB)
+```
 
-Isso reaproveita o `formatCountdown()` ja existente em `useMarketStatus.ts` e o `statusInfo` que ja esta disponivel na pagina.
+## Arquivos
 
-## Detalhes Tecnicos
+### 1. Novo: `src/components/chat/GlobalChat.tsx`
+- Botao flutuante fixo na lateral direita (icone `MessageCircle`)
+- Ao clicar, abre painel lateral (sheet/drawer) com o chat
+- Exibe badge com contagem de mensagens nao lidas quando fechado
+- Somente usuarios logados podem enviar (visitantes veem botao desabilitado ou msg "faca login")
 
-### Arquivo: `src/pages/MarketDetailPage.tsx`
+### 2. Novo: `src/components/chat/ChatMessage.tsx`
+- Componente de mensagem individual
+- Exibe: display_name, horario, conteudo (texto + emojis)
+- Botao de reportar (icone `Flag`) que abre dialog de confirmacao
+- Mensagens proprias alinhadas a direita, dos outros a esquerda
 
-**Card "Halt de Trading"** (linhas 335-342):
-- Substituir logica de `differenceInDays` por:
-  - Se `statusInfo.timeToHalt <= 0`: "Encerrado"
-  - Se `statusInfo.timeToHalt < 86400` (24h): usar `formatCountdown(statusInfo.timeToHalt)` com cor de urgencia
-  - Senao: manter "em X dias" usando `Math.floor(timeToHalt / 86400)`
+### 3. Novo: `src/components/chat/ChatInput.tsx`
+- Input de texto com botao de envio
+- Emoji picker (usando um picker leve ou emojis nativos do teclado)
+- Sem upload de imagem/gif
+- Enter para enviar, Shift+Enter para nova linha
+- Rate limit local: max 1 msg a cada 2 segundos
 
-**Card "Evento"** (linhas 359-366):
-- Mesma logica usando `statusInfo.timeToEvent`
+### 4. Novo: `src/hooks/useGlobalChat.ts`
+- Conecta ao canal Realtime `global-chat` via `supabase.channel('global-chat')`
+- `channel.on('broadcast', { event: 'new-message' }, callback)` para receber
+- `channel.send({ type: 'broadcast', event: 'new-message', payload })` para enviar
+- State local: `messages[]` com `{ id, user_id, display_name, content, timestamp }`
+- `setInterval` que limpa mensagens com mais de 1 hora
+- Report: envia broadcast `report-message` (ou apenas toast local confirmando)
 
-**Beneficio**: os valores `timeToHalt` e `timeToEvent` do `statusInfo` ja sao atualizados a cada segundo pelo hook `useMarketStatus`, entao o countdown sera automaticamente em tempo real sem adicionar nenhum `setInterval` extra.
+### 5. Editar: `src/components/layout/Layout.tsx`
+- Adicionar `<GlobalChat />` como ultimo filho do container, ao lado do `<BottomNav />`
 
-### Nenhum arquivo novo necessario
+## Detalhes de UX
 
-Reutiliza `formatCountdown` de `useMarketStatus.ts` e `statusInfo` ja importado na pagina.
+- Botao flutuante: `fixed bottom-20 right-4 z-40` (acima do BottomNav mobile)
+- Painel: `Sheet` do shadcn abrindo pela direita, largura ~380px
+- Auto-scroll para ultima mensagem
+- Indicador "X novas mensagens" quando scroll nao esta no final
+- Mobile: sheet ocupa largura total
+
+## Sem Migracoes SQL
+
+Nenhuma tabela ou RLS necessaria -- tudo via Broadcast efemero.
 

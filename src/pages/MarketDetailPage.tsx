@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
+import { formatCountdown } from '@/hooks/useMarketStatus';
 import { ptBR } from 'date-fns/locale';
 import { 
   ArrowLeft, 

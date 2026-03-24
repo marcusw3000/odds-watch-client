@@ -510,12 +510,14 @@ export const CommentService = {
     const marketAuthorIds = marketData.map(r => (r.comments as any)?.user_id).filter(Boolean);
     const suggestionReporterIds = suggestionData.map(r => r.reporter_id);
     const suggestionAuthorIds = suggestionData.map(r => (r.suggestion_comments as any)?.user_id).filter(Boolean);
+    const chatReporterIds = chatData.map(r => r.reporter_id);
     
     const allUserIds = [...new Set([
       ...marketReporterIds, 
       ...marketAuthorIds, 
       ...suggestionReporterIds, 
-      ...suggestionAuthorIds
+      ...suggestionAuthorIds,
+      ...chatReporterIds
     ])];
 
     const displayInfoMap = new Map<string, string>();

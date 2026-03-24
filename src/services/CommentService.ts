@@ -639,8 +639,8 @@ export const CommentService = {
       updateData.action_taken = actionTaken;
     }
 
-    const tableName = source === 'suggestion' ? 'suggestion_comment_reports' : 'comment_reports';
-    const commentsTable = source === 'suggestion' ? 'suggestion_comments' : 'comments';
+    const tableName = source === 'chat' ? 'chat_reports' : source === 'suggestion' ? 'suggestion_comment_reports' : 'comment_reports';
+    const commentsTable = source === 'chat' ? 'messages' : source === 'suggestion' ? 'suggestion_comments' : 'comments';
 
     const { error } = await supabase
       .from(tableName)

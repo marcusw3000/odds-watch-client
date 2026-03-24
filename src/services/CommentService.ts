@@ -464,9 +464,31 @@ export const CommentService = {
       suggestionQuery = suggestionQuery.eq('reason', reason);
     }
 
-    const [marketResult, suggestionResult] = await Promise.all([
+    // Fetch from chat_reports
+    let chatQuery = supabase
+      .from('chat_reports')
+      .select(`
+        *,
+        messages:message_id (
+          id,
+          content,
+          user_id,
+          username
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (status) {
+      chatQuery = chatQuery.eq('status', status);
+    }
+    if (reason) {
+      chatQuery = chatQuery.eq('reason', reason);
+    }
+
+    const [marketResult, suggestionResult, chatResult] = await Promise.all([
       marketQuery,
-      suggestionQuery
+      suggestionQuery,
+      chatQuery
     ]);
 
     if (marketResult.error) {

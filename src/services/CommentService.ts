@@ -497,9 +497,13 @@ export const CommentService = {
     if (suggestionResult.error) {
       console.error('Error fetching suggestion reports:', suggestionResult.error);
     }
+    if (chatResult.error) {
+      console.error('Error fetching chat reports:', chatResult.error);
+    }
 
     const marketData = marketResult.data || [];
     const suggestionData = suggestionResult.data || [];
+    const chatData = chatResult.data || [];
 
     // Collect all unique user IDs for display info
     const marketReporterIds = marketData.map(r => r.reporter_id);

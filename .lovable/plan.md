@@ -1,38 +1,96 @@
 
 
-## Analysis
+# Reimplementar Chat Global com Supabase (Persistência + Realtime)
 
-The GlobalChat floating button disappears on F5 refresh. After investigation:
+## O que será feito
 
-1. **GlobalChat renders inside Layout** — it's always rendered, with no conditional logic that would hide it
-2. **The floating button** uses `fixed bottom-20 right-4 z-40` positioning and only hides when `isOpen` is true (via `isOpen && 'hidden'`)
-3. **useGlobalChat** creates a Supabase Realtime channel on mount — if this throws during initialization (e.g., before Supabase client is fully ready on refresh), the component crashes silently
-4. **No ErrorBoundary** wraps GlobalChat specifically, so an error would propagate to the top-level ErrorBoundary and crash the entire page — BUT the page IS rendering (skeletons visible), so the error must be non-fatal or the component just fails to render
-5. **Console shows 22+ duplicate SIGNED_IN events** — each `useAuth()` hook instance creates its own `onAuthStateChange` listener, causing excessive re-renders during session recovery on refresh
+Remover completamente a implementação atual de chat (broadcast efêmero) e substituir por uma versão completa com persistência no banco de dados, usando Supabase Postgres + Realtime.
 
-## Root Cause
+## Arquitetura
 
-Most likely: the Supabase channel subscription in `useGlobalChat` encounters a transient error during page refresh (when auth session is being restored), causing the component to fail silently. The component has no error recovery mechanism.
+```text
+┌─────────────┐     INSERT      ┌──────────────┐
+│  ChatInput   │ ──────────────► │   messages   │
+│ (300 chars)  │                 │   (Postgres) │
+└─────────────┘                 └──────┬───────┘
+                                       │ Realtime
+                                       │ (postgres_changes)
+                                       ▼
+                                ┌──────────────┐
+                                │  ChatMessage  │
+                                │  (all users)  │
+                                └──────────────┘
+```
 
-## Plan
+## 1. Migration SQL — tabela `messages`
 
-### 1. Wrap GlobalChat in a dedicated ErrorBoundary (Layout.tsx)
-Add a small ErrorBoundary around GlobalChat that renders nothing on error (instead of crashing the page), with auto-retry after a short delay.
+Criar tabela `messages` com:
+- `id uuid PK default gen_random_uuid()`
+- `user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
+- `username text NOT NULL`
+- `content text NOT NULL CHECK(char_length(content) <= 300)`
+- `created_at timestamptz NOT NULL DEFAULT now()`
 
-### 2. Add defensive error handling in useGlobalChat (useGlobalChat.ts)
-- Wrap channel subscription in try/catch
-- Add error state and reconnection logic if channel fails
-- Handle the case where the component mounts before auth is fully resolved
+Adicionar:
+- Índice em `created_at DESC`
+- RLS habilitado
+- Policy SELECT: authenticated users podem ler todas as mensagens
+- Policy INSERT: authenticated users podem inserir apenas com `auth.uid() = user_id`
+- `pg_cron` job a cada 3 horas para deletar mensagens com mais de 6 horas
+- Habilitar Realtime para a tabela `messages`
 
-### 3. Fix duplicate auth listeners (useAuth.ts)
-The 22+ SIGNED_IN events indicate every component calling `useAuth()` creates its own listener. Convert `useAuth` to use a shared singleton pattern (React context or module-level subscription) so only one listener exists. This reduces re-renders on refresh and prevents race conditions.
+## 2. Deletar arquivos antigos
 
-## Technical Details
+Remover:
+- `src/components/chat/ChatInput.tsx` (será reescrito)
+- `src/components/chat/ChatMessage.tsx` (será reescrito)
+- `src/components/chat/GlobalChat.tsx` (será reescrito)
+- `src/hooks/useGlobalChat.ts` (será reescrito)
 
-**File changes:**
+## 3. Novo hook: `src/hooks/useGlobalChat.ts`
 
-- `src/hooks/useAuth.ts` — Create an AuthContext provider pattern so one listener is shared across all consumers
-- `src/App.tsx` — Wrap app in AuthProvider
-- `src/hooks/useGlobalChat.ts` — Add try/catch around channel creation, add reconnect logic
-- `src/components/layout/Layout.tsx` — Wrap GlobalChat in a silent ErrorBoundary fallback
+- Busca mensagens das últimas 6 horas no mount (`supabase.from('messages').select(...)`)
+- Subscrição Realtime via `postgres_changes` (INSERT) na tabela `messages`
+- Deduplicação por `id` ao receber mensagem do Realtime
+- Anti-flood: 1 mensagem a cada 2 segundos (ref local)
+- Envio: `supabase.from('messages').insert(...)` — busca `display_name` do perfil
+- Estado: `messages`, `isLoading`, `error`, `isConnected`, `sendMessage`
+- Limite de 300 caracteres no envio
+
+## 4. Novos componentes em `src/components/chat/`
+
+### `GlobalChat.tsx`
+- Botão flutuante (FAB) com ícone de chat e badge de não-lidas
+- Abre Sheet lateral (mantém mesmo padrão visual)
+- Indicador de conexão (Wifi/WifiOff)
+- Lista de mensagens com auto-scroll
+- Empty state e loading state
+
+### `ChatMessage.tsx`
+- Bolha de mensagem com nome, conteúdo e horário
+- Estilo diferente para mensagens próprias vs. outros
+- Botão de reportar em mensagens de outros
+
+### `ChatInput.tsx`
+- Textarea com limite de 300 caracteres
+- Contador de caracteres visível
+- Botão enviar
+- Desabilitado para não autenticados
+- Envio com Enter (Shift+Enter para nova linha)
+
+## 5. Atualizar Layout.tsx
+
+- Manter o `ChatErrorBoundary` existente
+- Importar o novo `GlobalChat` (mesmo path)
+
+## Arquivos modificados
+
+| Arquivo | Ação |
+|---|---|
+| Nova migration SQL | Criar tabela `messages` + RLS + cron |
+| `src/hooks/useGlobalChat.ts` | Reescrever completamente |
+| `src/components/chat/GlobalChat.tsx` | Reescrever completamente |
+| `src/components/chat/ChatMessage.tsx` | Reescrever completamente |
+| `src/components/chat/ChatInput.tsx` | Reescrever com contador de 300 chars |
+| `src/components/layout/Layout.tsx` | Sem mudanças (já importa GlobalChat) |
 

@@ -1,48 +1,40 @@
 
 
-# Adicionar Timer Visivel em Todos os Cards
+# Melhorar formato do timer na pagina de detalhe do mercado
 
-## Problema Atual
+## Problema
 
-Os cards ja usam `MarketStatusBadge` na Zone 2, que tem logica de countdown interna, mas:
-1. Os cards passam `timeToEvent` mas **nao passam `timeToHalt`**, entao o countdown para mercados OPEN nunca aparece
-2. O countdown e sutil (texto pequeno anexado ao label do badge)
-3. O usuario quer um timer dedicado e visivel em todos os estilos de card
+Na pagina de detalhe (`MarketDetailPage.tsx`), os cards de "Halt de Trading" e "Evento" usam `differenceInDays()` e sempre mostram "em X dias", sem granularidade para horas ou minutos. Quando falta menos de 1 dia, mostra apenas "Hoje" — sem countdown.
+
+Ja nos cards da listagem, o `formatCountdown()` mostra `HH:MM:SS` quando falta menos de 24h.
 
 ## Solucao
 
-Criar um componente `CardCountdown` compacto e adiciona-lo na Zone 2 (status row) de todos os 4 card styles, ao lado do `MarketStatusBadge`.
+Substituir a logica inline de `differenceInDays` nos dois cards por uma funcao reutilizavel que:
+- **> 30 dias**: mostra "em ~X meses" ou "em X dias"
+- **1-30 dias**: mostra "em X dias"  
+- **< 24h**: mostra countdown `HH:MM:SS` atualizado em tempo real
+- **< 1h**: mostra `MM:SS` com destaque de urgencia
+- **Passado**: mostra "Encerrado"
 
-### Comportamento do timer por status:
-- **OPEN**: mostra tempo ate halt (ex: "⏱ 02:34:15") em cor verde
-- **HALTED**: mostra tempo ate evento (ex: "⏱ 00:45:30") em cor amarela  
-- **CONTESTED**: mostra tempo restante de contestacao em cor amarela
-- **PENDING**: mostra "Aguardando" sem countdown
-- **SETTLED**: nao mostra timer
+Isso reaproveita o `formatCountdown()` ja existente em `useMarketStatus.ts` e o `statusInfo` que ja esta disponivel na pagina.
 
-### Layout
+## Detalhes Tecnicos
 
-A Zone 2 atual tem 32px de altura com `flex items-center gap-2`. O timer sera um badge compacto com icone de relogio + countdown formatado, ocupando o espaco restante apos o status badge. Para caber, o grid row de status aumenta de `32px` para `auto` (com min-height).
+### Arquivo: `src/pages/MarketDetailPage.tsx`
 
-```text
-Zone 2 (status row):
-[StatusBadge] [RecurrenceLabel?] -----> [⏱ 02:34:15]
-```
+**Card "Halt de Trading"** (linhas 335-342):
+- Substituir logica de `differenceInDays` por:
+  - Se `statusInfo.timeToHalt <= 0`: "Encerrado"
+  - Se `statusInfo.timeToHalt < 86400` (24h): usar `formatCountdown(statusInfo.timeToHalt)` com cor de urgencia
+  - Senao: manter "em X dias" usando `Math.floor(timeToHalt / 86400)`
 
-## Arquivos Modificados
+**Card "Evento"** (linhas 359-366):
+- Mesma logica usando `statusInfo.timeToEvent`
 
-### 1. Novo: `src/components/market/cards/CardCountdown.tsx`
-- Componente que recebe `statusInfo` do `useMarketStatus`
-- Usa `formatCountdown()` para formatar o tempo
-- Icone `Timer` do lucide + texto mono
-- Cores contextuais (verde para OPEN, amarelo para HALTED/CONTESTED)
-- Pisca (`animate-pulse`) quando urgente (< 5 min)
+**Beneficio**: os valores `timeToHalt` e `timeToEvent` do `statusInfo` ja sao atualizados a cada segundo pelo hook `useMarketStatus`, entao o countdown sera automaticamente em tempo real sem adicionar nenhum `setInterval` extra.
 
-### 2. `src/components/market/cards/CardGridLayout.tsx`
-- Alterar grid de `grid-rows-[auto_32px_48px_48px_40px]` para `grid-rows-[auto_auto_48px_48px_40px]` para que a Zone 2 acomode o timer sem cortar
+### Nenhum arquivo novo necessario
 
-### 3. Todos os 4 card styles (Default, Buttons, Simple, Minimal)
-- Importar `CardCountdown`
-- Adicionar na Zone 2, posicionado a direita com `ml-auto`
-- Passar `statusInfo` que ja existe em cada card
+Reutiliza `formatCountdown` de `useMarketStatus.ts` e `statusInfo` ja importado na pagina.
 

@@ -128,7 +128,9 @@ export const optimizeImageUrl = (url: string | undefined, options?: { width?: nu
   if (options?.quality) {
     params.set('quality', options.quality.toString());
   } else {
-    params.set('quality', '60'); // Lower quality for small thumbnails - saves ~30% bandwidth
+    // Auto quality: lower for small thumbnails, moderate for larger images
+    const autoQuality = (options?.width && options.width <= 80) ? 30 : 60;
+    params.set('quality', autoQuality.toString());
   }
   
   // Append parameters to URL

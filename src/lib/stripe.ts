@@ -26,7 +26,5 @@ export const getStripePromise = (): Promise<Stripe | null> => {
   return stripePromiseCache;
 };
 
-// Legacy export for backwards compatibility - but now lazy
-export const stripePromise = stripePublishableKey 
-  ? getStripePromise() 
-  : null;
+// Legacy export for backwards compatibility - now fully lazy (only loads when getStripePromise() is called)
+export const stripePromise = null;

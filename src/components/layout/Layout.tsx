@@ -1,24 +1,20 @@
 import { useCallback, Component, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle } from 'lucide-react';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
 import { GlobalChat } from '@/components/chat/GlobalChat';
-import { Button } from '@/components/ui/button';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
 import { queryKeys } from '@/lib/queryKeys';
 
-const MAX_CHAT_RETRIES = 3;
-
-// ErrorBoundary for GlobalChat - renders fallback button on error, retries up to 3 times
+// Silent ErrorBoundary for GlobalChat - renders nothing on error, auto-retries
 class ChatErrorBoundary extends Component<
   { children: ReactNode },
-  { hasError: boolean; retryCount: number }
+  { hasError: boolean }
 > {
-  state = { hasError: false, retryCount: 0 };
+  state = { hasError: false };
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   static getDerivedStateFromError() {
@@ -26,12 +22,10 @@ class ChatErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error) {
-    console.warn('[GlobalChat] Caught error:', error.message);
-    if (this.state.retryCount < MAX_CHAT_RETRIES) {
-      this.retryTimer = setTimeout(() => {
-        this.setState(prev => ({ hasError: false, retryCount: prev.retryCount + 1 }));
-      }, 3000 * Math.pow(2, this.state.retryCount));
-    }
+    console.warn('[GlobalChat] Caught error, will retry:', error.message);
+    this.retryTimer = setTimeout(() => {
+      this.setState({ hasError: false });
+    }, 3000);
   }
 
   componentWillUnmount() {
@@ -39,18 +33,7 @@ class ChatErrorBoundary extends Component<
   }
 
   render() {
-    if (this.state.hasError) {
-      return (
-        <Button
-          size="icon"
-          disabled
-          className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full shadow-lg lg:bottom-6 opacity-50"
-          title="Chat indisponível"
-        >
-          <MessageCircle className="h-5 w-5" />
-        </Button>
-      );
-    }
+    if (this.state.hasError) return null;
     return this.props.children;
   }
 }

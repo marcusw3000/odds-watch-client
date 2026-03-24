@@ -247,65 +247,49 @@ const mockMarkets: MarketEvent[] = [
 export const MarketDataProvider = {
   // Busca todos os eventos
   async getEvents(): Promise<MarketEvent[]> {
-    // Timeout to handle hanging requests (e.g. Lovable preview proxy)
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout after 8s')), 8000)
-    );
+    const { data, error } = await supabase
+      .from('markets')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    try {
-      const { data, error } = await Promise.race([
-        supabase
-          .from('markets')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        timeout,
-      ]);
-
-      if (error) {
-        console.error('Error fetching markets:', error);
-        return mockMarkets;
-      }
-
-      // Return mocks if no data in DB
-      if (!data || data.length === 0) {
-        return mockMarkets;
-      }
-
-      // Fetch options for MULTIPLE markets
-      const multipleMarketIds = data
-        .filter(m => m.market_type === 'MULTIPLE')
-        .map(m => m.id);
-
-      let optionsMap: Record<string, DbMarketOption[]> = {};
-      
-      if (multipleMarketIds.length > 0) {
-        const { data: optionsData } = await Promise.race([
-          supabase
-            .from('market_options')
-            .select('*')
-            .in('market_id', multipleMarketIds)
-            .order('display_order', { ascending: true }),
-          timeout,
-        ]);
-
-        if (optionsData) {
-          optionsMap = optionsData.reduce((acc, opt) => {
-            const marketId = opt.market_id;
-            if (!acc[marketId]) acc[marketId] = [];
-            acc[marketId].push(opt as unknown as DbMarketOption);
-            return acc;
-          }, {} as Record<string, DbMarketOption[]>);
-        }
-      }
-
-      return data.map(m => transformDbMarket(
-        m as unknown as DbMarket,
-        optionsMap[m.id]
-      ));
-    } catch (err) {
-      console.warn('[MarketDataProvider] getEvents failed/timed out:', err);
+    if (error) {
+      console.error('Error fetching markets:', error);
       return mockMarkets;
     }
+
+    // Return mocks if no data in DB
+    if (!data || data.length === 0) {
+      return mockMarkets;
+    }
+
+    // Fetch options for MULTIPLE markets
+    const multipleMarketIds = data
+      .filter(m => m.market_type === 'MULTIPLE')
+      .map(m => m.id);
+
+    let optionsMap: Record<string, DbMarketOption[]> = {};
+    
+    if (multipleMarketIds.length > 0) {
+      const { data: optionsData } = await supabase
+        .from('market_options')
+        .select('*')
+        .in('market_id', multipleMarketIds)
+        .order('display_order', { ascending: true });
+
+      if (optionsData) {
+        optionsMap = optionsData.reduce((acc, opt) => {
+          const marketId = opt.market_id;
+          if (!acc[marketId]) acc[marketId] = [];
+          acc[marketId].push(opt as unknown as DbMarketOption);
+          return acc;
+        }, {} as Record<string, DbMarketOption[]>);
+      }
+    }
+
+    return data.map(m => transformDbMarket(
+      m as unknown as DbMarket,
+      optionsMap[m.id]
+    ));
   },
 
   // Busca evento específico por ID

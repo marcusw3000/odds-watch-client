@@ -1,4 +1,3 @@
-// Auth singleton provider — single listener for the entire app
 import { useState, useEffect, useContext, createContext, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
@@ -85,34 +84,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
-    // Timeout to unblock UI if getSession hangs (e.g. Lovable preview proxy)
-    const authTimeoutId = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('[Auth] Session check timed out after 5s, unblocking UI');
-        setLoading(false);
-      }
-    }, 5000);
-
     const checkSession = async () => {
       if (!mounted) return;
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
 
-        console.log('[Auth] Initial session check:', session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
+      console.log('[Auth] Initial session check:', session?.user?.email);
+      setSession(session);
+      setUser(session?.user ?? null);
 
-        if (session?.user) {
-          checkAdminRole(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (err) {
-        console.warn('[Auth] Session check failed:', err);
-        if (mounted) setLoading(false);
-      } finally {
-        clearTimeout(authTimeoutId);
+      if (session?.user) {
+        checkAdminRole(session.user.id);
+      } else {
+        setLoading(false);
       }
     };
 
@@ -158,17 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-const defaultAuthState: AuthState = {
-  user: null,
-  session: null,
-  isAdmin: false,
-  loading: true,
-  signIn: async () => ({ error: new Error('Auth not ready') }),
-  signUp: async () => ({ error: new Error('Auth not ready') }),
-  signOut: async () => ({ error: new Error('Auth not ready') }),
-};
-
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
-  return ctx ?? defaultAuthState;
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return ctx;
 }

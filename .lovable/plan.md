@@ -1,70 +1,38 @@
 
 
-## Problem
+## Analysis
 
-The Lovable preview environment uses a fetch proxy that causes Supabase requests to **hang indefinitely** (never resolve, never error). This means:
+The GlobalChat floating button disappears on F5 refresh. After investigation:
 
-1. `supabase.auth.getSession()` hangs → `loading` stays `true` forever in AuthProvider
-2. `supabase.from('markets').select('*')` hangs → `isLoadingMarkets` stays `true` → skeletons forever
-3. The chat button never appears because the entire component tree is stuck
+1. **GlobalChat renders inside Layout** — it's always rendered, with no conditional logic that would hide it
+2. **The floating button** uses `fixed bottom-20 right-4 z-40` positioning and only hides when `isOpen` is true (via `isOpen && 'hidden'`)
+3. **useGlobalChat** creates a Supabase Realtime channel on mount — if this throws during initialization (e.g., before Supabase client is fully ready on refresh), the component crashes silently
+4. **No ErrorBoundary** wraps GlobalChat specifically, so an error would propagate to the top-level ErrorBoundary and crash the entire page — BUT the page IS rendering (skeletons visible), so the error must be non-fatal or the component just fails to render
+5. **Console shows 22+ duplicate SIGNED_IN events** — each `useAuth()` hook instance creates its own `onAuthStateChange` listener, causing excessive re-renders during session recovery on refresh
 
-The published site works fine because it doesn't use the proxy. The code already has fallback to mock data on **errors**, but hanging requests never trigger the error path.
+## Root Cause
 
-## Solution: Add timeouts so hanging requests fail gracefully
+Most likely: the Supabase channel subscription in `useGlobalChat` encounters a transient error during page refresh (when auth session is being restored), causing the component to fail silently. The component has no error recovery mechanism.
 
-### 1. Add auth initialization timeout (useAuthContext.tsx)
+## Plan
 
-Add a 5-second timeout to `checkSession`. If `getSession()` doesn't resolve in time, set `loading = false` with `user = null`. This unblocks the entire app.
+### 1. Wrap GlobalChat in a dedicated ErrorBoundary (Layout.tsx)
+Add a small ErrorBoundary around GlobalChat that renders nothing on error (instead of crashing the page), with auto-retry after a short delay.
 
-```typescript
-// Inside checkSession:
-const timeoutId = setTimeout(() => {
-  if (mounted && loading) {
-    console.warn('[Auth] Session check timed out');
-    setLoading(false);
-  }
-}, 5000);
-```
+### 2. Add defensive error handling in useGlobalChat (useGlobalChat.ts)
+- Wrap channel subscription in try/catch
+- Add error state and reconnection logic if channel fails
+- Handle the case where the component mounts before auth is fully resolved
 
-### 2. Add timeout wrapper to MarketDataProvider.getEvents() (MarketDataProvider.ts)
+### 3. Fix duplicate auth listeners (useAuth.ts)
+The 22+ SIGNED_IN events indicate every component calling `useAuth()` creates its own listener. Convert `useAuth` to use a shared singleton pattern (React context or module-level subscription) so only one listener exists. This reduces re-renders on refresh and prevents race conditions.
 
-Wrap the Supabase query in a `Promise.race` with a 8-second timeout. If it hangs, fall back to `mockMarkets` (which already exist in the code).
+## Technical Details
 
-```typescript
-async getEvents(): Promise<MarketEvent[]> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Request timeout')), 8000)
-  );
+**File changes:**
 
-  try {
-    const { data, error } = await Promise.race([
-      supabase.from('markets').select('*').order('created_at', { ascending: false }),
-      timeout,
-    ]);
-    // ... existing logic
-  } catch (err) {
-    console.error('Error fetching markets:', err);
-    return mockMarkets; // Already exists as fallback
-  }
-}
-```
-
-### 3. No other changes needed
-
-- `ChatErrorBoundary` and `defaultAuthState` guards are already in place
-- `useGlobalChat` already has reconnection logic
-- The chat button will render once the Layout component unblocks
-
-## Files Changed
-
-- `src/hooks/useAuthContext.tsx` — Add 5s timeout to session check
-- `src/services/MarketDataProvider.ts` — Add 8s timeout to getEvents()
-
-## Expected Result
-
-In the Lovable preview:
-- After ~5s, auth resolves (no user) and the page unblocks
-- After ~8s, markets fall back to mock data and show real cards instead of skeletons
-- Chat button appears
-- On the published site: no change in behavior (requests complete well within timeouts)
+- `src/hooks/useAuth.ts` — Create an AuthContext provider pattern so one listener is shared across all consumers
+- `src/App.tsx` — Wrap app in AuthProvider
+- `src/hooks/useGlobalChat.ts` — Add try/catch around channel creation, add reconnect logic
+- `src/components/layout/Layout.tsx` — Wrap GlobalChat in a silent ErrorBoundary fallback
 

@@ -66,7 +66,7 @@ export const CardStyleDefault = memo(function CardStyleDefault({
         )}>
           {hasImage ? (
             <img 
-              src={optimizeImageUrl(event.imageUrl, { width: 80 })}
+              src={optimizeImageUrl(event.imageUrl, { width: 48 })}
               loading="lazy"
               decoding="async"
               alt=""

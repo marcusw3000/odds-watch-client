@@ -77,7 +77,7 @@ export const CardStyleButtons = memo(function CardStyleButtons({
                 statusInfo.canTrade && isHovered && "scale-110"
               )}
               style={{
-                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 80 })})`,
+                backgroundImage: `url(${optimizeImageUrl(event.imageUrl, { width: 48 })})`,
                 backgroundPosition: 'center',
               }}
             />

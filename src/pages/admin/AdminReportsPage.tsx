@@ -365,8 +365,8 @@ export function AdminReportsPage() {
                     <TableCell className="max-w-xs">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <Badge variant={report.source === 'suggestion' ? 'outline' : 'secondary'} className="text-xs">
-                            {report.source === 'suggestion' ? 'Sugestão' : 'Mercado'}
+                          <Badge variant={report.source === 'chat' ? 'default' : report.source === 'suggestion' ? 'outline' : 'secondary'} className="text-xs">
+                            {report.source === 'chat' ? '💬 Chat' : report.source === 'suggestion' ? 'Sugestão' : 'Mercado'}
                           </Badge>
                         </div>
                         <p className="text-sm font-medium truncate">

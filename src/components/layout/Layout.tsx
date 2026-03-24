@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
+import { GlobalChat } from '@/components/chat/GlobalChat';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { usePortfolioRefreshListener } from '@/hooks/usePortfolioRefresh';
 import { queryKeys } from '@/lib/queryKeys';
@@ -54,6 +55,7 @@ export function Layout() {
       </main>
       <Footer />
       <BottomNav />
+      <GlobalChat />
     </div>
   );
 }

@@ -85,19 +85,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
+    // Timeout to unblock UI if getSession hangs (e.g. Lovable preview proxy)
+    const authTimeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('[Auth] Session check timed out after 5s, unblocking UI');
+        setLoading(false);
+      }
+    }, 5000);
+
     const checkSession = async () => {
       if (!mounted) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
 
-      console.log('[Auth] Initial session check:', session?.user?.email);
-      setSession(session);
-      setUser(session?.user ?? null);
+        console.log('[Auth] Initial session check:', session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
-        checkAdminRole(session.user.id);
-      } else {
-        setLoading(false);
+        if (session?.user) {
+          checkAdminRole(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.warn('[Auth] Session check failed:', err);
+        if (mounted) setLoading(false);
+      } finally {
+        clearTimeout(authTimeoutId);
       }
     };
 

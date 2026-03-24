@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, Briefcase, Lightbulb, Headphones, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyLeaderboardProfile } from '@/hooks/useLeaderboard';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { DepositModal } from '@/components/payments/DepositModal';
+const DepositModal = lazy(() => import('@/components/payments/DepositModal').then(m => ({ default: m.DepositModal })));
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -357,7 +357,9 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
 
       {/* Deposit Modal */}
       {showDepositModal && (
-        <DepositModal onClose={() => setShowDepositModal(false)} />
+        <Suspense fallback={null}>
+          <DepositModal onClose={() => setShowDepositModal(false)} />
+        </Suspense>
       )}
     </header>
   );

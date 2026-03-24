@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Briefcase, RefreshCw, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { PortfolioOverview } from '@/components/portfolio/PortfolioOverview';
 import { ContractsList } from '@/components/portfolio/ContractsList';
 import { BalanceHistoryFiltered } from '@/components/portfolio/BalanceHistoryFiltered';
 import { PaymentHistory } from '@/components/payments/PaymentHistory';
-import { DepositModal } from '@/components/payments/DepositModal';
+const DepositModal = lazy(() => import('@/components/payments/DepositModal').then(m => ({ default: m.DepositModal })));
 import { WithdrawModal } from '@/components/payments/WithdrawModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';

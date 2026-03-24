@@ -64,8 +64,22 @@
         <header style="height:64px;border-bottom:1px solid hsl(215 20% 15%);display:flex;align-items:center;padding:0 1rem">
           <h1 style="font-size:1.25rem;font-weight:700;color:hsl(210 40% 98%);margin:0">Mercado de Previsões</h1>
         </header>
-        <main style="flex:1;display:flex;align-items:center;justify-content:center">
-          <p style="color:hsl(215 20% 65%);font-size:0.875rem">Carregando...</p>
+        <main style="flex:1;padding:1.5rem 1rem;max-width:1400px;margin:0 auto;width:100%">
+          <!-- Skeleton filter bar -->
+          <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem">
+            <div style="width:80px;height:36px;border-radius:8px;background:hsl(215 20% 12%)"></div>
+            <div style="width:80px;height:36px;border-radius:8px;background:hsl(215 20% 12%)"></div>
+            <div style="width:80px;height:36px;border-radius:8px;background:hsl(215 20% 12%)"></div>
+          </div>
+          <!-- Skeleton market cards grid -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem">
+            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
+            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
+            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
+            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
+            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
+            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
+          </div>
         </main>
         <footer style="border-top:1px solid hsl(220 14% 18%);height:137px;contain:layout;padding:1.5rem 1rem">
           <div style="max-width:1400px;margin:0 auto">

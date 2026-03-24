@@ -66,7 +66,7 @@ export function useGlobalChat() {
   // Hourly cleanup
   useEffect(() => {
     const interval = setInterval(() => {
-      const cutoff = Date.now() - HOUR_MS;
+      const cutoff = Date.now() - RETENTION_MS;
       setMessages(prev => prev.filter(m => m.timestamp > cutoff));
     }, 60_000); // check every minute
     return () => clearInterval(interval);

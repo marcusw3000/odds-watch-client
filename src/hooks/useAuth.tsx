@@ -1,3 +1,4 @@
+// Auth singleton provider — single listener for the entire app
 import { useState, useEffect, useContext, createContext, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';

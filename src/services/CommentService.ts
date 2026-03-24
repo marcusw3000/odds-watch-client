@@ -622,7 +622,7 @@ export const CommentService = {
     reportId: string, 
     status: CommentReport['status'],
     actionTaken?: CommentReport['actionTaken'],
-    source: 'market' | 'suggestion' = 'market'
+    source: 'market' | 'suggestion' | 'chat' = 'market'
   ): Promise<void> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {

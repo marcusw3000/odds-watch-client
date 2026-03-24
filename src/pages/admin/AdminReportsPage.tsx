@@ -210,7 +210,8 @@ export function AdminReportsPage() {
       report.comment?.content?.toLowerCase().includes(query) ||
       report.commentAuthorName?.toLowerCase().includes(query) ||
       report.reporterName?.toLowerCase().includes(query) ||
-      report.marketTitle?.toLowerCase().includes(query)
+      report.marketTitle?.toLowerCase().includes(query) ||
+      report.suggestionTitle?.toLowerCase().includes(query)
     );
   });
 

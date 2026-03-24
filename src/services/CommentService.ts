@@ -701,13 +701,17 @@ export const CommentService = {
 
   // Admin: Get pending reports count (from both tables)
   async getPendingReportsCount(): Promise<number> {
-    const [marketCount, suggestionCount] = await Promise.all([
+    const [marketCount, suggestionCount, chatCount] = await Promise.all([
       supabase
         .from('comment_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'PENDING'),
       supabase
         .from('suggestion_comment_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'PENDING'),
+      supabase
+        .from('chat_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'PENDING')
     ]);
@@ -718,7 +722,10 @@ export const CommentService = {
     if (suggestionCount.error) {
       console.error('Error fetching suggestion pending reports count:', suggestionCount.error);
     }
+    if (chatCount.error) {
+      console.error('Error fetching chat pending reports count:', chatCount.error);
+    }
 
-    return (marketCount.count || 0) + (suggestionCount.count || 0);
+    return (marketCount.count || 0) + (suggestionCount.count || 0) + (chatCount.count || 0);
   },
 };

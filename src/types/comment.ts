@@ -34,7 +34,7 @@ export interface CommentReport {
   marketTitle?: string;
   suggestionTitle?: string;
   // Source type
-  source: 'market' | 'suggestion';
+  source: 'market' | 'suggestion' | 'chat';
   suggestionId?: string;
 }
 

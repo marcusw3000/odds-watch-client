@@ -21,7 +21,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessageItem({ message, isOwn, onReport }: ChatMessageProps) {
-  const time = new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+  const time = new Date(message.created_at).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -30,13 +30,12 @@ export function ChatMessageItem({ message, isOwn, onReport }: ChatMessageProps) 
     <div className={cn('flex flex-col gap-0.5 max-w-[85%] group', isOwn ? 'self-end items-end' : 'self-start items-start')}>
       <div className="flex items-center gap-1.5 px-1">
         <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[120px]">
-          {isOwn ? 'Você' : message.display_name}
+          {isOwn ? 'Você' : message.username}
         </span>
         <span className="text-[10px] text-muted-foreground/60">{time}</span>
       </div>
 
       <div className="flex items-end gap-1">
-        {isOwn && !isOwn && null}
         <div
           className={cn(
             'rounded-2xl px-3 py-1.5 text-sm break-words whitespace-pre-wrap',

@@ -362,11 +362,15 @@ export function MarketDetailPage() {
                   <Calendar className="h-4 w-4" />
                   Evento
                 </div>
-                <p className="font-semibold">
+                <p className={cn(
+                  "font-semibold",
+                  statusInfo.timeToEvent !== null && statusInfo.timeToEvent > 0 && statusInfo.timeToEvent < 86400 && "font-mono tabular-nums text-warning"
+                )}>
                   {(() => {
-                    const days = differenceInDays(event.eventAt, new Date());
-                    if (days < 0) return 'Encerrado';
-                    if (days === 0) return 'Hoje';
+                    const s = statusInfo.timeToEvent;
+                    if (s === null || s <= 0) return 'Encerrado';
+                    if (s < 86400) return formatCountdown(s);
+                    const days = Math.floor(s / 86400);
                     if (days === 1) return 'Amanhã';
                     return `em ${days} dias`;
                   })()}

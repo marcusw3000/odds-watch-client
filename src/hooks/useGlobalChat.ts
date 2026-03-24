@@ -11,7 +11,7 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-const HOUR_MS = 60 * 60 * 1000;
+const RETENTION_MS = 6 * 60 * 60 * 1000; // 6 horas
 const RATE_LIMIT_MS = 2000;
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -66,7 +66,7 @@ export function useGlobalChat() {
   // Hourly cleanup
   useEffect(() => {
     const interval = setInterval(() => {
-      const cutoff = Date.now() - HOUR_MS;
+      const cutoff = Date.now() - RETENTION_MS;
       setMessages(prev => prev.filter(m => m.timestamp > cutoff));
     }, 60_000); // check every minute
     return () => clearInterval(interval);

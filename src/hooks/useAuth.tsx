@@ -143,10 +143,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const defaultAuthState: AuthState = {
+  user: null,
+  session: null,
+  isAdmin: false,
+  loading: true,
+  signIn: async () => ({ error: new Error('Auth not ready') }),
+  signUp: async () => ({ error: new Error('Auth not ready') }),
+  signOut: async () => ({ error: new Error('Auth not ready') }),
+};
+
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return ctx;
+  return ctx ?? defaultAuthState;
 }

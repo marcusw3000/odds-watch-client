@@ -1,50 +1,54 @@
 
 
-# Implementar Denúncia de Mensagens do Chat
+# Integrar Denúncias do Chat na Página Admin de Denúncias
 
 ## Problema
-A função `reportMessage` no hook `useGlobalChat.ts` apenas exibe um toast falso — não salva nada no banco de dados.
+A tabela `chat_reports` existe e funciona, mas o `CommentService.getReports()` só busca de `comment_reports` e `suggestion_comment_reports`. As denúncias do chat nunca aparecem na tela do admin.
 
-## Solução
+Além disso, a tabela `chat_reports` tem um schema simples (sem `status`, `reviewed_by`, `reviewed_at`, `action_taken`), o que impede o admin de processar/dispensar denúncias do chat.
 
-### 1. Migration SQL — tabela `chat_reports`
+## Plano
 
-Criar tabela `chat_reports` com:
-- `id uuid PK default gen_random_uuid()`
-- `message_id uuid NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE`
-- `reporter_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
-- `reason text NOT NULL DEFAULT 'inappropriate'`
-- `created_at timestamptz NOT NULL DEFAULT now()`
-- Constraint UNIQUE em `(message_id, reporter_id)` para evitar denúncias duplicadas
+### 1. Migration SQL — adicionar colunas de moderação ao `chat_reports`
 
-RLS:
-- SELECT: admins podem ver todas as denúncias
-- INSERT: usuários autenticados podem inserir apenas com `auth.uid() = reporter_id`
-- Sem UPDATE/DELETE para usuários comuns
+Adicionar as colunas que faltam para permitir ações de moderação:
+- `status text NOT NULL DEFAULT 'PENDING'`
+- `reviewed_by uuid REFERENCES auth.users(id)`
+- `reviewed_at timestamptz`
+- `action_taken text`
+- `description text` (detalhes opcionais do reporter)
 
-### 2. Atualizar `useGlobalChat.ts`
+Adicionar policy de UPDATE para admins.
 
-Trocar a função `reportMessage` de toast fake para um insert real:
-```ts
-const reportMessage = useCallback(async (messageId: string) => {
-  if (!user) return;
-  const { error } = await supabase
-    .from('chat_reports')
-    .insert({ message_id: messageId, reporter_id: user.id });
-  if (error?.code === '23505') {
-    toast.info('Você já reportou esta mensagem');
-  } else if (error) {
-    toast.error('Erro ao reportar mensagem');
-  } else {
-    toast.success('Mensagem reportada. Obrigado!');
-  }
-}, [user]);
-```
+### 2. Atualizar `CommentService.getReports()` 
 
-### Arquivos modificados
+Adicionar uma terceira query para `chat_reports` com join na tabela `messages`:
+- Buscar `chat_reports` + `messages:message_id (id, content, user_id, username)`
+- Mapear para `CommentReport[]` com `source: 'chat'`
+- Incluir no merge final e ordenação
+
+### 3. Atualizar `CommentService.updateReportStatus()`
+
+Adicionar suporte para `source === 'chat'`:
+- Atualizar `chat_reports` (status, reviewed_by, reviewed_at, action_taken)
+- Para ação `deleted`: deletar a mensagem da tabela `messages`
+
+### 4. Atualizar tipo `CommentReport` em `src/types/comment.ts`
+
+- Expandir `source` para incluir `'chat'`: `source: 'market' | 'suggestion' | 'chat'`
+
+### 5. Atualizar `AdminReportsPage.tsx`
+
+- Adicionar badge "Chat" para denúncias com `source === 'chat'`
+- Mostrar username da mensagem ao invés de link para mercado/sugestão
+- Título da página: "Denúncias de Comentários e Chat"
+
+## Arquivos modificados
 
 | Arquivo | Ação |
 |---|---|
-| Nova migration SQL | Criar tabela `chat_reports` + RLS |
-| `src/hooks/useGlobalChat.ts` | Implementar `reportMessage` real |
+| Nova migration SQL | Adicionar colunas de moderação ao `chat_reports` + UPDATE policy |
+| `src/types/comment.ts` | Adicionar `'chat'` ao tipo `source` |
+| `src/services/CommentService.ts` | Buscar e processar `chat_reports` |
+| `src/pages/admin/AdminReportsPage.tsx` | Exibir denúncias do chat com badge |
 

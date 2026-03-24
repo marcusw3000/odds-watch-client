@@ -1,37 +1,70 @@
 
-Problema real identificado: não é só o chat. O preview ainda está preso em skeletons porque o browser continua tentando carregar o módulo antigo `src/hooks/useAuth.ts` e recebe 404. Eu confirmei isso no console remoto:
 
-```text
-Failed to load resource: 404 ()
-.../src/hooks/useAuth.ts?t=...
+## Problem
+
+The Lovable preview environment uses a fetch proxy that causes Supabase requests to **hang indefinitely** (never resolve, never error). This means:
+
+1. `supabase.auth.getSession()` hangs → `loading` stays `true` forever in AuthProvider
+2. `supabase.from('markets').select('*')` hangs → `isLoadingMarkets` stays `true` → skeletons forever
+3. The chat button never appears because the entire component tree is stuck
+
+The published site works fine because it doesn't use the proxy. The code already has fallback to mock data on **errors**, but hanging requests never trigger the error path.
+
+## Solution: Add timeouts so hanging requests fail gracefully
+
+### 1. Add auth initialization timeout (useAuthContext.tsx)
+
+Add a 5-second timeout to `checkSession`. If `getSession()` doesn't resolve in time, set `loading = false` with `user = null`. This unblocks the entire app.
+
+```typescript
+// Inside checkSession:
+const timeoutId = setTimeout(() => {
+  if (mounted && loading) {
+    console.warn('[Auth] Session check timed out');
+    setLoading(false);
+  }
+}, 5000);
 ```
 
-Como consequência, a árvore de auth quebra antes de estabilizar, vários componentes não inicializam corretamente e a tela fica no estado de carregamento.
+### 2. Add timeout wrapper to MarketDataProvider.getEvents() (MarketDataProvider.ts)
 
-Plano mínimo e seguro:
+Wrap the Supabase query in a `Promise.race` with a 8-second timeout. If it hangs, fall back to `mockMarkets` (which already exist in the code).
 
-1. Restaurar um ponto de import estável para `@/hooks/useAuth`
-   - Criar `src/hooks/useAuth.ts` novamente como arquivo “shim” estável.
-   - Esse arquivo deve apenas reexportar `useAuth` e `AuthProvider` de um novo arquivo base, sem JSX.
+```typescript
+async getEvents(): Promise<MarketEvent[]> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Request timeout')), 8000)
+  );
 
-2. Mover a implementação atual para um nome novo
-   - Renomear a implementação atual para algo como `src/hooks/useAuthContext.tsx`.
-   - Manter ali toda a lógica existente de `AuthProvider`, `AuthContext`, `defaultAuthState` e `useAuth`.
+  try {
+    const { data, error } = await Promise.race([
+      supabase.from('markets').select('*').order('created_at', { ascending: false }),
+      timeout,
+    ]);
+    // ... existing logic
+  } catch (err) {
+    console.error('Error fetching markets:', err);
+    return mockMarkets; // Already exists as fallback
+  }
+}
+```
 
-3. Atualizar imports para usar o ponto estável
-   - Padronizar imports do app para continuarem apontando para `@/hooks/useAuth`.
-   - `App.tsx` continuará importando `AuthProvider` desse caminho estável.
+### 3. No other changes needed
 
-4. Preservar os guards já adicionados
-   - Manter `useAuth()` retornando `defaultAuthState` quando o contexto ainda não estiver disponível.
-   - Manter o `ChatErrorBoundary` com botão fallback, porque isso continua sendo útil se o chat falhar isoladamente.
+- `ChatErrorBoundary` and `defaultAuthState` guards are already in place
+- `useGlobalChat` already has reconnection logic
+- The chat button will render once the Layout component unblocks
 
-5. Verificação esperada após a correção
-   - O 404 de `useAuth.ts` desaparece.
-   - A home deixa de ficar presa em skeletons.
-   - O botão do chat volta a aparecer após recarregar com F5.
-   - O problema fica resolvido de forma robusta, sem depender de limpar cache/HMR manualmente.
+## Files Changed
 
-Detalhe técnico importante:
-- A correção anterior atacou o sintoma, mas não a compatibilidade do caminho antigo.
-- O jeito mais seguro é reintroduzir `src/hooks/useAuth.ts` como “entrypoint” permanente e mover a implementação JSX para outro arquivo com nome diferente. Assim, mesmo que o navegador/dev server ainda peça `useAuth.ts`, o arquivo existe e responde corretamente.
+- `src/hooks/useAuthContext.tsx` — Add 5s timeout to session check
+- `src/services/MarketDataProvider.ts` — Add 8s timeout to getEvents()
+
+## Expected Result
+
+In the Lovable preview:
+- After ~5s, auth resolves (no user) and the page unblocks
+- After ~8s, markets fall back to mock data and show real cards instead of skeletons
+- Chat button appears
+- On the published site: no change in behavior (requests complete well within timeouts)
+

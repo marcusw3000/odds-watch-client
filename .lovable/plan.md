@@ -1,26 +1,38 @@
 
 
-# Aumentar tempo de retencao do chat para 6 horas
+## Analysis
 
-## Situacao atual
+The GlobalChat floating button disappears on F5 refresh. After investigation:
 
-O chat limpa mensagens com mais de 1 hora (`HOUR_MS = 60 * 60 * 1000`). O array local e limitado a 200 mensagens. A verificacao roda a cada 60 segundos.
+1. **GlobalChat renders inside Layout** — it's always rendered, with no conditional logic that would hide it
+2. **The floating button** uses `fixed bottom-20 right-4 z-40` positioning and only hides when `isOpen` is true (via `isOpen && 'hidden'`)
+3. **useGlobalChat** creates a Supabase Realtime channel on mount — if this throws during initialization (e.g., before Supabase client is fully ready on refresh), the component crashes silently
+4. **No ErrorBoundary** wraps GlobalChat specifically, so an error would propagate to the top-level ErrorBoundary and crash the entire page — BUT the page IS rendering (skeletons visible), so the error must be non-fatal or the component just fails to render
+5. **Console shows 22+ duplicate SIGNED_IN events** — each `useAuth()` hook instance creates its own `onAuthStateChange` listener, causing excessive re-renders during session recovery on refresh
 
-## Impacto de performance
+## Root Cause
 
-O custo e minimo: o array guarda no maximo 200 mensagens (limite ja existente no `slice(-200)`). Mesmo com 6 horas de retencao, o limite de 200 mensagens garante que a memoria nunca cresce alem disso. A limpeza a cada 60 segundos filtra um array de no maximo 200 itens -- insignificante.
+Most likely: the Supabase channel subscription in `useGlobalChat` encounters a transient error during page refresh (when auth session is being restored), causing the component to fail silently. The component has no error recovery mechanism.
 
-## Alteracao
+## Plan
 
-**Arquivo**: `src/hooks/useGlobalChat.ts`
+### 1. Wrap GlobalChat in a dedicated ErrorBoundary (Layout.tsx)
+Add a small ErrorBoundary around GlobalChat that renders nothing on error (instead of crashing the page), with auto-retry after a short delay.
 
-Trocar `HOUR_MS` de 1 hora para 6 horas:
+### 2. Add defensive error handling in useGlobalChat (useGlobalChat.ts)
+- Wrap channel subscription in try/catch
+- Add error state and reconnection logic if channel fails
+- Handle the case where the component mounts before auth is fully resolved
 
-```typescript
-const RETENTION_MS = 6 * 60 * 60 * 1000; // 6 horas
-```
+### 3. Fix duplicate auth listeners (useAuth.ts)
+The 22+ SIGNED_IN events indicate every component calling `useAuth()` creates its own listener. Convert `useAuth` to use a shared singleton pattern (React context or module-level subscription) so only one listener exists. This reduces re-renders on refresh and prevents race conditions.
 
-Atualizar a referencia no cleanup interval para usar `RETENTION_MS` em vez de `HOUR_MS`.
+## Technical Details
 
-Uma unica linha de constante muda. Zero impacto em performance porque o array ja esta limitado a 200 mensagens independentemente do tempo.
+**File changes:**
+
+- `src/hooks/useAuth.ts` — Create an AuthContext provider pattern so one listener is shared across all consumers
+- `src/App.tsx` — Wrap app in AuthProvider
+- `src/hooks/useGlobalChat.ts` — Add try/catch around channel creation, add reconnect logic
+- `src/components/layout/Layout.tsx` — Wrap GlobalChat in a silent ErrorBoundary fallback
 

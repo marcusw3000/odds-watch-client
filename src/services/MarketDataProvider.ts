@@ -1,4 +1,4 @@
-import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption, RecurrenceType } from '@/types/market';
+import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, MultiOptionHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption, RecurrenceType } from '@/types/market';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   getPriceYes, 

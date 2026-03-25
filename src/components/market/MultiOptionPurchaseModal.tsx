@@ -3,7 +3,7 @@ import { X, RefreshCw, Coins, Info, AlertCircle, Zap } from 'lucide-react';
 import { MarketEvent, MarketOption } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
@@ -347,17 +347,6 @@ export function MultiOptionPurchaseModal({
             />
           </div>
 
-          {/* Slider */}
-          {maxAmount > 0 && (
-            <Slider
-              value={[amountNum]}
-              min={0}
-              max={Math.floor(maxAmount)}
-              step={1}
-              onValueChange={([val]) => setAmount(String(val))}
-              className="py-2"
-            />
-          )}
 
           {/* Quick Buttons */}
           <div className="flex gap-2">

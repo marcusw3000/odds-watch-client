@@ -4,7 +4,7 @@ import { X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { MarketEvent, UserContract } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
 import { getQuote as getLMSRQuote, getSellQuote as getLMSRSellQuote, getSharesForCost, TradeQuote } from '@/services/LMSRCalculator';

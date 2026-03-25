@@ -104,7 +104,9 @@ function getNotificationLink(notification: Notification): string | null {
     
     case 'SUGGESTION_COMMENT_MENTION':
     case 'SUGGESTION_COMMENT_REPLY':
-      return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : null;
+    case 'SUGGESTION_APPROVED':
+    case 'SUGGESTION_REJECTED':
+      return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : '/suggestions';
     
     case 'DEPOSIT_CONFIRMED':
     case 'WITHDRAWAL_COMPLETED':

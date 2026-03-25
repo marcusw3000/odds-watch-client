@@ -1,31 +1,24 @@
 
 
-# Notificar Autor quando Sugestão for Aprovada/Rejeitada
+# Adicionar Link nas Notificações de Sugestão Aprovada/Rejeitada
 
 ## O que será feito
 
-Enviar notificação in-app ao autor da sugestão quando um admin aprovar ou rejeitar.
+Adicionar navegação para a página da sugestão ao clicar nas notificações de aprovação/rejeição. A infraestrutura já existe — só falta mapear os dois tipos no switch de `getNotificationLink`.
 
-## Arquivos a modificar
+## Arquivo: `src/components/notifications/NotificationBell.tsx`
 
-| Arquivo | Ação |
-|---|---|
-| `src/types/notification.ts` | Adicionar tipos `SUGGESTION_APPROVED` e `SUGGESTION_REJECTED` |
-| `src/services/NotificationService.ts` | Adicionar helpers `notifySuggestionApproved` e `notifySuggestionRejected` |
-| `src/pages/admin/AdminSuggestionsPage.tsx` | Chamar notificação após approve/reject bem-sucedidos |
+Adicionar dois cases no `switch` da função `getNotificationLink` (~linha 105-107), junto com os outros tipos de sugestão:
 
-## Detalhes
+```ts
+case 'SUGGESTION_COMMENT_MENTION':
+case 'SUGGESTION_COMMENT_REPLY':
+case 'SUGGESTION_APPROVED':
+case 'SUGGESTION_REJECTED':
+  return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : '/suggestions';
+```
 
-1. **Tipos**: Adicionar `'SUGGESTION_APPROVED' | 'SUGGESTION_REJECTED'` ao union `NotificationType`.
+Os dados `suggestion_id` já são incluídos no `data` das notificações pelo `NotificationService`. A função `handleNotificationClick` já usa `getNotificationLink` para navegar e marcar como lida.
 
-2. **NotificationService**: Duas novas funções:
-   - `notifySuggestionApproved(userId, suggestionId, suggestionTitle)` — tipo `SUGGESTION_APPROVED`, com `sendEmail: true`
-   - `notifySuggestionRejected(userId, suggestionId, suggestionTitle, reason)` — tipo `SUGGESTION_REJECTED`, com `sendEmail: true`
-
-3. **AdminSuggestionsPage**: Após `SuggestionService.reviewSuggestion` retornar com sucesso:
-   - Em `handleApprove`: chamar `notifySuggestionApproved(selectedSuggestion.user_id, selectedSuggestion.id, selectedSuggestion.title)`
-   - Em `handleReject`: chamar `notifySuggestionRejected(selectedSuggestion.user_id, selectedSuggestion.id, selectedSuggestion.title, adminNotes)`
-   - Falha na notificação não bloqueia o fluxo (try/catch isolado)
-
-4. **Migration**: Adicionar os novos valores ao enum `notification_type` no banco se existir como enum PostgreSQL.
+Mudança de 2 linhas em 1 arquivo.
 

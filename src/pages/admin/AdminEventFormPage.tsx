@@ -290,6 +290,22 @@ export function AdminEventFormPage() {
           })) : undefined,
         });
         toast.success('Evento criado com sucesso');
+
+        // Link suggestion to market and notify author
+        if (suggestionId && suggestionDataRef.current) {
+          try {
+            await SuggestionService.implementSuggestion(suggestionId, result.event.id);
+            await notifySuggestionImplemented(
+              suggestionDataRef.current.user_id,
+              suggestionId,
+              suggestionDataRef.current.title,
+              result.event.id
+            );
+          } catch (linkError) {
+            console.error('Error linking suggestion to market:', linkError);
+          }
+        }
+
         navigate(`/admin/events/${result.event.id}`);
       }
     } catch (error: unknown) {

@@ -30,7 +30,7 @@ const LGPDPage = lazy(() => import("./pages/LGPDPage").then(m => ({ default: m.L
 const FAQPage = lazy(() => import("./pages/FAQPage").then(m => ({ default: m.FAQPage })));
 const CopyTradersPage = lazy(() => import("./pages/CopyTradersPage").then(m => ({ default: m.CopyTradersPage })));
 const TraderDashboardPage = lazy(() => import("./pages/TraderDashboardPage").then(m => ({ default: m.TraderDashboardPage })));
-const PartnershipPresentationPage = lazy(() => import("./pages/PartnershipPresentationPage"));
+
 
 // Lazy load admin pages for bundle optimization
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));

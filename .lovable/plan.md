@@ -1,26 +1,57 @@
 
 
-# Adicionar Templates de Email para Notificações de Sugestão
+# Fix: Notificação e Email de Sugestão Implementada
 
-## Problema
+## Problema Identificado
 
-A edge function `send-notification-email` não possui templates específicos para os tipos `SUGGESTION_IMPLEMENTED`, `SUGGESTION_APPROVED` e `SUGGESTION_REJECTED`. Quando esses tipos são enviados, o sistema usa o template `DEFAULT` genérico — que funciona mas produz um email sem contexto visual. Além disso, se o perfil do usuário não tiver email cadastrado, a função retorna 404 silenciosamente.
+**Race condition no fetch dos dados da sugestão.** O `useEffect` na linha 59 busca `user_id` e `title` da sugestão de forma assíncrona, mas não há garantia de que o fetch termina antes do admin submeter o formulário. Se `suggestionDataRef.current` for `null`, o bloco `if (suggestionId && suggestionDataRef.current)` na linha 295 é ignorado silenciosamente — sem notificação, sem email, sem erro no console.
 
-## O que será feito
+Possível causa secundária: a edge function `send-notification-email` pode não ter sido redeployada após a adição dos templates, ou a `RESEND_API_KEY` pode não estar configurada nos secrets do Supabase.
 
-Adicionar 3 templates de email dedicados à edge function `send-notification-email` e redeployar.
+## Solução
 
-## Arquivo: `supabase/functions/send-notification-email/index.ts`
+### 1. `src/pages/admin/AdminEventFormPage.tsx` — Eliminar race condition
 
-Adicionar 3 entradas no objeto `emailTemplates`:
+Trocar o `useEffect` + `ref` por um fetch direto **dentro do `handleSubmit`**, garantindo que os dados existam antes de notificar:
 
-1. **`SUGGESTION_APPROVED`** — Assunto: "✅ Sugestão Aprovada", corpo com título da sugestão, botão "Ver sugestão" linkando para `/suggestions/{suggestion_id}`
+```ts
+// REMOVER: useEffect + suggestionDataRef
 
-2. **`SUGGESTION_REJECTED`** — Assunto: "Sugestão Não Aprovada", corpo com título e motivo (se houver), botão "Ver sugestão"
+// NO handleSubmit, após createEventMutation.mutateAsync retornar:
+if (suggestionId) {
+  try {
+    const { data: suggestionData } = await supabase
+      .from('market_suggestions')
+      .select('user_id, title')
+      .eq('id', suggestionId)
+      .single();
 
-3. **`SUGGESTION_IMPLEMENTED`** — Assunto: "🚀 Sua sugestão virou mercado!", corpo com título da sugestão, botão "Ver mercado" linkando para `/market/{market_id}`
+    if (suggestionData) {
+      await SuggestionService.implementSuggestion(suggestionId, result.event.id);
+      await notifySuggestionImplemented(
+        suggestionData.user_id,
+        suggestionId,
+        suggestionData.title,
+        result.event.id
+      );
+    }
+  } catch (linkError) {
+    console.error('Error linking suggestion:', linkError);
+  }
+}
+```
 
-Cada template segue o mesmo padrão visual dos existentes (header PredictMarket roxo, card de destaque, botão CTA, rodapé).
+### 2. Redeploy da edge function `send-notification-email`
 
-Após editar, a edge function será redeployada.
+Redeployar para garantir que os templates `SUGGESTION_IMPLEMENTED`, `SUGGESTION_APPROVED` e `SUGGESTION_REJECTED` estejam ativos no runtime.
+
+### 3. Verificar `RESEND_API_KEY`
+
+Confirmar que o secret está configurado nas edge functions do Supabase. Sem ele, nenhum email é enviado.
+
+## Resumo das mudanças
+
+- **1 arquivo editado**: `AdminEventFormPage.tsx` — remover `useEffect`/`useRef` da sugestão, mover fetch para dentro do `handleSubmit`
+- **1 redeploy**: `send-notification-email`
+- **1 verificação**: `RESEND_API_KEY` nos secrets
 

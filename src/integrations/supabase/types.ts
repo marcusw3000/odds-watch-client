@@ -2374,7 +2374,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           best_streak?: number | null
-          best_trade_profit?: number | null
+          best_trade_profit?: never
           bio?: string | null
           created_at?: string | null
           current_streak?: number | null
@@ -2382,21 +2382,21 @@ export type Database = {
           id?: string | null
           is_copy_trader?: boolean | null
           is_public?: boolean | null
-          roi_percent?: number | null
+          roi_percent?: never
           show_profit?: boolean | null
           show_roi?: boolean | null
           show_trades?: boolean | null
           show_volume?: boolean | null
-          total_profit?: number | null
-          total_trades?: number | null
-          total_volume?: number | null
+          total_profit?: never
+          total_trades?: never
+          total_volume?: never
           updated_at?: string | null
-          winning_trades?: number | null
+          winning_trades?: never
         }
         Update: {
           avatar_url?: string | null
           best_streak?: number | null
-          best_trade_profit?: number | null
+          best_trade_profit?: never
           bio?: string | null
           created_at?: string | null
           current_streak?: number | null
@@ -2404,16 +2404,16 @@ export type Database = {
           id?: string | null
           is_copy_trader?: boolean | null
           is_public?: boolean | null
-          roi_percent?: number | null
+          roi_percent?: never
           show_profit?: boolean | null
           show_roi?: boolean | null
           show_trades?: boolean | null
           show_volume?: boolean | null
-          total_profit?: number | null
-          total_trades?: number | null
-          total_volume?: number | null
+          total_profit?: never
+          total_trades?: never
+          total_volume?: never
           updated_at?: string | null
-          winning_trades?: number | null
+          winning_trades?: never
         }
         Relationships: []
       }

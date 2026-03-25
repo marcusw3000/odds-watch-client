@@ -276,15 +276,23 @@ export function AdminEventFormPage() {
         toast.success('Evento criado com sucesso');
 
         // Link suggestion to market and notify author
-        if (suggestionId && suggestionDataRef.current) {
+        if (suggestionId) {
           try {
-            await SuggestionService.implementSuggestion(suggestionId, result.event.id);
-            await notifySuggestionImplemented(
-              suggestionDataRef.current.user_id,
-              suggestionId,
-              suggestionDataRef.current.title,
-              result.event.id
-            );
+            const { data: suggestionData } = await supabase
+              .from('market_suggestions')
+              .select('user_id, title')
+              .eq('id', suggestionId)
+              .single();
+
+            if (suggestionData) {
+              await SuggestionService.implementSuggestion(suggestionId, result.event.id);
+              await notifySuggestionImplemented(
+                suggestionData.user_id,
+                suggestionId,
+                suggestionData.title,
+                result.event.id
+              );
+            }
           } catch (linkError) {
             console.error('Error linking suggestion to market:', linkError);
           }

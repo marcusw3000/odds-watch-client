@@ -3,7 +3,7 @@ import { X, RefreshCw, Coins, Info, AlertCircle, Zap } from 'lucide-react';
 import { MarketEvent, MarketOption } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';

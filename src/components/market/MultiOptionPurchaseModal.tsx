@@ -347,17 +347,6 @@ export function MultiOptionPurchaseModal({
             />
           </div>
 
-          {/* Slider */}
-          {maxAmount > 0 && (
-            <Slider
-              value={[amountNum]}
-              min={0}
-              max={Math.floor(maxAmount)}
-              step={1}
-              onValueChange={([val]) => setAmount(String(val))}
-              className="py-2"
-            />
-          )}
 
           {/* Quick Buttons */}
           <div className="flex gap-2">

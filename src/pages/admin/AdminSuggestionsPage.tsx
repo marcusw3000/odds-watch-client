@@ -379,32 +379,7 @@ export function AdminSuggestionsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {suggestion.status === 'PENDING' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-success hover:text-success"
-                              onClick={() => {
-                                setSelectedSuggestion(suggestion);
-                                setAdminNotes('');
-                                handleApprove();
-                              }}
-                              title="Aprovar"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => openReviewModal(suggestion)}
-                              title="Rejeitar"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
+                        
                         {(suggestion.status === 'APPROVED' || suggestion.status === 'PENDING') && (
                           <Button
                             variant="ghost"

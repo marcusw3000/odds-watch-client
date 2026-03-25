@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Info, CalendarIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,11 +41,33 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { SuggestionService } from '@/services/SuggestionService';
+import { notifySuggestionImplemented } from '@/services/NotificationService';
 
 export function AdminEventFormPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const suggestionId = searchParams.get('suggestion_id');
   const navigate = useNavigate();
   const isEditing = Boolean(id);
+
+  // Suggestion data for linking after market creation
+  const suggestionDataRef = useRef<{ user_id: string; title: string } | null>(null);
+
+  // Fetch suggestion data when suggestion_id is present
+  useEffect(() => {
+    if (suggestionId) {
+      supabase
+        .from('market_suggestions')
+        .select('user_id, title')
+        .eq('id', suggestionId)
+        .single()
+        .then(({ data }) => {
+          if (data) suggestionDataRef.current = data;
+        });
+    }
+  }, [suggestionId]);
 
   // Fetch event data from Supabase when editing
   const { data: eventData, isLoading: loadingEvent, error: eventError } = useAdminEvent(id);
@@ -268,6 +290,22 @@ export function AdminEventFormPage() {
           })) : undefined,
         });
         toast.success('Evento criado com sucesso');
+
+        // Link suggestion to market and notify author
+        if (suggestionId && suggestionDataRef.current) {
+          try {
+            await SuggestionService.implementSuggestion(suggestionId, result.event.id);
+            await notifySuggestionImplemented(
+              suggestionDataRef.current.user_id,
+              suggestionId,
+              suggestionDataRef.current.title,
+              result.event.id
+            );
+          } catch (linkError) {
+            console.error('Error linking suggestion to market:', linkError);
+          }
+        }
+
         navigate(`/admin/events/${result.event.id}`);
       }
     } catch (error: unknown) {

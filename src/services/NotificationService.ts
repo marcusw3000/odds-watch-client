@@ -361,6 +361,23 @@ export async function notifyUserWarning(
   });
 }
 
+// Suggestion implemented notification
+export async function notifySuggestionImplemented(
+  userId: string,
+  suggestionId: string,
+  suggestionTitle: string,
+  marketId: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUGGESTION_IMPLEMENTED',
+    title: 'Sua sugestão virou mercado! 🚀',
+    message: `Sua sugestão "${suggestionTitle}" foi transformada em um mercado de previsão!`,
+    data: { suggestion_id: suggestionId, suggestion_title: suggestionTitle, market_id: marketId },
+    sendEmail: true,
+  });
+}
+
 // Support notifications
 export async function notifySupportReply(
   userId: string,

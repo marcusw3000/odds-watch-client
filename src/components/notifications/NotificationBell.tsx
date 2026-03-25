@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Check, CheckCheck, Trash2, TrendingUp, Trophy, Gift, 
   AlertCircle, Megaphone, Heart, MessageCircle, AtSign, Wallet,
-  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale, AlertTriangle
+  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale, AlertTriangle, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,7 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   SUGGESTION_COMMENT_REPLY: MessageCircle,
   SUGGESTION_APPROVED: CheckCircle,
   SUGGESTION_REJECTED: XCircle,
+  SUGGESTION_IMPLEMENTED: Rocket,
   ADMIN_NEW_TICKET: Headphones,
   ADMIN_NEW_REPORT: Flag,
   ADMIN_NEW_CONTESTATION: Scale,
@@ -76,6 +77,7 @@ const notificationColors: Record<NotificationType, string> = {
   SUGGESTION_COMMENT_REPLY: 'text-cyan-500 bg-cyan-500/10',
   SUGGESTION_APPROVED: 'text-green-500 bg-green-500/10',
   SUGGESTION_REJECTED: 'text-red-500 bg-red-500/10',
+  SUGGESTION_IMPLEMENTED: 'text-purple-500 bg-purple-500/10',
   ADMIN_NEW_TICKET: 'text-amber-500 bg-amber-500/10',
   ADMIN_NEW_REPORT: 'text-red-500 bg-red-500/10',
   ADMIN_NEW_CONTESTATION: 'text-orange-500 bg-orange-500/10',
@@ -107,6 +109,9 @@ function getNotificationLink(notification: Notification): string | null {
     case 'SUGGESTION_APPROVED':
     case 'SUGGESTION_REJECTED':
       return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : '/suggestions';
+    
+    case 'SUGGESTION_IMPLEMENTED':
+      return data?.market_id ? `/market/${data.market_id}` : '/suggestions';
     
     case 'DEPOSIT_CONFIRMED':
     case 'WITHDRAWAL_COMPLETED':

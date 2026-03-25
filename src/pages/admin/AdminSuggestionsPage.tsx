@@ -48,6 +48,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { SuggestionService } from '@/services/SuggestionService';
+import { notifySuggestionApproved, notifySuggestionRejected } from '@/services/NotificationService';
 import { Suggestion, SuggestionStatus } from '@/types/suggestion';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

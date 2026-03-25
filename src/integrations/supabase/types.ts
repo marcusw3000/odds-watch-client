@@ -2755,6 +2755,8 @@ export type Database = {
         | "USER_WARNING"
         | "SUPPORT_REPLY"
         | "SUPPORT_TICKET_RESOLVED"
+        | "SUGGESTION_APPROVED"
+        | "SUGGESTION_REJECTED"
       payment_method: "PIX" | "CARD" | "BOLETO"
       payment_status:
         | "PENDING"
@@ -2942,6 +2944,8 @@ export const Constants = {
         "USER_WARNING",
         "SUPPORT_REPLY",
         "SUPPORT_TICKET_RESOLVED",
+        "SUGGESTION_APPROVED",
+        "SUGGESTION_REJECTED",
       ],
       payment_method: ["PIX", "CARD", "BOLETO"],
       payment_status: [

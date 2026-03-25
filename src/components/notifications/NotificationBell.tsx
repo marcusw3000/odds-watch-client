@@ -110,6 +110,9 @@ function getNotificationLink(notification: Notification): string | null {
     case 'SUGGESTION_REJECTED':
       return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : '/suggestions';
     
+    case 'SUGGESTION_IMPLEMENTED':
+      return data?.market_id ? `/market/${data.market_id}` : '/suggestions';
+    
     case 'DEPOSIT_CONFIRMED':
     case 'WITHDRAWAL_COMPLETED':
     case 'WITHDRAWAL_FAILED':

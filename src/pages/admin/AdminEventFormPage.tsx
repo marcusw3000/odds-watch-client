@@ -52,22 +52,6 @@ export function AdminEventFormPage() {
   const navigate = useNavigate();
   const isEditing = Boolean(id);
 
-  // Suggestion data for linking after market creation
-  const suggestionDataRef = useRef<{ user_id: string; title: string } | null>(null);
-
-  // Fetch suggestion data when suggestion_id is present
-  useEffect(() => {
-    if (suggestionId) {
-      supabase
-        .from('market_suggestions')
-        .select('user_id, title')
-        .eq('id', suggestionId)
-        .single()
-        .then(({ data }) => {
-          if (data) suggestionDataRef.current = data;
-        });
-    }
-  }, [suggestionId]);
 
   // Fetch event data from Supabase when editing
   const { data: eventData, isLoading: loadingEvent, error: eventError } = useAdminEvent(id);

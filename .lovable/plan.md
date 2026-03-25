@@ -1,16 +1,18 @@
 
 
-# Remover Slider do MultiOptionPurchaseModal
+# Remover Slider do MinimalTradingCard
 
 ## Problema
-O `MultiOptionPurchaseModal` tem um `Slider` entre o input de valor e os botões rápidos, mas o padrão visual de referência (screenshot) e o `TradingModal` não usam slider — apenas input R$ + botões rápidos (+R$10, +R$50, +R$100, Max).
+O `MinimalTradingCard.tsx` (modal de compra/venda para mercados binários) ainda tem um `Slider` visual. O usuário quer padronizar removendo o slider e mantendo apenas o input R$ + botões de porcentagem (25%, 50%, 75%, 100%).
 
 ## Mudança
 
-### `src/components/market/MultiOptionPurchaseModal.tsx`
-- Remover o import do `Slider`
-- Remover o bloco do Slider (linhas 350-360) que renderiza `<Slider value={[amountNum]} ... />`
-- Manter input R$ + botões rápidos intactos
+### `src/components/market/MinimalTradingCard.tsx`
+- Remover import do `Slider`
+- Remover estados `sliderValue` e `isSliderDragging`
+- Remover o bloco visual do Slider (linhas 374-398) — manter os botões de porcentagem (25%, 50%, 75%, 100%) e o aviso de saldo
+- Simplificar `handleSliderChange` para receber apenas porcentagem dos botões (renomear para `handlePercentageClick`)
+- Remover sync do slider no `handleAmountChange`
 
-**1 arquivo, ~12 linhas removidas.**
+**1 arquivo, ~30 linhas removidas/simplificadas.**
 

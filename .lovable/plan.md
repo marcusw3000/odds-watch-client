@@ -1,22 +1,31 @@
 
 
-# Excluir a Página /parceria
+# Remover Botão de Aprovação Rápida
 
 ## O que será feito
 
-Remover completamente a página de apresentação para parceiros e todos os arquivos relacionados.
+Remover o botão de aprovação rápida (ícone ✓ verde) da tabela de sugestões. Toda aprovação deve passar pelo modal de revisão do administrador.
 
-## Arquivos a modificar
+## Arquivo: `src/pages/admin/AdminSuggestionsPage.tsx`
 
-| Arquivo | Ação |
-|---|---|
-| `src/pages/PartnershipPresentationPage.tsx` | Deletar |
-| `src/lib/generatePartnershipPDF.ts` | Deletar |
-| `src/App.tsx` | Remover import e rota `/parceria` |
+Remover o bloco do botão de aprovação rápida (linhas ~253-265):
 
-## Detalhes
+```tsx
+// REMOVER este botão inteiro:
+<Button
+  variant="ghost"
+  size="icon"
+  className="text-success hover:text-success"
+  onClick={() => {
+    setSelectedSuggestion(suggestion);
+    setAdminNotes('');
+    handleApprove();
+  }}
+  title="Aprovar"
+>
+  <Check className="h-4 w-4" />
+</Button>
+```
 
-- Remover o lazy import do `PartnershipPresentationPage` (~linha 39)
-- Remover a `<Route path="/parceria" ...>` (~linha 159)
-- Deletar os dois arquivos de código da feature
+O botão de rejeição rápida (ícone X) também será removido pelo mesmo motivo — ambas as ações devem passar pelo modal de revisão. Ficam apenas o botão "Ver detalhes" (olho) e o botão "Criar Mercado" (+).
 

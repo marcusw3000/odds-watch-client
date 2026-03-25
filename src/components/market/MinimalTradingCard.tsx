@@ -154,36 +154,28 @@ export function MinimalTradingCard({
   // Calculate max value for slider
   const maxValue = mode === 'buy' ? userBalance : currentQuantity;
 
-  // Memoize active percentage to avoid recalculations
-  const activePercentage = useMemo(() => Math.round(sliderValue[0]), [sliderValue]);
-
-  // Slider change handler - batched updates
-  const handleSliderChange = useCallback((value: number[]) => {
-    const percentage = value[0] / 100;
+  // Percentage click handler
+  const handlePercentageClick = useCallback((pct: number) => {
+    const percentage = pct / 100;
     const newAmount = mode === 'buy'
       ? (percentage * userBalance).toFixed(2)
       : Math.floor(percentage * currentQuantity).toString();
     
-    React.startTransition(() => {
-      setSliderValue(value);
-      setAmount(newAmount === '0.00' || newAmount === '0' ? '' : newAmount);
-      setError(null);
-    });
+    setAmount(newAmount === '0.00' || newAmount === '0' ? '' : newAmount);
+    setError(null);
   }, [mode, userBalance, currentQuantity]);
 
-  // Handle input change - sync slider only if not dragging
+  // Active percentage based on current amount
+  const activePercentage = useMemo(() => {
+    if (maxValue <= 0) return 0;
+    const num = parseFloat(amount) || 0;
+    return Math.round((num / maxValue) * 100);
+  }, [amount, maxValue]);
+
   const handleAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAmount(value);
+    setAmount(e.target.value);
     setError(null);
-    
-    // Only sync slider if not currently dragging
-    if (!isSliderDragging && maxValue > 0) {
-      const num = parseFloat(value) || 0;
-      const pct = Math.min((num / maxValue) * 100, 100);
-      setSliderValue([Math.max(pct, 0)]);
-    }
-  }, [isSliderDragging, maxValue]);
+  }, []);
 
   const handleConfirm = useCallback(async () => {
     if (!quote || sharesFromAmount <= 0) {

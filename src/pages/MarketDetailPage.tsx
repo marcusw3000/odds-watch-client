@@ -56,6 +56,7 @@ export function MarketDetailPage() {
   
   const [event, setEvent] = useState<MarketEvent | null>(null);
   const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
+  const [multiOptionHistory, setMultiOptionHistory] = useState<MultiOptionHistoryPoint[]>([]);
   const [userBalance, setUserBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<Error | null>(null);

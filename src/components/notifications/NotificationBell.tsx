@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Check, CheckCheck, Trash2, TrendingUp, Trophy, Gift, 
   AlertCircle, Megaphone, Heart, MessageCircle, AtSign, Wallet,
-  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale, AlertTriangle
+  CheckCircle, XCircle, Clock, ChevronRight, Headphones, Flag, Scale, AlertTriangle, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

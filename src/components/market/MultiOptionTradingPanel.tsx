@@ -164,7 +164,7 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
                           )}
                           onClick={() => onBuyOption(option, 'NO')}
                         >
-                          NÃO {noPrice}¢
+                          Não {(100 / noPrice).toFixed(2)}x
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="left">

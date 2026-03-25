@@ -47,6 +47,7 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   SUGGESTION_COMMENT_REPLY: MessageCircle,
   SUGGESTION_APPROVED: CheckCircle,
   SUGGESTION_REJECTED: XCircle,
+  SUGGESTION_IMPLEMENTED: Rocket,
   ADMIN_NEW_TICKET: Headphones,
   ADMIN_NEW_REPORT: Flag,
   ADMIN_NEW_CONTESTATION: Scale,

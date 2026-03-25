@@ -48,6 +48,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { SuggestionService } from '@/services/SuggestionService';
+import { notifySuggestionApproved, notifySuggestionRejected } from '@/services/NotificationService';
 import { Suggestion, SuggestionStatus } from '@/types/suggestion';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -141,6 +142,9 @@ export function AdminSuggestionsPage() {
         admin_notes: adminNotes || undefined,
       });
       toast.success('Sugestão aprovada com sucesso');
+      try {
+        await notifySuggestionApproved(selectedSuggestion.user_id, selectedSuggestion.id, selectedSuggestion.title);
+      } catch (e) { console.error('Notification error:', e); }
       setShowReviewModal(false);
       fetchSuggestions(true);
     } catch (error) {
@@ -166,6 +170,9 @@ export function AdminSuggestionsPage() {
         admin_notes: adminNotes,
       });
       toast.success('Sugestão rejeitada');
+      try {
+        await notifySuggestionRejected(selectedSuggestion.user_id, selectedSuggestion.id, selectedSuggestion.title, adminNotes);
+      } catch (e) { console.error('Notification error:', e); }
       setShowReviewModal(false);
       fetchSuggestions(true);
     } catch (error) {

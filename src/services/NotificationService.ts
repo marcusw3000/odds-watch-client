@@ -297,6 +297,38 @@ export async function notifySuggestionCommentReply(
   });
 }
 
+// Suggestion review notifications
+export async function notifySuggestionApproved(
+  userId: string,
+  suggestionId: string,
+  suggestionTitle: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUGGESTION_APPROVED',
+    title: 'Sugestão Aprovada! ✅',
+    message: `Sua sugestão "${suggestionTitle}" foi aprovada por um administrador.`,
+    data: { suggestion_id: suggestionId, suggestion_title: suggestionTitle },
+    sendEmail: true,
+  });
+}
+
+export async function notifySuggestionRejected(
+  userId: string,
+  suggestionId: string,
+  suggestionTitle: string,
+  reason?: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUGGESTION_REJECTED',
+    title: 'Sugestão Não Aprovada',
+    message: `Sua sugestão "${suggestionTitle}" não foi aprovada.${reason ? ` Motivo: ${reason}` : ''}`,
+    data: { suggestion_id: suggestionId, suggestion_title: suggestionTitle, reason },
+    sendEmail: true,
+  });
+}
+
 // User warning notification
 const reasonLabels: Record<string, string> = {
   spam: 'spam',

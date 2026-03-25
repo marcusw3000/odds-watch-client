@@ -1,24 +1,60 @@
 
 
-# Adicionar Link nas Notificações de Sugestão Aprovada/Rejeitada
+# Notificar Autor quando Sugestão for Transformada em Mercado
 
 ## O que será feito
 
-Adicionar navegação para a página da sugestão ao clicar nas notificações de aprovação/rejeição. A infraestrutura já existe — só falta mapear os dois tipos no switch de `getNotificationLink`.
+Quando o admin cria um mercado a partir de uma sugestão (via `?suggestion_id=X` na URL), o sistema irá:
+1. Marcar a sugestão como `IMPLEMENTED` vinculando ao mercado criado
+2. Enviar notificação ao autor da sugestão
+3. Exibir a notificação com ícone e link para o mercado
 
-## Arquivo: `src/components/notifications/NotificationBell.tsx`
+## Arquivos a modificar
 
-Adicionar dois cases no `switch` da função `getNotificationLink` (~linha 105-107), junto com os outros tipos de sugestão:
+| Arquivo | Ação |
+|---|---|
+| `src/types/notification.ts` | Adicionar `SUGGESTION_IMPLEMENTED` |
+| `src/services/NotificationService.ts` | Adicionar `notifySuggestionImplemented` |
+| `src/pages/admin/AdminEventFormPage.tsx` | Ler `suggestion_id` da URL, após criar mercado: chamar `implementSuggestion` + notificar autor |
+| `src/components/notifications/NotificationBell.tsx` | Adicionar ícone/cor + link para o mercado |
+| Migration SQL | `ALTER TYPE notification_type ADD VALUE 'SUGGESTION_IMPLEMENTED'` |
 
+## Detalhes
+
+### 1. `src/types/notification.ts`
+Adicionar `'SUGGESTION_IMPLEMENTED'` ao union type.
+
+### 2. `src/services/NotificationService.ts`
+Nova função:
 ```ts
-case 'SUGGESTION_COMMENT_MENTION':
-case 'SUGGESTION_COMMENT_REPLY':
-case 'SUGGESTION_APPROVED':
-case 'SUGGESTION_REJECTED':
-  return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : '/suggestions';
+export async function notifySuggestionImplemented(
+  userId: string, suggestionId: string, suggestionTitle: string, marketId: string
+) {
+  return createNotification({
+    userId,
+    type: 'SUGGESTION_IMPLEMENTED',
+    title: 'Sua sugestão virou mercado! 🚀',
+    message: `Sua sugestão "${suggestionTitle}" foi transformada em um mercado de previsão!`,
+    data: { suggestion_id: suggestionId, suggestion_title: suggestionTitle, market_id: marketId },
+    sendEmail: true,
+  });
+}
 ```
 
-Os dados `suggestion_id` já são incluídos no `data` das notificações pelo `NotificationService`. A função `handleNotificationClick` já usa `getNotificationLink` para navegar e marcar como lida.
+### 3. `src/pages/admin/AdminEventFormPage.tsx`
+- Usar `useSearchParams` para ler `suggestion_id`
+- Quando `suggestion_id` presente, buscar a sugestão (user_id, title) via `supabase.from('market_suggestions').select('id, user_id, title')`
+- Após `createEventMutation.mutateAsync` retornar com sucesso (~linha 270), em try/catch isolado:
+  1. `SuggestionService.implementSuggestion(suggestionId, result.event.id)`
+  2. `notifySuggestionImplemented(suggestion.user_id, suggestionId, suggestion.title, result.event.id)`
+- Falhas não bloqueiam a criação do mercado
 
-Mudança de 2 linhas em 1 arquivo.
+### 4. `src/components/notifications/NotificationBell.tsx`
+- Ícone: `Rocket` (lucide-react), cor: `text-purple-500 bg-purple-500/10`
+- Link: `data?.market_id ? /market/${data.market_id} : /suggestions`
+
+### 5. Migration
+```sql
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'SUGGESTION_IMPLEMENTED';
+```
 

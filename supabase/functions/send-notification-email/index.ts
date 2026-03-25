@@ -333,6 +333,91 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     `,
   }),
 
+  SUGGESTION_APPROVED: (data) => ({
+    subject: `✅ Sugestão Aprovada: ${data.suggestion_title || 'Sua sugestão'}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>✅ Sua Sugestão foi Aprovada!</h2>
+        <p style="color: #666;">Ótima notícia! Sua sugestão foi revisada e aprovada pela nossa equipe.</p>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #166534; margin: 0;"><strong>Sugestão:</strong> ${data.suggestion_title || data.title}</p>
+          <p style="color: #22c55e; margin: 8px 0 0 0; font-weight: bold;">Status: Aprovada ✓</p>
+        </div>
+
+        <p style="color: #666;">
+          Obrigado por contribuir com a comunidade! Sua sugestão será avaliada para criação de um novo mercado.
+        </p>
+
+        <a href="https://predictmarket.com/suggestions/${data.suggestion_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver sugestão
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Você recebeu este email porque enviou uma sugestão no PredictMarket.
+        </p>
+      </div>
+    `,
+  }),
+
+  SUGGESTION_REJECTED: (data) => ({
+    subject: `Sugestão Não Aprovada: ${data.suggestion_title || 'Sua sugestão'}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>📋 Sugestão Não Aprovada</h2>
+        <p style="color: #666;">Infelizmente, sua sugestão não foi aprovada neste momento.</p>
+        
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="color: #991b1b; margin: 0;"><strong>Sugestão:</strong> ${data.suggestion_title || data.title}</p>
+          ${data.admin_notes ? `<p style="color: #dc2626; margin: 12px 0 0 0;"><strong>Motivo:</strong> ${data.admin_notes}</p>` : ''}
+        </div>
+
+        <p style="color: #666;">
+          Você pode enviar novas sugestões a qualquer momento. Agradecemos sua contribuição!
+        </p>
+
+        <a href="https://predictmarket.com/suggestions/${data.suggestion_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver sugestão
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Você recebeu este email porque enviou uma sugestão no PredictMarket.
+        </p>
+      </div>
+    `,
+  }),
+
+  SUGGESTION_IMPLEMENTED: (data) => ({
+    subject: `🚀 Sua sugestão virou mercado!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h2>🚀 Sua Sugestão Virou Mercado!</h2>
+        <p style="color: #666;">Parabéns! Sua sugestão foi transformada em um mercado de previsão real.</p>
+        
+        <div style="background: #f0f0ff; border: 1px solid #c7c7ff; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="font-size: 24px; margin: 0;">🚀</p>
+          <p style="font-size: 18px; font-weight: bold; color: #6366f1; margin: 8px 0;">${data.suggestion_title || data.title}</p>
+          <p style="color: #666; margin: 4px 0 0 0;">Agora é um mercado ativo!</p>
+        </div>
+
+        <p style="color: #666;">
+          Acesse o mercado para fazer sua primeira aposta e acompanhar os resultados.
+        </p>
+
+        <a href="https://predictmarket.com/market/${data.market_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+          Ver mercado
+        </a>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 40px;">
+          Obrigado por contribuir com o PredictMarket!
+        </p>
+      </div>
+    `,
+  }),
+
   COPY_TRADER_SUSPENDED: (data) => ({
     subject: `⚠️ Sua conta de Copy Trader foi suspensa`,
     html: `

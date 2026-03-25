@@ -85,6 +85,18 @@ export function MarketDetailPage() {
         navigate('/markets');
         return;
       }
+
+      // Fetch multi-option history if applicable
+      let multiHistory: MultiOptionHistoryPoint[] = [];
+      if (eventData.marketType === 'MULTIPLE') {
+        multiHistory = await MarketDataProvider.getMultiOptionHistory(id);
+      }
+      setMultiOptionHistory(multiHistory);
+      
+      if (!eventData) {
+        navigate('/markets');
+        return;
+      }
       
       setEvent(eventData);
       setOddsHistory(historyData);

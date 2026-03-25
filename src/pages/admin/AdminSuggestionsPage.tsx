@@ -142,6 +142,9 @@ export function AdminSuggestionsPage() {
         admin_notes: adminNotes || undefined,
       });
       toast.success('Sugestão aprovada com sucesso');
+      try {
+        await notifySuggestionApproved(selectedSuggestion.user_id, selectedSuggestion.id, selectedSuggestion.title);
+      } catch (e) { console.error('Notification error:', e); }
       setShowReviewModal(false);
       fetchSuggestions(true);
     } catch (error) {

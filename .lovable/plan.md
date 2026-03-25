@@ -1,23 +1,19 @@
 
 
-# Fix: Notificação e Email de Sugestão Implementada
+# Fix: Race Condition na Notificação de Sugestão Implementada
 
-## Problema Identificado
-
-**Race condition no fetch dos dados da sugestão.** O `useEffect` na linha 59 busca `user_id` e `title` da sugestão de forma assíncrona, mas não há garantia de que o fetch termina antes do admin submeter o formulário. Se `suggestionDataRef.current` for `null`, o bloco `if (suggestionId && suggestionDataRef.current)` na linha 295 é ignorado silenciosamente — sem notificação, sem email, sem erro no console.
-
-Possível causa secundária: a edge function `send-notification-email` pode não ter sido redeployada após a adição dos templates, ou a `RESEND_API_KEY` pode não estar configurada nos secrets do Supabase.
+## Problema
+O `useEffect` (linha 59) busca dados da sugestão de forma assíncrona via `useRef`, mas se o admin submeter o formulário antes do fetch terminar, `suggestionDataRef.current` é `null` e a notificação nunca é disparada — sem erro, sem log.
 
 ## Solução
 
-### 1. `src/pages/admin/AdminEventFormPage.tsx` — Eliminar race condition
+### Arquivo: `src/pages/admin/AdminEventFormPage.tsx`
 
-Trocar o `useEffect` + `ref` por um fetch direto **dentro do `handleSubmit`**, garantindo que os dados existam antes de notificar:
+**Remover** linhas 55-70 (o `useRef` e o `useEffect` que busca dados da sugestão).
+
+**Substituir** linhas 294-307 por um fetch direto no `handleSubmit`:
 
 ```ts
-// REMOVER: useEffect + suggestionDataRef
-
-// NO handleSubmit, após createEventMutation.mutateAsync retornar:
 if (suggestionId) {
   try {
     const { data: suggestionData } = await supabase
@@ -36,22 +32,12 @@ if (suggestionId) {
       );
     }
   } catch (linkError) {
-    console.error('Error linking suggestion:', linkError);
+    console.error('Error linking suggestion to market:', linkError);
   }
 }
 ```
 
-### 2. Redeploy da edge function `send-notification-email`
+Isso elimina a race condition ao garantir que os dados da sugestão sejam buscados sincronamente dentro do fluxo de submit, antes de notificar.
 
-Redeployar para garantir que os templates `SUGGESTION_IMPLEMENTED`, `SUGGESTION_APPROVED` e `SUGGESTION_REJECTED` estejam ativos no runtime.
-
-### 3. Verificar `RESEND_API_KEY`
-
-Confirmar que o secret está configurado nas edge functions do Supabase. Sem ele, nenhum email é enviado.
-
-## Resumo das mudanças
-
-- **1 arquivo editado**: `AdminEventFormPage.tsx` — remover `useEffect`/`useRef` da sugestão, mover fetch para dentro do `handleSubmit`
-- **1 redeploy**: `send-notification-email`
-- **1 verificação**: `RESEND_API_KEY` nos secrets
+**1 arquivo, ~15 linhas alteradas.**
 

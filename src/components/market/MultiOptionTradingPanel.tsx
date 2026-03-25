@@ -132,7 +132,7 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
                   <>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
+                         <Button
                           variant="outline"
                           size="sm"
                           className={cn(
@@ -141,7 +141,7 @@ export const MultiOptionTradingPanel = memo(function MultiOptionTradingPanel({
                           )}
                           onClick={() => onBuyOption(option, 'YES')}
                         >
-                          SIM {option.currentPrice}¢
+                          Sim {(100 / option.currentPrice).toFixed(2)}x
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="left">

@@ -211,7 +211,7 @@ const App = () => (
               <Route path="/faq" element={<Suspense fallback={<PageLoadingFallback />}><FAQPage /></Suspense>} />
               <Route path="/copy-traders" element={<Suspense fallback={<PageLoadingFallback />}><CopyTradersPage /></Suspense>} />
               <Route path="/trader/dashboard" element={<Suspense fallback={<PageLoadingFallback />}><TraderDashboardPage /></Suspense>} />
-              <Route path="/parceria" element={<Suspense fallback={<PageLoadingFallback />}><PartnershipPresentationPage /></Suspense>} />
+              
             </Route>
             
             {/* Admin Routes - Lazy Loaded */}

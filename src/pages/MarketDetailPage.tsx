@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   Scale
 } from 'lucide-react';
-import { MarketEvent, OddsHistoryPoint, MarketOption, UserContract } from '@/types/market';
+import { MarketEvent, OddsHistoryPoint, MultiOptionHistoryPoint, MarketOption, UserContract } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
 import { CommentSection } from '@/components/market/CommentSection';

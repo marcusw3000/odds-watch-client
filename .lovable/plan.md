@@ -1,54 +1,51 @@
 
 
-# Melhorias Visuais: Gráfico Multi-Opção, Multiplicadores e Filtros de Tempo
+# Padronização dos Modais de Trading
 
-## Contexto
+## Problema
 
-A tabela `market_price_history` só armazena `yes_price`/`no_price` (binário). Para mercados multi-opção, não existe histórico por opção. O trigger `record_price_after_trade` grava apenas os preços binários do mercado.
+Existem **5 modais de trading** com estilos e padrões visuais inconsistentes:
 
-Isso significa que precisamos de infraestrutura nova no banco de dados para suportar gráficos multi-opção.
+1. **TradingModal** — modal unificado compra/venda para binários (mais moderno, com tabs, R$ como input, "Para ganhar")
+2. **PurchaseModal** — modal de compra binário (legado, input por contratos, OddsBadge, timer)
+3. **SellModal** — modal de venda binário (usa ResponsiveModal, countdown de confirmação)
+4. **MultiOptionPurchaseModal** — modal de compra multi-opção (input por contratos, timer, sem tabs)
+5. **MultiOptionSellModal** — modal de venda multi-opção (Dialog/Drawer, seleção de contrato)
 
-## Plano
+O `TradingModal` é o mais alinhado com o padrão da concorrência (screenshot): R$ como input primário, botões SIM/NÃO com preço em centavos, "Para ganhar", layout limpo. Mas os modais multi-opção e os legados binários não seguem esse padrão.
 
-### 1. Migração: Adicionar `option_id` ao `market_price_history`
+## Solução
 
-Adicionar coluna `option_id` (nullable, FK para `market_options`) e atualizar o trigger para gravar o preço de cada opção após trades multi-opção. Para mercados binários, `option_id` permanece `NULL`.
+Padronizar **MultiOptionPurchaseModal** para seguir o mesmo layout do `TradingModal`:
 
-Atualizar a função `record_price_after_trade` para, quando o trade tiver `option_id`, buscar os preços de **todas** as opções do mercado e inserir um registro para cada uma.
+### Mudanças no `MultiOptionPurchaseModal.tsx`
 
-### 2. `src/types/market.ts` — Novo tipo para histórico multi-opção
+1. **Input por valor (R$)** ao invés de contratos — calcular contratos automaticamente como `amount / (price / 100)`
+2. **Tabs SIM/NÃO** no topo com preço em centavos (como o screenshot: "Sim 65¢" / "Não 35¢"), substituindo a seção "Sua posição"
+3. **Slider visual** para ajustar o valor (referência do screenshot) com botões rápidos de porcentagem (25%, 50%, 75%, 100% do saldo)
+4. **"Para ganhar"** com valor destacado em verde, como no TradingModal
+5. **Remover timer de expiração** — usar refresh sob demanda como o TradingModal
+6. **Botão de confirmação** colorido (verde para SIM, vermelho para NÃO) com texto "Comprar Sim/Não"
+7. **Header** com avatar + nome da opção + "Comprar Sim/Não" em subtítulo colorido
 
-```ts
-export interface MultiOptionHistoryPoint {
-  timestamp: Date;
-  prices: Record<string, number>; // option_id -> price (0-100)
-}
-```
+### Mudanças no `MultiOptionSellModal.tsx`
 
-### 3. `src/services/MarketDataProvider.ts` — Novo método `getMultiOptionHistory`
+1. **Alinhar layout** com o TradingModal modo sell: input por contratos, botões de porcentagem (25%, 50%, 75%, 100%)
+2. **Remover timer** — refresh sob demanda
+3. **"Você receberá"** com destaque, lucro/prejuízo com cores
 
-Buscar de `market_price_history` filtrado por `market_id` com `option_id IS NOT NULL`, agrupar por hora e retornar `MultiOptionHistoryPoint[]`.
+### Arquivos alterados
 
-### 4. `src/components/market/OddsChart.tsx` — Suportar multi-opção
+- `src/components/market/MultiOptionPurchaseModal.tsx` — refatoração completa do layout
+- `src/components/market/MultiOptionSellModal.tsx` — alinhamento visual com TradingModal
 
-Aceitar prop opcional `multiData` e `options` (lista de opções com labels/cores). Quando presente, renderizar uma `Area` por opção com cores distintas ao invés das linhas SIM/NÃO fixas.
+### Detalhes técnicos
 
-Adicionar filtros de tempo (1H, 6H, 1D, 1S, 1M, Tudo) como botões acima do gráfico, filtrando os dados por timestamp.
+- O cálculo LMSR permanece igual, apenas o input muda de contratos para R$
+- `sharesFromAmount = Math.floor(amountNum / (currentPrice / 100))` para calcular contratos a partir do valor
+- `potentialWin = sharesFromAmount * 1` (R$1 por contrato vencedor)
+- Slider usa `<Slider>` do shadcn com range de 0 a `Math.min(userBalance, event.limits.maxBuy)`
+- As tabs SIM/NÃO recalculam `currentPrice` baseado no `side` selecionado
 
-### 5. `src/components/market/MultiOptionTradingPanel.tsx` — Multiplicadores
-
-Trocar exibição dos botões de `SIM 29¢` / `NÃO 71¢` para `SIM 3.45x` / `NÃO 1.41x` (calculado como `100 / price`).
-
-### 6. `src/pages/MarketDetailPage.tsx` — Integrar
-
-Para mercados `MULTIPLE`, buscar `getMultiOptionHistory` e passar para o `OddsChart` com os dados das opções.
-
-## Arquivos alterados
-
-- **1 migração SQL** — coluna `option_id`, trigger atualizado
-- `src/types/market.ts` — novo tipo
-- `src/services/MarketDataProvider.ts` — novo método
-- `src/components/market/OddsChart.tsx` — multi-linha + filtros de tempo
-- `src/components/market/MultiOptionTradingPanel.tsx` — multiplicadores
-- `src/pages/MarketDetailPage.tsx` — integração
+**2 arquivos, ~200 linhas alteradas.**
 

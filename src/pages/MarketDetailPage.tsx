@@ -444,7 +444,11 @@ export function MarketDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OddsChart data={oddsHistory} />
+              <OddsChart
+                data={oddsHistory}
+                multiData={event.marketType === 'MULTIPLE' ? multiOptionHistory : undefined}
+                options={event.marketType === 'MULTIPLE' ? event.options : undefined}
+              />
             </CardContent>
           </Card>
 

@@ -360,51 +360,24 @@ export function MinimalTradingCard({
             />
           </div>
           
-          {/* Slider for quick selection */}
-          <div className="pt-3 pb-1">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-muted-foreground">Arraste para ajustar</span>
-              <span className={cn(
-                "text-xs font-mono font-semibold",
-                activeOutcome === 'YES' ? "text-yes" : "text-no"
-              )}>
-                {Math.round(sliderValue[0])}%
-              </span>
-            </div>
-            <Slider
-              value={sliderValue}
-              onValueChange={handleSliderChange}
-              onPointerDown={() => setIsSliderDragging(true)}
-              onPointerUp={() => setIsSliderDragging(false)}
-              onPointerLeave={() => setIsSliderDragging(false)}
-              max={100}
-              step={1}
-              className={cn(
-                "w-full [&_[data-slider-range]]:transition-none [&_[data-slider-thumb]]:transition-none",
-                activeOutcome === 'YES' && "[&_[data-slider-range]]:bg-yes [&_[data-slider-thumb]]:border-yes",
-                activeOutcome === 'NO' && "[&_[data-slider-range]]:bg-no [&_[data-slider-thumb]]:border-no"
-              )}
-              disabled={maxValue <= 0}
-            />
-            {/* Quick action buttons */}
-            <div className="flex gap-1.5 mt-3">
-              {[25, 50, 75, 100].map((pct) => (
-                <PercentageButton
-                  key={pct}
-                  pct={pct}
-                  isActive={activePercentage === pct}
-                  isYes={activeOutcome === 'YES'}
-                  onClick={() => handleSliderChange([pct])}
-                  disabled={maxValue <= 0}
-                />
-              ))}
-            </div>
-            {sliderValue[0] >= 100 && mode === 'buy' && (
-              <p className="text-xs text-center text-warning mt-2 animate-fade-in">
-                Usando todo o saldo disponível
-              </p>
-            )}
+          {/* Quick action buttons */}
+          <div className="flex gap-1.5 mt-3">
+            {[25, 50, 75, 100].map((pct) => (
+              <PercentageButton
+                key={pct}
+                pct={pct}
+                isActive={activePercentage === pct}
+                isYes={activeOutcome === 'YES'}
+                onClick={() => handlePercentageClick(pct)}
+                disabled={maxValue <= 0}
+              />
+            ))}
           </div>
+          {activePercentage >= 100 && mode === 'buy' && (
+            <p className="text-xs text-center text-warning mt-2 animate-fade-in">
+              Usando todo o saldo disponível
+            </p>
+          )}
         </div>
 
         {/* Potential Win (Buy) or Receive (Sell) */}

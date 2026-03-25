@@ -149,7 +149,6 @@ export function MinimalTradingCard({
   useEffect(() => {
     setAmount('');
     setError(null);
-    setSliderValue([0]);
   }, [mode]);
 
   // Calculate max value for slider

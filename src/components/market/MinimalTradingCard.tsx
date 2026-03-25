@@ -91,8 +91,6 @@ export function MinimalTradingCard({
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [sliderValue, setSliderValue] = useState<number[]>([0]);
-  const [isSliderDragging, setIsSliderDragging] = useState(false);
 
   const isMobile = useIsMobile();
 

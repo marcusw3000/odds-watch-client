@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   Scale
 } from 'lucide-react';
-import { MarketEvent, OddsHistoryPoint, MarketOption, UserContract } from '@/types/market';
+import { MarketEvent, OddsHistoryPoint, MultiOptionHistoryPoint, MarketOption, UserContract } from '@/types/market';
 import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { OddsBadge } from '@/components/market/OddsBadge';
 import { CommentSection } from '@/components/market/CommentSection';
@@ -56,6 +56,7 @@ export function MarketDetailPage() {
   
   const [event, setEvent] = useState<MarketEvent | null>(null);
   const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
+  const [multiOptionHistory, setMultiOptionHistory] = useState<MultiOptionHistoryPoint[]>([]);
   const [userBalance, setUserBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<Error | null>(null);
@@ -79,6 +80,18 @@ export function MarketDetailPage() {
         MarketDataProvider.getOddsHistory(id),
         MarketDataProvider.getUserPortfolio(),
       ]);
+      
+      if (!eventData) {
+        navigate('/markets');
+        return;
+      }
+
+      // Fetch multi-option history if applicable
+      let multiHistory: MultiOptionHistoryPoint[] = [];
+      if (eventData.marketType === 'MULTIPLE') {
+        multiHistory = await MarketDataProvider.getMultiOptionHistory(id);
+      }
+      setMultiOptionHistory(multiHistory);
       
       if (!eventData) {
         navigate('/markets');
@@ -431,7 +444,11 @@ export function MarketDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OddsChart data={oddsHistory} />
+              <OddsChart
+                data={oddsHistory}
+                multiData={event.marketType === 'MULTIPLE' ? multiOptionHistory : undefined}
+                options={event.marketType === 'MULTIPLE' ? event.options : undefined}
+              />
             </CardContent>
           </Card>
 

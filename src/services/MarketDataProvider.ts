@@ -1,4 +1,4 @@
-import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption, RecurrenceType } from '@/types/market';
+import { MarketEvent, UserPortfolio, UserContract, Transaction, OddsHistoryPoint, MultiOptionHistoryPoint, Comment, DbMarket, DbMarketOption, MarketStatus, SettlementType, SettlementConfig, MarketOption, RecurrenceType } from '@/types/market';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   getPriceYes, 
@@ -405,6 +405,40 @@ export const MarketDataProvider = {
       yesPrice: Math.round(Number(r.yes_price) * 100),
       noPrice: Math.round(Number(r.no_price) * 100),
     }));
+  },
+
+  // Fetch multi-option price history grouped by timestamp
+  async getMultiOptionHistory(marketId: string): Promise<MultiOptionHistoryPoint[]> {
+    const { data, error } = await supabase
+      .from('market_price_history')
+      .select('option_id, yes_price, recorded_at')
+      .eq('market_id', marketId)
+      .not('option_id', 'is', null)
+      .order('recorded_at', { ascending: true })
+      .limit(1000);
+
+    if (error || !data || data.length === 0) {
+      return [];
+    }
+
+    // Group by hour, then pivot option prices
+    const grouped = new Map<string, { timestamp: Date; prices: Record<string, number> }>();
+
+    data.forEach((row) => {
+      const date = new Date(row.recorded_at);
+      const hourKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+
+      if (!grouped.has(hourKey)) {
+        grouped.set(hourKey, { timestamp: date, prices: {} });
+      }
+      const entry = grouped.get(hourKey)!;
+      entry.timestamp = date; // keep latest timestamp in the hour
+      if (row.option_id) {
+        entry.prices[row.option_id] = Math.round(Number(row.yes_price) * 100);
+      }
+    });
+
+    return Array.from(grouped.values());
   },
 
   // Note: getEventComments removed - comments are fetched via CommentService directly

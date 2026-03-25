@@ -51,6 +51,11 @@ export interface OddsHistoryPoint {
   noPrice: number;
 }
 
+export interface MultiOptionHistoryPoint {
+  timestamp: Date;
+  prices: Record<string, number>; // option_id -> price (0-100)
+}
+
 export interface Contestation {
   id: string;
   userId: string;

@@ -1055,6 +1055,7 @@ export type Database = {
           id: string
           market_id: string
           no_price: number
+          option_id: string | null
           recorded_at: string
           source: string
           yes_price: number
@@ -1063,6 +1064,7 @@ export type Database = {
           id?: string
           market_id: string
           no_price: number
+          option_id?: string | null
           recorded_at?: string
           source?: string
           yes_price: number
@@ -1071,6 +1073,7 @@ export type Database = {
           id?: string
           market_id?: string
           no_price?: number
+          option_id?: string | null
           recorded_at?: string
           source?: string
           yes_price?: number
@@ -1081,6 +1084,13 @@ export type Database = {
             columns: ["market_id"]
             isOneToOne: false
             referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_price_history_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "market_options"
             referencedColumns: ["id"]
           },
         ]

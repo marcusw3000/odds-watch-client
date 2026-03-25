@@ -1,35 +1,26 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, AlertCircle, RefreshCw, Clock, TrendingUp, Calculator, ChevronUp, ChevronDown, Zap } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { X, RefreshCw, Coins, Info, AlertCircle, Zap } from 'lucide-react';
 import { MarketEvent, MarketOption } from '@/types/market';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
-import { MarketDataProvider } from '@/services/MarketDataProvider';
 import { PurchaseSuccessModal } from './PurchaseSuccessModal';
-import { SlippageSelector } from './SlippageSelector';
-import { Progress } from '@/components/ui/progress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerFooter,
   DrawerClose,
 } from '@/components/ui/drawer';
-
-// Custom hook for debouncing values
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  
-  return debouncedValue;
-}
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface MultiOptionPurchaseModalProps {
   event: MarketEvent;
@@ -54,7 +45,7 @@ interface MultiOptionQuote {
   newPrices: number[];
 }
 
-const PRICE_VALIDITY_SECONDS = 15;
+const DEFAULT_SLIPPAGE = 0.05; // 5%
 
 export function MultiOptionPurchaseModal({
   event,
@@ -65,162 +56,134 @@ export function MultiOptionPurchaseModal({
   onConfirm,
   onRefreshPrice,
 }: MultiOptionPurchaseModalProps) {
-  const [shares, setShares] = useState<string>('');
+  const [activeSide, setActiveSide] = useState<'YES' | 'NO'>(side);
+  const [amount, setAmount] = useState<string>('');
   const [quote, setQuote] = useState<MultiOptionQuote | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(PRICE_VALIDITY_SECONDS);
-  const [priceExpired, setPriceExpired] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
-  const [slippageDetected, setSlippageDetected] = useState(false);
-  const [slippageTolerance, setSlippageTolerance] = useState(0.05);
-  
+
   const isMobile = useIsMobile();
 
-  const sharesNum = parseFloat(shares) || 0;
-  const debouncedShares = useDebouncedValue(sharesNum, 300);
-  const currentPrice = side === 'YES' ? selectedOption.currentPrice : (100 - selectedOption.currentPrice);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
-  // Other options context (only for NO side explanation text)
-  const otherOptions = useMemo(() => 
-    (event.options || []).filter(opt => opt.id !== selectedOption.id),
-    [event.options, selectedOption.id]
-  );
+  const yesPrice = selectedOption.currentPrice;
+  const noPrice = 100 - selectedOption.currentPrice;
+  const currentPrice = activeSide === 'YES' ? yesPrice : noPrice;
 
-  // For NO contracts (Kalshi-style), we use a simple price calculation
-  // Price NO = 100% - Price YES
-  // This creates a single contract that pays if the option DOES NOT win
-  
-  // Calculate quote - for YES use LMSR, for NO use simple price calculation
+  const amountNum = parseFloat(amount) || 0;
+  const maxAmount = Math.min(userBalance, event.limits.maxBuy);
+
+  // Calculate shares from R$ amount
+  const sharesFromAmount = useMemo(() => {
+    if (amountNum <= 0 || currentPrice <= 0) return 0;
+    return Math.floor(amountNum / (currentPrice / 100));
+  }, [amountNum, currentPrice]);
+
+  // Potential win
+  const potentialWin = useMemo(() => {
+    return sharesFromAmount > 0 ? sharesFromAmount * 1 : 0; // R$1 per winning contract
+  }, [sharesFromAmount]);
+
+  // Calculate quote
   useEffect(() => {
-    if (debouncedShares <= 0) {
+    if (sharesFromAmount <= 0) {
       setQuote(null);
       return;
     }
 
-    if (side === 'NO') {
-      // Kalshi-style NO contract: simple price = 1 - YES price
-      const noPrice = (100 - selectedOption.currentPrice) / 100;
-      const cost = debouncedShares * noPrice;
-      
+    setIsLoading(true);
+
+    const timer = setTimeout(() => {
+      if (activeSide === 'NO') {
+        const noPriceDecimal = noPrice / 100;
+        const cost = sharesFromAmount * noPriceDecimal;
+        setQuote({
+          cost,
+          avgPrice: Math.round(noPriceDecimal * 100),
+          priceImpact: 0,
+          newPrices: [],
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // YES: LMSR calculation
+      const options = event.options || [];
+      const lmsrB = event.lmsr?.b || 100;
+      const currentShares = options.map(opt => opt.shares || 0);
+      const optionIndex = options.findIndex(opt => opt.id === selectedOption.id);
+
+      if (optionIndex === -1) {
+        setQuote(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const costFunction = (shares: number[]): number => {
+        if (shares.length === 0) return 0;
+        const scaledShares = shares.map(q => q / lmsrB);
+        const maxVal = Math.max(...scaledShares);
+        const sumExp = scaledShares.reduce((sum, x) => sum + Math.exp(x - maxVal), 0);
+        return lmsrB * (maxVal + Math.log(sumExp));
+      };
+
+      const getPrices = (shares: number[]): number[] => {
+        if (shares.length === 0) return [];
+        if (shares.length === 1) return [100];
+        const scaledShares = shares.map(q => q / lmsrB);
+        const maxVal = Math.max(...scaledShares);
+        const expValues = scaledShares.map(x => Math.exp(x - maxVal));
+        const sumExp = expValues.reduce((sum, x) => sum + x, 0);
+        return expValues.map(exp => Math.max(1, Math.min(99, Math.round((exp / sumExp) * 100))));
+      };
+
+      const currentCost = costFunction(currentShares);
+      const newShares = [...currentShares];
+      newShares[optionIndex] += sharesFromAmount;
+      const newCost = costFunction(newShares);
+      const tradeCost = newCost - currentCost;
+      const avgPrice = (tradeCost / sharesFromAmount) * 100;
+
+      const currentPrices = getPrices(currentShares);
+      const newPrices = getPrices(newShares);
+      const currentOptionPrice = currentPrices[optionIndex] || currentPrice;
+      const newOptionPrice = newPrices[optionIndex] || currentPrice;
+      const priceImpact = currentOptionPrice > 0
+        ? ((newOptionPrice - currentOptionPrice) / currentOptionPrice) * 100
+        : 0;
+
       setQuote({
-        cost,
-        avgPrice: Math.round(noPrice * 100),
-        priceImpact: 0, // NO contracts don't move the market
-        newPrices: [], // Prices don't change for NO contracts
+        cost: tradeCost,
+        avgPrice: Math.round(avgPrice),
+        priceImpact,
+        newPrices,
       });
-      return;
-    }
+      setIsLoading(false);
+    }, 300);
 
-    // YES contracts use LMSR calculation
-    const options = event.options || [];
-    const lmsrB = event.lmsr?.b || 100;
-    
-    // Get current shares from options
-    const currentShares = options.map(opt => opt.shares || 0);
-    const optionIndex = options.findIndex(opt => opt.id === selectedOption.id);
-    
-    if (optionIndex === -1) {
-      setQuote(null);
-      return;
-    }
+    return () => clearTimeout(timer);
+  }, [sharesFromAmount, activeSide, noPrice, event.options, event.lmsr, selectedOption.id, currentPrice]);
 
-    // LMSR cost function: C(q) = b * ln(Σ e^(qi/b))
-    // Using log-sum-exp trick for numerical stability
-    const costFunction = (shares: number[]): number => {
-      if (shares.length === 0) return 0;
-      const scaledShares = shares.map(q => q / lmsrB);
-      const maxVal = Math.max(...scaledShares);
-      const sumExp = scaledShares.reduce((sum, x) => sum + Math.exp(x - maxVal), 0);
-      return lmsrB * (maxVal + Math.log(sumExp));
-    };
-
-    // Calculate prices from shares
-    const getPrices = (shares: number[]): number[] => {
-      if (shares.length === 0) return [];
-      if (shares.length === 1) return [100];
-      const scaledShares = shares.map(q => q / lmsrB);
-      const maxVal = Math.max(...scaledShares);
-      const expValues = scaledShares.map(x => Math.exp(x - maxVal));
-      const sumExp = expValues.reduce((sum, x) => sum + x, 0);
-      return expValues.map(exp => Math.max(1, Math.min(99, Math.round((exp / sumExp) * 100))));
-    };
-
-    const currentCost = costFunction(currentShares);
-    
-    // Calculate new shares after buying
-    const newShares = [...currentShares];
-    newShares[optionIndex] += debouncedShares;
-    
-    const newCost = costFunction(newShares);
-    const tradeCost = newCost - currentCost;
-    const avgPrice = (tradeCost / debouncedShares) * 100;
-    
-    const currentPrices = getPrices(currentShares);
-    const newPrices = getPrices(newShares);
-    
-    const currentOptionPrice = currentPrices[optionIndex] || currentPrice;
-    const newOptionPrice = newPrices[optionIndex] || currentPrice;
-    const priceImpact = currentOptionPrice > 0 
-      ? ((newOptionPrice - currentOptionPrice) / currentOptionPrice) * 100 
-      : 0;
-    
-    setQuote({
-      cost: tradeCost,
-      avgPrice: Math.round(avgPrice),
-      priceImpact,
-      newPrices,
-    });
-  }, [debouncedShares, currentPrice, event.options, event.lmsr, selectedOption.id]);
-
-  // Timer countdown
+  // Reset when switching side
   useEffect(() => {
-    if (priceExpired) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-
-    timerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          setPriceExpired(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [priceExpired]);
-
-  const handleRefreshPrice = useCallback(async () => {
-    setIsRefreshing(true);
+    setAmount('');
     setError(null);
-    setSlippageDetected(false);
-    
+    setQuote(null);
+  }, [activeSide]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       await onRefreshPrice();
-      setTimeRemaining(PRICE_VALIDITY_SECONDS);
-      setPriceExpired(false);
-    } catch {
-      setError('Erro ao atualizar preço. Tente novamente.');
     } finally {
-      setIsRefreshing(false);
+      setIsLoading(false);
     }
   }, [onRefreshPrice]);
 
   const handleConfirm = async () => {
-    if (priceExpired) {
-      setError('Preço expirado. Atualize antes de confirmar.');
-      return;
-    }
-
-    if (!quote || sharesNum <= 0) {
-      setError('Insira uma quantidade válida.');
+    if (!quote || sharesFromAmount <= 0) {
+      setError('Insira um valor válido.');
       return;
     }
 
@@ -228,12 +191,10 @@ export function MultiOptionPurchaseModal({
       setError(`Valor mínimo: R$${event.limits.minBuy}`);
       return;
     }
-
     if (quote.cost > event.limits.maxBuy) {
       setError(`Valor máximo: R$${event.limits.maxBuy}`);
       return;
     }
-
     if (quote.cost > userBalance) {
       setError('Saldo insuficiente.');
       return;
@@ -243,49 +204,35 @@ export function MultiOptionPurchaseModal({
     setError(null);
 
     try {
-      const totalCost = quote.cost;
-      const potentialProfit = sharesNum - totalCost;
-      const maxCostWithSlippage = quote.cost * (1 + slippageTolerance);
+      const maxCost = quote.cost * (1 + DEFAULT_SLIPPAGE);
+      await onConfirm(selectedOption.id, sharesFromAmount, maxCost, activeSide);
 
-      await onConfirm(selectedOption.id, sharesNum, maxCostWithSlippage, side);
-      
       setSuccessData({
-        shares: sharesNum,
-        totalCost,
-        potentialProfit,
+        shares: sharesFromAmount,
+        totalCost: quote.cost,
+        potentialProfit: sharesFromAmount - quote.cost,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '';
-      
-      // Catch slippage/price change errors and auto-refresh
-      if (
-        errorMessage.includes('preço mudou') || 
-        errorMessage.includes('slippage') ||
-        errorMessage.includes('Preço excedeu') ||
-        errorMessage.includes('custo máximo')
-      ) {
-        setSlippageDetected(true);
-        setError('O preço mudou desde sua cotação. Atualizando preços...');
-        handleRefreshPrice();
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('preço mudou') || msg.includes('slippage') || msg.includes('Preço excedeu') || msg.includes('custo máximo')) {
+        setError('O preço mudou. Tente novamente.');
+        handleRefresh();
       } else {
-        setError(errorMessage || 'Erro ao processar compra. Tente novamente.');
+        setError(msg || 'Erro ao processar compra. Tente novamente.');
       }
     } finally {
       setIsConfirming(false);
     }
   };
 
-  const quickShares = [10, 25, 50, 100];
-
-  // For context display (show first 3 other options) - only used in NO explanation
-  // Note: displayOtherOptions removed as otherOptions is used directly in the JSX
+  const quickBuyAmounts = [10, 50, 100];
 
   if (successData) {
     return (
       <PurchaseSuccessModal
         eventTitle={event.title}
         eventId={event.id}
-        outcome={side}
+        outcome={activeSide}
         optionLabel={selectedOption.label}
         shares={successData.shares}
         totalCost={successData.totalCost}
@@ -296,182 +243,210 @@ export function MultiOptionPurchaseModal({
   }
 
   const modalContent = (
-    <>
-      <div className="p-5 space-y-5">
-        {/* Event Title */}
-        <div className="p-4 rounded-lg bg-secondary">
-          <p className="text-sm text-muted-foreground mb-1">Evento</p>
-          <p className="font-medium leading-snug">{event.title}</p>
-        </div>
-
-        {/* Selected Option */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Sua posição</p>
-            <div className="flex items-center gap-2">
-              {selectedOption.imageUrl ? (
-                <div 
-                  className="w-8 h-8 rounded-full bg-cover bg-center"
-                  style={{ backgroundImage: `url(${optimizeImageUrl(selectedOption.imageUrl, { width: 64 })})` }}
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
-                  {selectedOption.label.charAt(0)}
-                </div>
-              )}
-              <div className="flex flex-col">
-                <span className={cn(
-                  "px-3 py-1.5 rounded-lg font-bold text-lg",
-                  side === 'YES' ? "bg-yes/20 text-yes" : "bg-no/20 text-no"
-                )}>
-                  {side === 'YES' ? 'SIM' : 'NÃO'} {selectedOption.label}
-                </span>
-              </div>
+    <div className="flex flex-col h-full">
+      {/* Option Header */}
+      <div className="px-5 pt-3 pb-2">
+        <div className="flex items-center gap-3">
+          {selectedOption.imageUrl ? (
+            <div
+              className="w-10 h-10 rounded-full bg-cover bg-center flex-shrink-0 border-2 border-border"
+              style={{ backgroundImage: `url(${optimizeImageUrl(selectedOption.imageUrl, { width: 80 })})` }}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold flex-shrink-0 text-lg">
+              {selectedOption.label.charAt(0)}
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground mb-1">Preço atual</p>
-            <span className={cn(
-              "text-2xl font-bold",
-              side === 'YES' ? "text-yes" : "text-no",
-              isRefreshing && "animate-pulse"
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-base truncate">{selectedOption.label}</p>
+            <p className={cn(
+              "text-sm font-medium",
+              activeSide === 'YES' ? "text-yes" : "text-no"
             )}>
-              {currentPrice}¢
-            </span>
+              Comprar {activeSide === 'YES' ? 'Sim' : 'Não'}
+            </p>
           </div>
         </div>
+      </div>
 
-
-        {/* Price Timer */}
-        <div className={cn(
-          "flex items-center justify-between p-3 rounded-lg border",
-          priceExpired 
-            ? "border-destructive/50 bg-destructive/10" 
-            : timeRemaining <= 5 
-              ? "border-warning/50 bg-warning/10" 
-              : "border-border bg-secondary"
-        )}>
-          <div className="flex items-center gap-2">
-            <Clock className={cn(
-              "h-4 w-4",
-              priceExpired ? "text-destructive" : "text-muted-foreground"
-            )} />
-            <span className="text-sm">
-              {priceExpired 
-                ? "Preço expirado" 
-                : `Preço válido por ${timeRemaining}s`
-              }
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefreshPrice}
-            disabled={isRefreshing}
+      {/* Content */}
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto">
+        {/* SIM/NÃO Outcome Selector */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSide('YES')}
+            className={cn(
+              "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors duration-100",
+              activeSide === 'YES'
+                ? "bg-yes/10 border-yes text-yes"
+                : "bg-card border-border hover:border-yes/50 text-muted-foreground"
+            )}
           >
-            <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
-            Atualizar
-          </Button>
+            <span className="text-lg font-bold">Sim</span>
+            <span className={cn(
+              "text-2xl font-mono font-bold",
+              activeSide === 'YES' ? "text-yes" : "text-foreground"
+            )}>
+              {yesPrice}¢
+            </span>
+            {activeSide === 'YES' && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-yes rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full" />
+              </div>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSide('NO')}
+            className={cn(
+              "relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors duration-100",
+              activeSide === 'NO'
+                ? "bg-no/10 border-no text-no"
+                : "bg-card border-border hover:border-no/50 text-muted-foreground"
+            )}
+          >
+            <span className="text-lg font-bold">Não</span>
+            <span className={cn(
+              "text-2xl font-mono font-bold",
+              activeSide === 'NO' ? "text-no" : "text-foreground"
+            )}>
+              {noPrice}¢
+            </span>
+            {activeSide === 'NO' && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-no rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full" />
+              </div>
+            )}
+          </button>
         </div>
 
-        {/* Shares Input */}
-        <div>
-          <label className="text-sm text-muted-foreground mb-2 block">
-            Quantidade de contratos
-          </label>
-          <div className="relative flex items-center">
+        {/* Amount Input */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-muted-foreground">Valor</label>
+            <span className="text-xs text-muted-foreground">
+              Saldo R${userBalance.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+              R$
+            </span>
             <Input
               type="number"
-              value={shares}
+              value={amount}
               onChange={(e) => {
-                setShares(e.target.value);
+                setAmount(e.target.value);
                 setError(null);
               }}
-              placeholder="Quantos contratos?"
-              className="h-12 text-lg font-mono pr-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              placeholder="0"
+              className="h-14 text-2xl font-mono font-bold text-right pl-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
-            <div className="absolute right-1 flex flex-col gap-0.5">
-              <button
-                type="button"
-                onClick={() => setShares(String(Math.max(1, sharesNum + 1)))}
-                className="flex items-center justify-center h-5 w-10 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShares(String(Math.max(1, sharesNum - 1)))}
-                className="flex items-center justify-center h-5 w-10 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            </div>
           </div>
-          <div className="flex gap-2 mt-3">
-            {quickShares.map((amt) => (
+
+          {/* Slider */}
+          {maxAmount > 0 && (
+            <Slider
+              value={[amountNum]}
+              min={0}
+              max={Math.floor(maxAmount)}
+              step={1}
+              onValueChange={([val]) => setAmount(String(val))}
+              className="py-2"
+            />
+          )}
+
+          {/* Quick Buttons */}
+          <div className="flex gap-2">
+            {quickBuyAmounts.map((amt) => (
               <Button
                 key={amt}
                 variant="outline"
                 size="sm"
-                className="flex-1"
-                onClick={() => setShares(String(amt))}
+                className="flex-1 font-mono"
+                onClick={() => setAmount(String(amt))}
+                disabled={amt > userBalance}
               >
-                {amt}
+                +R${amt}
               </Button>
             ))}
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 font-medium"
+              onClick={() => setAmount(String(Math.floor(maxAmount)))}
+            >
+              Max
+            </Button>
           </div>
         </div>
 
+        {/* Divider */}
+        <div className="h-px bg-border" />
+
         {/* Summary */}
-        {quote && sharesNum > 0 && (() => {
-          const potentialReturn = sharesNum;
-          const roi = ((potentialReturn - quote.cost) / quote.cost) * 100;
-          
-          return (
-            <div className="p-4 rounded-lg bg-gradient-card border border-border space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Calculator className="h-4 w-4" />
-                Resumo da operação
-              </div>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Contratos</span>
-                  <span className="font-mono font-medium">{sharesNum}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Preço médio</span>
-                  <span className="font-mono font-medium">R${(quote.avgPrice / 100).toFixed(2)}</span>
-                </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Coins className="h-4 w-4" />
+              Para ganhar
+            </span>
+            <span className={cn(
+              "text-2xl font-mono font-bold",
+              potentialWin > 0 ? "text-success" : "text-foreground"
+            )}>
+              R${potentialWin.toFixed(2)}
+            </span>
+          </div>
+
+          {quote && sharesFromAmount > 0 && (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-muted-foreground flex items-center gap-1 cursor-help">
+                        Preço médio
+                        <Info className="h-3 w-3" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Preço médio por contrato considerando impacto no mercado</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span className="font-mono text-muted-foreground">
+                  {(quote.avgPrice / 100).toFixed(2)}¢
+                </span>
               </div>
 
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total a pagar</span>
-                  <span className="font-mono text-lg font-bold text-foreground">
+              <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-lg font-mono font-bold">
                     R${quote.cost.toFixed(2)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    {sharesFromAmount} contratos × {(quote.avgPrice / 100).toFixed(2)}¢
+                  </span>
+                  {quote.cost > 0 && (
+                    <span className="text-xs text-success">
+                      +{(((potentialWin / quote.cost) - 1) * 100).toFixed(0)}% se vencer
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
-                  {side === 'YES' 
-                    ? `Retorno se ${selectedOption.label} vencer`
-                    : `Retorno se ${selectedOption.label} NÃO vencer`
-                  }
-                </span>
-                <span className="font-mono">
-                  R${potentialReturn.toFixed(2)} (+{roi.toFixed(2)}%)
-                </span>
-              </div>
-
-              {side === 'YES' && Math.abs(quote.priceImpact) > 0.5 && (
+              {activeSide === 'YES' && Math.abs(quote.priceImpact) > 0.5 && (
                 <div className={cn(
                   "flex items-center gap-2 p-2 rounded-md",
-                  Math.abs(quote.priceImpact) > 5 
-                    ? "bg-warning/20 text-warning" 
+                  Math.abs(quote.priceImpact) > 5
+                    ? "bg-warning/20 text-warning"
                     : "bg-muted text-muted-foreground"
                 )}>
                   <Zap className="h-3.5 w-3.5" />
@@ -480,50 +455,27 @@ export function MultiOptionPurchaseModal({
                   </span>
                 </div>
               )}
+            </>
+          )}
+        </div>
 
-              <p className="text-xs text-muted-foreground">
-                {side === 'YES'
-                  ? `Se ${selectedOption.label} vencer, cada contrato paga R$1,00`
-                  : `Se ${selectedOption.label} NÃO vencer, cada contrato paga R$1,00`
-                }
-              </p>
-
-              <div className="flex items-center justify-center">
-                <SlippageSelector 
-                  value={slippageTolerance} 
-                  onChange={setSlippageTolerance}
-                  disabled={isConfirming}
-                />
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Error Message */}
+        {/* Error */}
         {error && (
-          <div className={cn(
-            "flex items-center gap-2 p-3 rounded-lg text-sm",
-            slippageDetected 
-              ? "bg-warning/10 border border-warning/30 text-warning-foreground" 
-              : "bg-destructive/10 border border-destructive/30 text-destructive"
-          )}>
-            <AlertCircle className={cn(
-              "h-4 w-4 flex-shrink-0",
-              slippageDetected ? "text-warning" : "text-destructive"
-            )} />
-            <p>{error}</p>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {error}
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="p-5 pt-0">
+      <div className="p-5 pt-0 space-y-3">
         <Button
-          variant="default"
+          variant={activeSide === 'YES' ? 'yes' : 'no'}
           size="lg"
-          className="w-full"
+          className="w-full h-14 text-lg"
           onClick={handleConfirm}
-          disabled={priceExpired || isConfirming || !quote || sharesNum <= 0}
+          disabled={isConfirming || isLoading || !quote || sharesFromAmount <= 0}
         >
           {isConfirming ? (
             <>
@@ -531,48 +483,48 @@ export function MultiOptionPurchaseModal({
               Processando...
             </>
           ) : quote ? (
-            <>Confirmar Compra - R${quote.cost.toFixed(2)}</>
+            <>Comprar {activeSide === 'YES' ? 'Sim' : 'Não'} - R${quote.cost.toFixed(2)}</>
           ) : (
-            <>Insira quantidade</>
+            <>Comprar {activeSide === 'YES' ? 'Sim' : 'Não'}</>
           )}
         </Button>
-        
-        <p className="text-xs text-center text-muted-foreground mt-3">
-          Saldo disponível: <span className="font-mono font-medium">R${userBalance.toFixed(2)}</span>
-        </p>
       </div>
-    </>
+    </div>
   );
 
   if (isMobile) {
     return (
       <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
         <DrawerContent className="max-h-[90vh]">
-          <DrawerHeader className="flex items-center justify-between border-b border-border pb-4">
-            <DrawerTitle>Comprar Contrato</DrawerTitle>
+          <DrawerHeader className="flex items-center justify-between border-b border-border pb-3">
+            <DrawerTitle className="text-lg font-semibold">
+              {event.title.length > 40 ? event.title.slice(0, 40) + '...' : event.title}
+            </DrawerTitle>
             <DrawerClose asChild>
               <Button variant="ghost" size="icon">
                 <X className="h-5 w-5" />
               </Button>
             </DrawerClose>
           </DrawerHeader>
-          <div className="overflow-y-auto">
-            {modalContent}
-          </div>
+          {modalContent}
         </DrawerContent>
       </Drawer>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative z-10 w-full max-w-md bg-card border border-border rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
-          <h2 className="text-lg font-semibold">Comprar Contrato</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/95 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-elevated animate-scale-in max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
+          <h2 className="text-lg font-semibold line-clamp-1 pr-4">
+            {event.title}
+          </h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>

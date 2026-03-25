@@ -170,6 +170,9 @@ export function AdminSuggestionsPage() {
         admin_notes: adminNotes,
       });
       toast.success('Sugestão rejeitada');
+      try {
+        await notifySuggestionRejected(selectedSuggestion.user_id, selectedSuggestion.id, selectedSuggestion.title, adminNotes);
+      } catch (e) { console.error('Notification error:', e); }
       setShowReviewModal(false);
       fetchSuggestions(true);
     } catch (error) {

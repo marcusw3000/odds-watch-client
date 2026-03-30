@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { ChatMessageItem } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useGlobalChat } from '@/hooks/useGlobalChat';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 export function GlobalChat() {
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -25,104 +27,124 @@ export function GlobalChat() {
     currentUserId,
   } = useGlobalChat();
 
-  // Track unread when closed
+  const isChatVisible = !isMobile || isOpen;
+
   useEffect(() => {
-    if (!isOpen && messages.length > prevLengthRef.current) {
-      setUnreadCount(prev => prev + (messages.length - prevLengthRef.current));
+    if (isMobile && !isOpen && messages.length > prevLengthRef.current) {
+      setUnreadCount((prev) => prev + (messages.length - prevLengthRef.current));
     }
     prevLengthRef.current = messages.length;
-  }, [messages.length, isOpen]);
+  }, [messages.length, isMobile, isOpen]);
 
-  // Clear unread on open
   useEffect(() => {
-    if (isOpen) setUnreadCount(0);
-  }, [isOpen]);
+    if (!isMobile || isOpen) {
+      setUnreadCount(0);
+    }
+  }, [isMobile, isOpen]);
 
-  // Auto-scroll
   useEffect(() => {
-    if (isOpen && scrollRef.current) {
+    if (isChatVisible && scrollRef.current) {
       const el = scrollRef.current;
       const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+
       if (isNearBottom) {
         requestAnimationFrame(() => {
           el.scrollTop = el.scrollHeight;
         });
       }
     }
-  }, [messages.length, isOpen]);
+  }, [messages.length, isChatVisible]);
+
+  const chatPanel = (
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">Chat Global</h2>
+          {isConnected ? (
+            <Wifi className="h-3.5 w-3.5 text-primary" />
+          ) : (
+            <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3"
+      >
+        {isLoading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-center text-sm text-destructive">{error}</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-center text-sm text-muted-foreground">
+              Nenhuma mensagem ainda.
+              <br />
+              Seja o primeiro a dizer algo.
+            </p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <ChatMessageItem
+              key={msg.id}
+              message={msg}
+              isOwn={msg.user_id === currentUserId}
+              onReport={reportMessage}
+            />
+          ))
+        )}
+      </div>
+
+      <ChatInput onSend={sendMessage} disabled={!isAuthenticated} />
+    </div>
+  );
 
   return (
     <>
-      {/* Floating button */}
-      <Button
-        onClick={() => setIsOpen(true)}
-        size="icon"
-        className={cn(
-          'fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full shadow-lg lg:bottom-6',
-          isOpen && 'hidden'
-        )}
-      >
-        <MessageCircle className="h-5 w-5" />
-        {unreadCount > 0 && (
-          <Badge
-            variant="destructive"
-            className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center"
-          >
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </Badge>
-        )}
-      </Button>
-
-      {/* Chat panel */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="right" className="flex flex-col p-0 w-full sm:max-w-[400px] gap-0">
-          <SheetHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-border space-y-0">
-            <div className="flex items-center gap-2">
-              <SheetTitle className="text-base">Chat Global</SheetTitle>
-              {isConnected ? (
-                <Wifi className="h-3.5 w-3.5 text-primary" />
-              ) : (
-                <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-            </div>
-          </SheetHeader>
-
-          {/* Messages */}
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3"
-          >
-            {isLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : error ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-destructive text-center">{error}</p>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground text-center">
-                  Nenhuma mensagem ainda.<br />
-                  Seja o primeiro a dizer algo! 💬
-                </p>
-              </div>
-            ) : (
-              messages.map((msg) => (
-                <ChatMessageItem
-                  key={msg.id}
-                  message={msg}
-                  isOwn={msg.user_id === currentUserId}
-                  onReport={reportMessage}
-                />
-              ))
-            )}
+      {!isMobile && (
+        <aside className="hidden md:block md:w-[340px] md:shrink-0 xl:w-[360px]">
+          <div className="sticky top-24 h-[calc(100vh-8rem)]">
+            {chatPanel}
           </div>
+        </aside>
+      )}
 
-          {/* Input */}
-          <ChatInput onSend={sendMessage} disabled={!isAuthenticated} />
-        </SheetContent>
-      </Sheet>
+      {isMobile && (
+        <>
+          <Button
+            onClick={() => setIsOpen(true)}
+            size="icon"
+            className={cn(
+              'fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full shadow-lg',
+              isOpen && 'hidden'
+            )}
+          >
+            <MessageCircle className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center px-1 text-[10px]"
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Badge>
+            )}
+          </Button>
+
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetContent side="right" className="w-full p-0 sm:max-w-[400px]">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Chat Global</SheetTitle>
+              </SheetHeader>
+              {chatPanel}
+            </SheetContent>
+          </Sheet>
+        </>
+      )}
     </>
   );
 }

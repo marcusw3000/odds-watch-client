@@ -197,8 +197,8 @@ export function MarketsPage() {
     }
   };
 
-  const handleConfirmSell = async (contractId: string, minValue: number) => {
-    const result = await MarketDataProvider.sellContract(contractId, minValue);
+  const handleConfirmSell = async (contractId: string, shares: number, minValue: number) => {
+    const result = await MarketDataProvider.sellContract(contractId, minValue, shares);
 
     if (result.success) {
       // Atualização otimista do saldo - adiciona valor da venda
@@ -281,7 +281,7 @@ export function MarketsPage() {
   // Get remaining markets for the grid
   const gridEvents = useMemo(() => 
     filteredEvents.filter(
-      (e) => !trendingEvents.slice(0, 1).find((t) => t.id === e.id)
+      (e) => !trendingEvents.find((t) => t.id === e.id)
     ),
     [filteredEvents, trendingEvents]
   );

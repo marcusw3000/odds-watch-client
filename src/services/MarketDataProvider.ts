@@ -13,6 +13,13 @@ import {
 } from './LMSRCalculator';
 import { FeeEngine } from './FeeEngine';
 
+function sanitizeMarketSearchQuery(query: string): string {
+  return query
+    .replace(/[,%()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Transform DB market option to frontend MarketOption
 function transformDbMarketOption(dbOption: DbMarketOption): MarketOption {
   return {
@@ -445,12 +452,13 @@ export const MarketDataProvider = {
 
   // Busca mercados para autocomplete
   async searchEvents(query: string): Promise<MarketEvent[]> {
-    if (!query.trim()) return [];
+    const sanitizedQuery = sanitizeMarketSearchQuery(query);
+    if (!sanitizedQuery) return [];
     
     const { data, error } = await supabase
       .from('markets')
       .select('*')
-      .or(`title.ilike.%${query}%,category.ilike.%${query}%`)
+      .or(`title.ilike.%${sanitizedQuery}%,category.ilike.%${sanitizedQuery}%`)
       .limit(10);
 
     if (error) {
@@ -787,7 +795,8 @@ export const MarketDataProvider = {
   // Venda de contrato usando edge function (server-side)
   async sellContract(
     contractId: string,
-    minValue: number
+    minValue: number,
+    shares?: number
   ): Promise<{ success: boolean; message: string; saleValue?: number; quote?: TradeQuote }> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -797,7 +806,7 @@ export const MarketDataProvider = {
     // Use server-side edge function for secure trade execution
     try {
       const { data, error } = await supabase.functions.invoke('execute-sell', {
-        body: { contractId, minValue }
+        body: { contractId, minValue, shares }
       });
 
       if (error) {
@@ -829,6 +838,14 @@ export const MarketDataProvider = {
   async getCurrentPriceForContract(contract: UserContract): Promise<number> {
     const market = await this.getEventById(contract.eventId);
     if (!market) return contract.priceAtPurchase;
+
+    if (contract.position === 'OPTION' && contract.optionId && market.options) {
+      const option = market.options.find((entry) => entry.id === contract.optionId);
+      if (option) {
+        const yesPrice = option.currentPrice;
+        return contract.contractType === 'NO' ? 100 - yesPrice : yesPrice;
+      }
+    }
 
     return contract.outcome === 'YES' 
       ? market.outcomes.YES.price 

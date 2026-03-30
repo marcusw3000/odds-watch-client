@@ -6,6 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function sanitizeSearchTerm(value: unknown): string {
+  if (typeof value !== 'string') return '';
+
+  return value
+    .replace(/[,%()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -102,8 +111,10 @@ Deno.serve(async (req) => {
       .order('updated_at', { ascending: false });
 
     // Apply filters
-    if (search) {
-      query = query.or(`title.ilike.%${search}%,category.ilike.%${search}%`);
+    const sanitizedSearch = sanitizeSearchTerm(search);
+
+    if (sanitizedSearch) {
+      query = query.or(`title.ilike.%${sanitizedSearch}%,category.ilike.%${sanitizedSearch}%`);
     }
 
     if (status && status !== 'all') {

@@ -17,6 +17,9 @@ export interface SecurePortfolio {
     eventId: string;
     eventTitle: string;
     outcome: 'YES' | 'NO';
+    position?: 'YES' | 'NO' | 'OPTION';
+    optionId?: string;
+    contractType?: 'YES' | 'NO';
     quantity: number;
     priceAtPurchase: number;
     purchasedAt: Date;

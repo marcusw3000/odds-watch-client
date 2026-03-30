@@ -74,6 +74,7 @@ export function MarketDetailPage() {
     if (!id) return;
     
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [eventData, historyData, portfolio] = await Promise.all([
         MarketDataProvider.getEventById(id),
@@ -93,11 +94,6 @@ export function MarketDetailPage() {
       }
       setMultiOptionHistory(multiHistory);
       
-      if (!eventData) {
-        navigate('/markets');
-        return;
-      }
-      
       setEvent(eventData);
       setOddsHistory(historyData);
       setUserBalance(portfolio.balance);
@@ -105,6 +101,7 @@ export function MarketDetailPage() {
       setUserContracts(portfolio.contracts.filter(c => c.eventId === id && c.status === 'ACTIVE'));
     } catch (error) {
       console.error('Error fetching market details:', error);
+      setLoadError(error instanceof Error ? error : new Error('Falha ao carregar mercado.'));
       toast({
         title: 'Erro ao carregar mercado',
         description: 'Tente novamente mais tarde.',
@@ -192,10 +189,10 @@ export function MarketDetailPage() {
     }
   };
 
-  const handleConfirmSell = async (contractId: string, minValue: number) => {
+  const handleConfirmSell = async (contractId: string, shares: number, minValue: number) => {
     if (!event) return;
 
-    const result = await MarketDataProvider.sellContract(contractId, minValue);
+    const result = await MarketDataProvider.sellContract(contractId, minValue, shares);
 
     if (result.success) {
       // Refresh data in background
@@ -777,7 +774,7 @@ export function MarketDetailPage() {
           open={showMultiSellModal}
           onOpenChange={setShowMultiSellModal}
           onConfirm={async (contractId, shares, minValue) => {
-            const result = await MarketDataProvider.sellContract(contractId, minValue);
+            const result = await MarketDataProvider.sellContract(contractId, minValue, shares);
             
             if (result.success) {
               toast({

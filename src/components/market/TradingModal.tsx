@@ -31,7 +31,7 @@ interface TradingModalProps {
   initialOutcome?: 'YES' | 'NO';
   onClose: () => void;
   onBuyConfirm: (outcome: 'YES' | 'NO', shares: number, maxCost: number) => Promise<void>;
-  onSellConfirm: (contractId: string, minValue: number) => Promise<void>;
+  onSellConfirm: (contractId: string, shares: number, minValue: number) => Promise<void>;
   onRefreshPrice: () => Promise<MarketEvent | null>;
 }
 
@@ -201,7 +201,7 @@ export function TradingModal({
         }
 
         const minValue = quote.cost * (1 - SELL_SLIPPAGE);
-        await onSellConfirm(currentContract.id, minValue);
+        await onSellConfirm(currentContract.id, sharesFromAmount, minValue);
 
         const costBasis = (currentContract.priceAtPurchase / 100) * sharesFromAmount;
         setSuccessData({

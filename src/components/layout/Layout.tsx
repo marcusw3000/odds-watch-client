@@ -77,16 +77,20 @@ export function Layout() {
       </a>
       
       <Header balance={userBalance} isBalanceLoading={isBalanceLoading} />
-      <main id="main-content" className="flex-1 container mx-auto px-4 py-8 pb-24 lg:pb-8 min-h-[calc(100vh-200px)]" style={{ contain: 'layout' }}>
-        <div key={location.pathname} className="animate-fade-in">
-          <Outlet context={{ userBalance, setUserBalance }} />
+      <div className="mx-auto flex w-full max-w-[1680px] flex-1 px-4 py-8 pb-24 md:px-6 md:pb-8 2xl:px-8">
+        <div className="flex min-h-[calc(100vh-200px)] w-full items-start gap-6 xl:gap-8 2xl:gap-10">
+          <main id="main-content" className="min-w-0 flex-1" style={{ contain: 'layout' }}>
+            <div key={location.pathname} className="animate-fade-in">
+              <Outlet context={{ userBalance, setUserBalance }} />
+            </div>
+          </main>
+          <ChatErrorBoundary>
+            <GlobalChat />
+          </ChatErrorBoundary>
         </div>
-      </main>
+      </div>
       <Footer />
       <BottomNav />
-      <ChatErrorBoundary>
-        <GlobalChat />
-      </ChatErrorBoundary>
     </div>
   );
 }

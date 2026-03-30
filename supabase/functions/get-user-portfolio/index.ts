@@ -6,6 +6,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function parseWinningResults(result: unknown): string[] {
+  if (Array.isArray(result)) {
+    return result.filter((value): value is string => typeof value === "string");
+  }
+
+  if (typeof result !== "string") {
+    return [];
+  }
+
+  const trimmed = result.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((value): value is string => typeof value === "string");
+    }
+    if (typeof parsed === "string") {
+      return [parsed];
+    }
+  } catch {
+    // Plain string result like "YES" or an option id.
+  }
+
+  return [trimmed];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -52,7 +81,7 @@ serve(async (req) => {
         .maybeSingle(),
       supabaseAdmin
         .from("user_contracts")
-        .select("id, market_id, position, shares, average_price, total_invested, created_at, markets!user_contracts_market_id_fkey(title, status, result)")
+        .select("id, market_id, position, option_id, contract_type, shares, average_price, total_invested, created_at, markets!user_contracts_market_id_fkey(title, status, result)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
       supabaseAdmin
@@ -81,13 +110,24 @@ serve(async (req) => {
     const contracts = (contractsResult.data || []).map((c: any) => {
       const market = c.markets;
       const marketStatus = market?.status ?? "OPEN";
-      const marketResult = market?.result;
+      const winners = parseWinningResults(market?.result);
+      const isOptionContract = c.position === "OPTION" && typeof c.option_id === "string";
+      const contractType: "YES" | "NO" = c.contract_type === "NO" ? "NO" : "YES";
       
       let status: "ACTIVE" | "WON" | "LOST" = "ACTIVE";
       let payout: number | undefined;
       
-      if (marketStatus === "SETTLED" && marketResult) {
-        if (marketResult === c.position) {
+      if (marketStatus === "SETTLED" && winners.length > 0) {
+        let isWinningContract = false;
+
+        if (isOptionContract) {
+          const didOptionWin = winners.includes(c.option_id);
+          isWinningContract = contractType === "NO" ? !didOptionWin : didOptionWin;
+        } else if (c.position === "YES" || c.position === "NO") {
+          isWinningContract = winners.includes(c.position);
+        }
+
+        if (isWinningContract) {
           status = "WON";
           payout = c.shares; // 1 BRL per winning share
         } else {
@@ -99,7 +139,10 @@ serve(async (req) => {
         id: c.id,
         eventId: c.market_id,
         eventTitle: market?.title || "Unknown",
-        outcome: c.position,
+        outcome: isOptionContract ? contractType : c.position,
+        position: c.position,
+        optionId: c.option_id ?? undefined,
+        contractType,
         quantity: c.shares,
         priceAtPurchase: c.average_price * 100,
         purchasedAt: c.created_at,

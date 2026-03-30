@@ -35,7 +35,7 @@ interface SellQuote {
   priceImpact: number;
 }
 
-const SELL_SLIPPAGE = 0.02; // 2%
+const SELL_SLIPPAGE = 0.02;
 
 export function MultiOptionSellModal({
   event,
@@ -56,20 +56,33 @@ export function MultiOptionSellModal({
 
   const isMobile = useIsMobile();
 
-  const selectedContract = useMemo(() =>
-    userContracts.find(c => c.id === selectedContractId),
+  const selectedContract = useMemo(
+    () => userContracts.find((contract) => contract.id === selectedContractId),
     [userContracts, selectedContractId]
   );
 
   const selectedOption = useMemo(() => {
     if (!selectedContract?.optionId) return null;
-    return event.options?.find(o => o.id === selectedContract.optionId);
+    return event.options?.find((option) => option.id === selectedContract.optionId) ?? null;
   }, [selectedContract, event.options]);
 
   const sharesNum = parseFloat(amount) || 0;
   const maxShares = selectedContract?.quantity || 0;
+  const contractType = selectedContract?.contractType === 'NO' ? 'NO' : 'YES';
+  const contractLabel = contractType === 'NO' ? 'NAO' : 'SIM';
+  const currentContractPrice = selectedOption
+    ? contractType === 'NO'
+      ? Math.max(1, 100 - selectedOption.currentPrice)
+      : selectedOption.currentPrice
+    : 0;
 
-  // Calculate sell quote using LMSR
+  useEffect(() => {
+    if (!open) return;
+    setSelectedContractId(userContracts[0]?.id || null);
+    setAmount('');
+    setError(null);
+  }, [open, userContracts]);
+
   useEffect(() => {
     if (sharesNum <= 0 || !selectedOption || !event.options) {
       setQuote(null);
@@ -79,10 +92,23 @@ export function MultiOptionSellModal({
     setIsLoading(true);
 
     const timer = setTimeout(() => {
-      const options = event.options!;
+      if (contractType === 'NO') {
+        const noPrice = Math.max(1, 100 - selectedOption.currentPrice);
+        const saleValue = (sharesNum * noPrice) / 100;
+
+        setQuote({
+          value: saleValue,
+          avgPrice: noPrice,
+          priceImpact: 0,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const options = event.options;
       const lmsrB = event.lmsr?.b || 100;
-      const currentShares = options.map(opt => opt.shares || 0);
-      const optionIndex = options.findIndex(opt => opt.id === selectedOption.id);
+      const currentShares = options.map((option) => option.shares || 0);
+      const optionIndex = options.findIndex((option) => option.id === selectedOption.id);
 
       if (optionIndex === -1) {
         setQuote(null);
@@ -92,9 +118,9 @@ export function MultiOptionSellModal({
 
       const costFunction = (shares: number[]): number => {
         if (shares.length === 0) return 0;
-        const scaledShares = shares.map(q => q / lmsrB);
+        const scaledShares = shares.map((shareCount) => shareCount / lmsrB);
         const maxVal = Math.max(...scaledShares);
-        const sumExp = scaledShares.reduce((sum, x) => sum + Math.exp(x - maxVal), 0);
+        const sumExp = scaledShares.reduce((sum, value) => sum + Math.exp(value - maxVal), 0);
         return lmsrB * (maxVal + Math.log(sumExp));
       };
 
@@ -105,13 +131,15 @@ export function MultiOptionSellModal({
       const saleValue = currentCost - newCost;
       const avgPrice = (saleValue / sharesNum) * 100;
 
-      const currentPriceVal = selectedOption.currentPrice;
-      const scaledNew = newShares.map(q => q / lmsrB);
+      const scaledNew = newShares.map((shareCount) => shareCount / lmsrB);
       const maxValNew = Math.max(...scaledNew);
-      const expValuesNew = scaledNew.map(x => Math.exp(x - maxValNew));
-      const sumExpNew = expValuesNew.reduce((sum, x) => sum + x, 0);
+      const expValuesNew = scaledNew.map((value) => Math.exp(value - maxValNew));
+      const sumExpNew = expValuesNew.reduce((sum, value) => sum + value, 0);
       const newPrice = Math.round((expValuesNew[optionIndex] / sumExpNew) * 100);
-      const priceImpact = currentPriceVal > 0 ? ((newPrice - currentPriceVal) / currentPriceVal) * 100 : 0;
+      const priceImpact =
+        selectedOption.currentPrice > 0
+          ? ((newPrice - selectedOption.currentPrice) / selectedOption.currentPrice) * 100
+          : 0;
 
       setQuote({
         value: saleValue,
@@ -122,15 +150,7 @@ export function MultiOptionSellModal({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [sharesNum, selectedOption, event.options, event.lmsr]);
-
-  // Reset when modal opens or contract changes
-  useEffect(() => {
-    if (open) {
-      setAmount('');
-      setError(null);
-    }
-  }, [open, selectedContractId]);
+  }, [sharesNum, selectedOption, event.options, event.lmsr, contractType]);
 
   const handleRefresh = useCallback(async () => {
     setIsLoading(true);
@@ -147,12 +167,14 @@ export function MultiOptionSellModal({
       setError('Selecione um contrato para vender.');
       return;
     }
+
     if (!quote || sharesNum <= 0) {
-      setError('Insira uma quantidade válida.');
+      setError('Insira uma quantidade valida.');
       return;
     }
+
     if (sharesNum > maxShares) {
-      setError(`Você só possui ${maxShares} contratos.`);
+      setError(`Voce so possui ${maxShares} contratos.`);
       return;
     }
 
@@ -165,8 +187,8 @@ export function MultiOptionSellModal({
       onOpenChange(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('preço mudou') || msg.includes('slippage')) {
-        setError('O preço mudou. Tente novamente.');
+      if (msg.includes('preco mudou') || msg.includes('slippage') || msg.includes('preço mudou')) {
+        setError('O preco mudou. Tente novamente.');
         handleRefresh();
       } else {
         setError(msg || 'Erro ao processar venda. Tente novamente.');
@@ -178,7 +200,6 @@ export function MultiOptionSellModal({
 
   const sellPercentages = [25, 50, 75, 100];
 
-  // Profit/loss
   const profitLoss = useMemo(() => {
     if (!quote || !selectedContract || sharesNum <= 0) return null;
     const originalCost = (selectedContract.priceAtPurchase / 100) * sharesNum;
@@ -190,13 +211,14 @@ export function MultiOptionSellModal({
   const modalContent = (
     <div className="flex flex-col h-full">
       <div className="flex-1 p-5 space-y-5 overflow-y-auto">
-        {/* Contract Selection */}
         {userContracts.length > 1 && (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Selecione o contrato</p>
             <div className="flex gap-2 flex-wrap">
-              {userContracts.map(contract => {
-                const option = event.options?.find(o => o.id === contract.optionId);
+              {userContracts.map((contract) => {
+                const option = event.options?.find((entry) => entry.id === contract.optionId);
+                const chipLabel = `${contract.contractType === 'NO' ? 'NAO ' : ''}${option?.label || 'Opcao'}`;
+
                 return (
                   <button
                     key={contract.id}
@@ -205,10 +227,10 @@ export function MultiOptionSellModal({
                       setAmount('');
                     }}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
+                      'flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors',
                       selectedContractId === contract.id
-                        ? "bg-primary/20 border-primary text-primary"
-                        : "bg-muted/50 border-border hover:bg-muted"
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-muted/50 border-border hover:bg-muted'
                     )}
                   >
                     {option?.imageUrl ? (
@@ -221,7 +243,7 @@ export function MultiOptionSellModal({
                         {option?.label.charAt(0) || '?'}
                       </div>
                     )}
-                    <span className="font-medium">{option?.label || 'Opção'}</span>
+                    <span className="font-medium">{chipLabel}</span>
                     <span className="text-xs text-muted-foreground">({contract.quantity})</span>
                   </button>
                 );
@@ -230,7 +252,6 @@ export function MultiOptionSellModal({
           </div>
         )}
 
-        {/* Selected Option Info */}
         {selectedOption && selectedContract && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             {selectedOption.imageUrl ? (
@@ -244,9 +265,12 @@ export function MultiOptionSellModal({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{selectedOption.label}</p>
+              <p className="font-semibold truncate">
+                {contractType === 'NO' ? 'NAO ' : ''}
+                {selectedOption.label}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Preço atual: <span className="font-mono">{selectedOption.currentPrice}¢</span>
+                Contrato {contractLabel}: <span className="font-mono">{currentContractPrice}¢</span>
               </p>
             </div>
             <div className="text-right flex-shrink-0">
@@ -259,13 +283,10 @@ export function MultiOptionSellModal({
           </div>
         )}
 
-        {/* Amount Input */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-muted-foreground">Contratos</label>
-            <span className="text-xs text-muted-foreground">
-              Disponível: {maxShares}
-            </span>
+            <span className="text-xs text-muted-foreground">Disponivel: {maxShares}</span>
           </div>
 
           <Input
@@ -280,7 +301,6 @@ export function MultiOptionSellModal({
             className="h-14 text-2xl font-mono font-bold text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
 
-          {/* Percentage Buttons */}
           <div className="flex gap-2">
             {sellPercentages.map((pct) => (
               <Button
@@ -300,17 +320,15 @@ export function MultiOptionSellModal({
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-px bg-border" />
 
-        {/* Summary */}
         <div className="space-y-3">
           {quote && sharesNum > 0 ? (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                   <TrendingUp className="h-4 w-4" />
-                  Você receberá
+                  Voce recebera
                 </span>
                 <span className="text-2xl font-mono font-bold text-success">
                   R${quote.value.toFixed(2)}
@@ -327,10 +345,12 @@ export function MultiOptionSellModal({
                     )}
                     Resultado
                   </span>
-                  <span className={cn(
-                    "font-mono font-bold",
-                    profitLoss.profit >= 0 ? "text-success" : "text-destructive"
-                  )}>
+                  <span
+                    className={cn(
+                      'font-mono font-bold',
+                      profitLoss.profit >= 0 ? 'text-success' : 'text-destructive'
+                    )}
+                  >
                     {profitLoss.profit >= 0 ? '+' : ''}
                     R${profitLoss.profit.toFixed(2)} ({profitLoss.profitPct.toFixed(1)}%)
                   </span>
@@ -340,10 +360,12 @@ export function MultiOptionSellModal({
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Contratos a vender</span>
-                  <span className="font-mono font-medium">{sharesNum} de {maxShares}</span>
+                  <span className="font-mono font-medium">
+                    {sharesNum} de {maxShares}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Preço médio de venda</span>
+                  <span className="text-muted-foreground">Preco medio de venda</span>
                   <span className="font-mono text-muted-foreground">
                     R${(quote.avgPrice / 100).toFixed(2)} cada
                   </span>
@@ -352,15 +374,13 @@ export function MultiOptionSellModal({
 
               {Math.abs(quote.priceImpact) > 0.5 && (
                 <p className="text-xs text-muted-foreground">
-                  Impacto no preço: {quote.priceImpact.toFixed(2)}%
+                  Impacto no preco: {quote.priceImpact.toFixed(2)}%
                 </p>
               )}
             </>
           ) : maxShares === 0 ? (
             <div className="p-4 rounded-lg bg-muted/30 border border-dashed border-border text-center">
-              <p className="text-sm text-muted-foreground">
-                Você não possui contratos para vender
-              </p>
+              <p className="text-sm text-muted-foreground">Voce nao possui contratos para vender</p>
             </div>
           ) : (
             <div className="p-4 rounded-lg bg-muted/30 border border-border text-center">
@@ -371,7 +391,6 @@ export function MultiOptionSellModal({
           )}
         </div>
 
-        {/* Error */}
         {error && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -380,20 +399,13 @@ export function MultiOptionSellModal({
         )}
       </div>
 
-      {/* Footer */}
       <div className="p-5 pt-0 space-y-3">
         <Button
           variant="destructive"
           size="lg"
           className="w-full h-14 text-lg"
           onClick={handleConfirm}
-          disabled={
-            isConfirming ||
-            isLoading ||
-            !quote ||
-            sharesNum <= 0 ||
-            sharesNum > maxShares
-          }
+          disabled={isConfirming || isLoading || !quote || sharesNum <= 0 || sharesNum > maxShares}
         >
           {isConfirming ? (
             <>

@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     // Get contract to get shares count (if not provided) and validate ownership
     const { data: contract, error: contractError } = await supabaseAdmin
       .from("user_contracts")
-      .select("id, shares, position, market_id, option_id, markets!user_contracts_market_id_fkey(title)")
+      .select("id, shares, position, market_id, option_id, contract_type, markets!user_contracts_market_id_fkey(title)")
       .eq("id", contractId)
       .eq("user_id", userId)
       .single();
@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
     const sharesToSell = requestedShares || contract.shares;
 
     const isMultiOption = contract.position === 'OPTION' && contract.option_id != null;
+    const isMultiOptionNo = isMultiOption && contract.contract_type === 'NO';
     
     console.log('[EXECUTE-SELL] Request:', {
       userId,
@@ -146,13 +147,18 @@ Deno.serve(async (req) => {
       minValue: minValue || 0,
       position: contract.position,
       isMultiOption,
+      contractType: contract.contract_type,
       optionId: contract.option_id,
     });
 
     // Execute atomic sell using the appropriate database function
     // Multi-option markets use atomic_execute_multi_sell
     // Binary markets use atomic_execute_sell
-    const rpcName = isMultiOption ? "atomic_execute_multi_sell" : "atomic_execute_sell";
+    const rpcName = isMultiOptionNo
+      ? "atomic_execute_multi_no_sell"
+      : isMultiOption
+      ? "atomic_execute_multi_sell"
+      : "atomic_execute_sell";
     
     const { data: result, error: sellError } = await supabaseAdmin.rpc(
       rpcName,

@@ -32,18 +32,13 @@ export function useUpdateCopyTradeSettings() {
 
   return useMutation({
     mutationFn: async (settings: Partial<CopyTradeSettings>) => {
-      const { data, error } = await supabase
-        .from('copy_trade_settings')
-        .update({
-          ...settings,
-          default_platform_split: 100 - (settings.default_trader_split ?? 50),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', '00000000-0000-0000-0000-000000000001')
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('manage-copy-trade-settings', {
+        method: 'POST',
+        body: { settings },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
@@ -266,7 +261,6 @@ export function useManageCopyTrader() {
       monthly_fee,
       profit_share_percent,
       custom_trader_split,
-      custom_platform_split,
     }: {
       action: 'approve' | 'reject' | 'suspend' | 'unsuspend';
       trader_id: string;
@@ -274,7 +268,6 @@ export function useManageCopyTrader() {
       monthly_fee?: number;
       profit_share_percent?: number;
       custom_trader_split?: number;
-      custom_platform_split?: number;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
@@ -286,50 +279,20 @@ export function useManageCopyTrader() {
         .eq('id', trader_id)
         .single();
 
-      let updateData: Record<string, unknown> = {};
-
-      switch (action) {
-        case 'approve':
-          updateData = {
-            status: 'APPROVED',
-            approved_by: user.id,
-            approved_at: new Date().toISOString(),
-            rejection_reason: null,
-            suspended_at: null,
-            monthly_fee,
-            profit_share_percent,
-            custom_trader_split,
-            custom_platform_split: custom_trader_split ? 100 - custom_trader_split : null,
-          };
-          break;
-        case 'reject':
-          updateData = {
-            status: 'REJECTED',
-            rejection_reason,
-          };
-          break;
-        case 'suspend':
-          updateData = {
-            status: 'SUSPENDED',
-            suspended_at: new Date().toISOString(),
-          };
-          break;
-        case 'unsuspend':
-          updateData = {
-            status: 'APPROVED',
-            suspended_at: null,
-          };
-          break;
-      }
-
-      const { data, error } = await supabase
-        .from('copy_traders')
-        .update(updateData)
-        .eq('id', trader_id)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('manage-copy-trader', {
+        method: 'POST',
+        body: {
+          action,
+          trader_id,
+          rejection_reason,
+          monthly_fee,
+          profit_share_percent,
+          custom_trader_split,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       // Send email notification (fire and forget)
       if (traderInfo?.user_id) {
@@ -394,20 +357,19 @@ export function useUpdateTraderSettings() {
       profit_share_percent?: number;
       custom_trader_split?: number | null;
     }) => {
-      const { data, error } = await supabase
-        .from('copy_traders')
-        .update({
+      const { data, error } = await supabase.functions.invoke('manage-copy-trader', {
+        method: 'POST',
+        body: {
+          action: 'update_settings',
+          trader_id,
           monthly_fee,
           profit_share_percent,
           custom_trader_split,
-          custom_platform_split: custom_trader_split != null ? 100 - custom_trader_split : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', trader_id)
-        .select()
-        .single();
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: (_, variables) => {

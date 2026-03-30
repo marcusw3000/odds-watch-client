@@ -36,14 +36,20 @@ export function ImageEditor({ value, onChange, error, initialZoom = 1, initialPo
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (value && value !== imageData.url) {
-      setImageData(prev => ({ 
-        ...prev, 
+    if (!value) return;
+
+    setImageData((prev) => {
+      if (prev.url === value) {
+        return prev;
+      }
+
+      return {
+        ...prev,
         url: value,
         zoom: initialZoom,
         position: initialPosition || { x: 50, y: 50 }
-      }));
-    }
+      };
+    });
   }, [value, initialZoom, initialPosition]);
 
   const uploadToSupabase = async (file: File): Promise<string | null> => {

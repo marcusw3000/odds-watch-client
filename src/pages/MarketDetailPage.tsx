@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
@@ -40,25 +40,35 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useMarketStatus } from '@/hooks/useMarketStatus';
-import { updateMetaTags, resetMetaTags } from '@/lib/seo';
 import { cn } from '@/lib/utils';
 import { optimizeImageUrl } from '@/lib/formatters';
 import { useDeepLink } from '@/hooks/useDeepLink';
 import { triggerPortfolioRefresh } from '@/hooks/usePortfolioRefresh';
 import { supabase } from '@/integrations/supabase/client';
 
-export function MarketDetailPage() {
+interface MarketDetailPageProps {
+  initialEvent?: MarketEvent | null;
+  initialOddsHistory?: OddsHistoryPoint[];
+  initialMultiOptionHistory?: MultiOptionHistoryPoint[];
+}
+
+export function MarketDetailPage({
+  initialEvent,
+  initialOddsHistory,
+  initialMultiOptionHistory,
+}: MarketDetailPageProps = {}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const deepLink = useDeepLink();
   const { user } = useAuth();
+  const hasInitialData = initialEvent !== undefined;
   
-  const [event, setEvent] = useState<MarketEvent | null>(null);
-  const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>([]);
-  const [multiOptionHistory, setMultiOptionHistory] = useState<MultiOptionHistoryPoint[]>([]);
+  const [event, setEvent] = useState<MarketEvent | null>(initialEvent ?? null);
+  const [oddsHistory, setOddsHistory] = useState<OddsHistoryPoint[]>(initialOddsHistory ?? []);
+  const [multiOptionHistory, setMultiOptionHistory] = useState<MultiOptionHistoryPoint[]>(initialMultiOptionHistory ?? []);
   const [userBalance, setUserBalance] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [loadError, setLoadError] = useState<Error | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
@@ -67,10 +77,11 @@ export function MarketDetailPage() {
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const [tradingMode, setTradingMode] = useState<'buy' | 'sell'>('buy');
   const [showMultiSellModal, setShowMultiSellModal] = useState(false);
+  const shouldSkipInitialFetchRef = useRef(hasInitialData);
   
   const statusInfo = useMarketStatus(event);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!id) return;
     
     setIsLoading(true);
@@ -110,27 +121,16 @@ export function MarketDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id, navigate, toast]);
 
   useEffect(() => {
-    fetchData();
-  }, [id]);
-
-  // Update meta tags for social sharing
-  useEffect(() => {
-    if (event) {
-      updateMetaTags({
-        title: event.title,
-        description: event.description || `Negocie contratos de previsão: ${event.title}`,
-        image: event.imageUrl,
-        url: `${window.location.origin}/market/${event.id}`,
-      });
+    if (shouldSkipInitialFetchRef.current) {
+      shouldSkipInitialFetchRef.current = false;
+      return;
     }
-    
-    return () => {
-      resetMetaTags();
-    };
-  }, [event]);
+
+    fetchData();
+  }, [fetchData]);
 
   // Handle deep link action (auto-open buy modal)
   useEffect(() => {

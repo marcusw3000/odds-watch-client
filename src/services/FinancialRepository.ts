@@ -63,44 +63,65 @@ export class FinancialRepository {
       effective_from: rule.effective_from,
       created_by: rule.created_by
     };
-    
-    const { data, error } = await supabase
-      .from('fee_rules')
-      .insert(insertData)
-      .select()
-      .single();
+
+    const { data, error } = await supabase.functions.invoke('manage-fee-rules', {
+      method: 'POST',
+      body: {
+        action: 'create',
+        rule: insertData,
+      },
+    });
 
     if (error) {
       console.error('Error creating fee rule:', error);
       return null;
     }
 
-    return data as unknown as FeeRule;
+    if (data?.error) {
+      console.error('Error creating fee rule:', data.error);
+      return null;
+    }
+
+    return (data?.rule ?? null) as FeeRule | null;
   }
 
   static async updateFeeRule(id: string, updates: Partial<FeeRule>): Promise<FeeRule | null> {
-    const { data, error } = await supabase
-      .from('fee_rules')
-      .update(updates as Record<string, unknown>)
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke('manage-fee-rules', {
+      method: 'POST',
+      body: {
+        action: 'update',
+        ruleId: id,
+        updates,
+      },
+    });
 
     if (error) {
       console.error('Error updating fee rule:', error);
       return null;
     }
 
-    return data as unknown as FeeRule;
+    if (data?.error) {
+      console.error('Error updating fee rule:', data.error);
+      return null;
+    }
+
+    return (data?.rule ?? null) as FeeRule | null;
   }
 
   static async deactivateFeeRule(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('fee_rules')
-      .update({ is_active: false })
-      .eq('id', id);
+    const { data, error } = await supabase.functions.invoke('manage-fee-rules', {
+      method: 'POST',
+      body: {
+        action: 'deactivate',
+        ruleId: id,
+      },
+    });
 
-    return !error;
+    if (error) {
+      return false;
+    }
+
+    return !data?.error;
   }
 
   // ==================== LEDGER ENTRIES ====================
@@ -463,20 +484,21 @@ export class FinancialRepository {
     evidenceUrl: string,
     settledBy: string
   ): Promise<boolean> {
-    const { error } = await supabase
-      .from('markets')
-      .update({
-        status: 'SETTLED',
+    const { data, error } = await supabase.functions.invoke('update-admin-event', {
+      method: 'POST',
+      body: {
+        action: 'settle',
+        eventId: marketId,
         result,
-        resolution: {
-          result,
-          evidence_url: evidenceUrl,
-          settled_at: new Date().toISOString()
-        },
-        settled_by: settledBy
-      })
-      .eq('id', marketId);
+        evidence: evidenceUrl,
+        requestedBy: settledBy,
+      },
+    });
 
-    return !error;
+    if (error) {
+      return false;
+    }
+
+    return !data?.error;
   }
 }

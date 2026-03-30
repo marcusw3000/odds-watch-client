@@ -37,7 +37,10 @@ export function SharePositionCard({ position, trigger }: SharePositionCardProps)
   const [copied, setCopied] = useState(false);
   const isProfit = position.profitPercent >= 0;
 
-  const shareUrl = `${window.location.origin}/markets`;
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/markets`
+      : '/markets';
   const shareText = `📊 Minha posição: ${position.eventTitle}\n\n${position.outcome === 'YES' ? '✅' : '❌'} ${position.outcome} × ${position.quantity} contratos\n💰 ${isProfit ? '+' : ''}${position.profitPercent.toFixed(2)}% ${isProfit ? '📈' : '📉'}`;
 
   const handleCopy = async () => {

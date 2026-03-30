@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +88,7 @@ export function AdminAuditLogsPage() {
     initialPageSize: 25,
     totalItems: totalCount,
   });
+  const { page, pageSize, offset, resetPage } = pagination;
 
   // Filters
   const [filters, setFilters] = useState({
@@ -97,30 +98,30 @@ export function AdminAuditLogsPage() {
     endDate: ''
   });
 
-  useEffect(() => {
-    loadLogs();
-  }, [pagination.page, pagination.pageSize]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
     const data = await FinancialRepository.getAuditLogs({
       action: filters.action || undefined,
       entity: filters.entity || undefined,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
-      limit: pagination.pageSize,
-      offset: pagination.offset,
+      limit: pageSize,
+      offset,
     });
     setLogs(data);
     // For now, we don't have total count from the API, so we estimate
     // If data length equals pageSize, there might be more
-    if (data.length === pagination.pageSize) {
-      setTotalCount((pagination.page) * pagination.pageSize + 1);
+    if (data.length === pageSize) {
+      setTotalCount(page * pageSize + 1);
     } else {
-      setTotalCount(pagination.offset + data.length);
+      setTotalCount(offset + data.length);
     }
     setLoading(false);
-  };
+  }, [filters.action, filters.entity, filters.startDate, filters.endDate, offset, page, pageSize]);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
 
   const openDetails = (log: AdminAuditLog) => {
     setSelectedLog(log);
@@ -128,8 +129,12 @@ export function AdminAuditLogsPage() {
   };
 
   const handleSearch = () => {
-    pagination.resetPage();
-    loadLogs();
+    if (page === 1) {
+      loadLogs();
+      return;
+    }
+
+    resetPage();
   };
 
   const getActionLabel = (action: string) => {

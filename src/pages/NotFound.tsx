@@ -36,7 +36,7 @@ const NotFound = () => {
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/mercados">
+            <Link to="/markets">
               <TrendingUp className="mr-2 h-4 w-4" />
               Ver Mercados
             </Link>

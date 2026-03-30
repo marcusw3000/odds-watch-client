@@ -571,7 +571,6 @@ export const MarketDataProvider = {
     }
 
     // Get balance from wallets table
-    // @ts-ignore - new columns exist after migration, types will be regenerated
     const walletResult = await supabase
       .from('wallets')
       .select('balance_available, total_deposited, total_withdrawn')
@@ -615,7 +614,7 @@ export const MarketDataProvider = {
     const contractsData = contractsResult.data;
     const transactionsData = transactionsResult.data;
 
-    let contracts: UserContract[] = (contractsData || []).map((c: any) => ({
+    const contracts: UserContract[] = (contractsData || []).map((c: any) => ({
       id: c.id,
       eventId: c.market_id,
       eventTitle: c.markets?.title || 'Unknown',
@@ -629,7 +628,7 @@ export const MarketDataProvider = {
       status: 'ACTIVE' as const,
     }));
 
-    let transactions: Transaction[] = (transactionsData || []).map((t: any) => ({
+    const transactions: Transaction[] = (transactionsData || []).map((t: any) => ({
       id: t.id,
       type: t.type as 'BUY' | 'SELL' | 'PAYOUT' | 'DEPOSIT',
       amount: t.total_amount,

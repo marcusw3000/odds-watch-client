@@ -31,14 +31,19 @@ interface LayoutContext {
   setUserBalance: React.Dispatch<React.SetStateAction<number>>;
 }
 
-export function MarketsPage() {
+interface MarketsPageProps {
+  initialEvents?: MarketEvent[];
+  initialCategories?: string[];
+}
+
+export function MarketsPage({ initialEvents, initialCategories }: MarketsPageProps) {
   const { userBalance, setUserBalance } = useOutletContext<LayoutContext>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Use realtime hook for markets data
-  const { events, isLoading: isLoadingMarkets, refetch } = useMarketsRealtime();
+  const { events, isLoading: isLoadingMarkets, refetch } = useMarketsRealtime(initialEvents);
   
   // Favorites system
   const { favoriteIds } = useFavorites();
@@ -60,7 +65,7 @@ export function MarketsPage() {
     setFilters,
   } = useMarketFilters(favoriteIds);
   
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>(initialCategories ?? []);
   const [activeCategory, setActiveCategory] = useState<string | null>(initialCategory);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -71,6 +76,7 @@ export function MarketsPage() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [userContracts, setUserContracts] = useState<UserContract[]>([]);
   const autoPlayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didInitSortRef = useRef(false);
   const { toast } = useToast();
   
   // Viewport-aware skeletons
@@ -78,6 +84,9 @@ export function MarketsPage() {
   
   // Initialize sort from URL
   useEffect(() => {
+    if (didInitSortRef.current) return;
+    didInitSortRef.current = true;
+
     if (initialSort !== filters.sortBy || initialOrder !== filters.sortOrder) {
       setFilters(prev => ({
         ...prev,
@@ -85,7 +94,7 @@ export function MarketsPage() {
         sortOrder: initialOrder,
       }));
     }
-  }, []); // Only on mount
+  }, [filters.sortBy, filters.sortOrder, initialOrder, initialSort, setFilters]);
   
   // Sync filters to URL
   useEffect(() => {
@@ -108,8 +117,9 @@ export function MarketsPage() {
 
   // Fetch categories separately (they don't change frequently)
   useEffect(() => {
+    if (initialCategories) return;
     MarketDataProvider.getCategories().then(setCategories);
-  }, []);
+  }, [initialCategories]);
 
   // Fetch user contracts when logged in
   useEffect(() => {

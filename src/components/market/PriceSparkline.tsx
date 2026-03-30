@@ -22,9 +22,10 @@ export const PriceSparkline = memo(function PriceSparkline({
 }: PriceSparklineProps) {
   // Get data from context if not passed directly
   const contextData = usePriceHistoryContext();
-  const historyData = directData || contextData?.[eventId] || [];
 
   const { points, isUp } = useMemo(() => {
+    const historyData = directData ?? contextData?.[eventId] ?? [];
+
     // Use real data if available, otherwise generate deterministic fallback
     let data: number[];
     
@@ -64,7 +65,7 @@ export const PriceSparkline = memo(function PriceSparkline({
       points: pathPoints,
       isUp: data[data.length - 1] > data[0],
     };
-  }, [eventId, currentPrice, width, height, historyData]);
+  }, [directData, contextData, eventId, currentPrice, width, height]);
 
   return (
     <svg 

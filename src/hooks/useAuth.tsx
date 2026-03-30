@@ -3,6 +3,11 @@ import type { ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface AuthBootstrap {
+  isAdmin: boolean;
+  user: User | null;
+}
+
 interface AuthState {
   user: User | null;
   session: Session | null;
@@ -15,12 +20,18 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({
+  children,
+  initialAuth,
+}: {
+  children: ReactNode;
+  initialAuth?: AuthBootstrap;
+}) {
+  const [user, setUser] = useState<User | null>(initialAuth?.user ?? null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const adminCheckRef = useRef<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(initialAuth?.isAdmin ?? false);
+  const [loading, setLoading] = useState(initialAuth?.user ? false : true);
+  const adminCheckRef = useRef<string | null>(initialAuth?.user?.id ?? null);
 
   useEffect(() => {
     let mounted = true;
@@ -114,12 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string, cpf?: string, phone?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = typeof window === 'undefined' ? undefined : `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        ...(redirectUrl ? { emailRedirectTo: redirectUrl } : {}),
         data: {
           full_name: fullName || '',
           cpf: cpf ? cpf.replace(/\D/g, '') : null,

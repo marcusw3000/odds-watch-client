@@ -87,6 +87,15 @@ export function DepositModal({ onClose }: DepositModalProps) {
     };
   }, []);
 
+  const handleClose = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    setIsClosing(true);
+    setIsVisible(false);
+    setTimeout(onClose, 200);
+  }, [onClose]);
+
   const checkPixPaymentStatus = useCallback(async () => {
     if (!paymentIntentId || pixConfirmed) return;
 
@@ -115,7 +124,7 @@ export function DepositModal({ onClose }: DepositModalProps) {
     } catch (error) {
       console.error('Error checking PIX status:', error);
     }
-  }, [paymentIntentId, pixConfirmed, numericAmount, toast]);
+  }, [paymentIntentId, pixConfirmed, checkPixStatus, numericAmount, toast, handleClose]);
 
   // Start polling when in PIX waiting step
   useEffect(() => {
@@ -133,15 +142,6 @@ export function DepositModal({ onClose }: DepositModalProps) {
       };
     }
   }, [step, paymentIntentId, pixConfirmed, checkPixPaymentStatus]);
-
-  const handleClose = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-    setIsClosing(true);
-    setIsVisible(false);
-    setTimeout(onClose, 200);
-  };
 
   const handleContinue = async () => {
     if (!isValidAmount) return;
@@ -710,6 +710,10 @@ export function DepositModal({ onClose }: DepositModalProps) {
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
 
   return createPortal(modalContent, document.body);
 }

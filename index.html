@@ -3,84 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Preconnect to critical third-party origins - placed early for maximum effect -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- js.stripe.com preconnect removed: Stripe loads on-demand only when user opens deposit modal -->
-    <link rel="preconnect" href="https://nfwxyftsdhgxfrnrvsdo.supabase.co" />
-
-    <title>Mercado de Previsões</title>
-    <meta name="description" content="Negocie contratos de previsão sobre eventos econômicos brasileiros. SELIC, IPCA, Dólar e mais." />
-    <meta name="author" content="Mercado de Previsões" />
-    <meta name="keywords" content="mercado de previsões, trading, SELIC, IPCA, dólar, economia brasileira, contratos" />
-
-    <!-- OpenGraph Meta Tags -->
-    <meta property="og:title" content="Mercado de Previsões" />
-    <meta property="og:description" content="Negocie contratos de previsão sobre eventos econômicos brasileiros. SELIC, IPCA, Dólar e mais." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://mercadoprevisoes.com.br" />
-    <meta property="og:image" content="/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="Mercado de Previsões" />
-    <meta property="og:locale" content="pt_BR" />
-
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Mercado de Previsões" />
-    <meta name="twitter:description" content="Negocie contratos de previsão sobre eventos econômicos brasileiros." />
-    <meta name="twitter:image" content="/og-image.png" />
-
-    <!-- Preload fonts for faster LCP with font-display=swap to prevent CLS -->
-    <link 
-      rel="preload" 
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" 
-      as="style" 
-      onload="this.onload=null;this.rel='stylesheet'"
-    />
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
-    </noscript>
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <title>Odds Watch Client</title>
   </head>
-
   <body>
-    <div id="root">
-      <!-- Static above-the-fold content for instant LCP before React hydrates -->
-      <div style="display:flex;flex-direction:column;min-height:100vh;background:hsl(222 47% 6%)">
-        <header style="height:64px;border-bottom:1px solid hsl(215 20% 15%);display:flex;align-items:center;padding:0 1rem">
-          <h1 style="font-size:1.25rem;font-weight:700;color:hsl(210 40% 98%);margin:0">Mercado de Previsões</h1>
-        </header>
-        <main style="flex:1;padding:1.5rem 1rem;max-width:1400px;margin:0 auto;width:100%">
-          <!-- Skeleton filter bar -->
-          <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem">
-            <div style="width:80px;height:36px;border-radius:8px;background:hsl(215 20% 12%)"></div>
-            <div style="width:80px;height:36px;border-radius:8px;background:hsl(215 20% 12%)"></div>
-            <div style="width:80px;height:36px;border-radius:8px;background:hsl(215 20% 12%)"></div>
-          </div>
-          <!-- Skeleton market cards grid -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem">
-            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
-            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
-            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
-            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
-            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
-            <div style="height:180px;border-radius:12px;background:hsl(215 20% 10%);border:1px solid hsl(215 20% 15%)"></div>
-          </div>
-        </main>
-        <footer style="border-top:1px solid hsl(220 14% 18%);height:137px;contain:layout;padding:1.5rem 1rem">
-          <div style="max-width:1400px;margin:0 auto">
-            <div style="display:flex;flex-direction:column;gap:1rem">
-              <p style="color:hsl(215 16% 55%);font-size:0.875rem;text-align:center;margin:0">Plataforma de mercados preditivos. Não constitui oferta de serviços financeiros, apostas ou jogos de azar. Operação em conformidade com a legislação brasileira.</p>
-              <p style="color:hsl(215 16% 55%);font-size:0.75rem;text-align:center;margin:0">© 2024 OddsWatch. Todos os direitos reservados.</p>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root"></div>
+    <!-- React Router Framework uses src/root.tsx and src/entry.client.tsx. -->
   </body>
 </html>

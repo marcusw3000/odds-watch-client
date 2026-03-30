@@ -83,23 +83,6 @@ export function BalanceHistoryFiltered({ transactions }: BalanceHistoryFilteredP
     return 'text-foreground';
   };
 
-  const getDateRange = (): { start: Date | null; end: Date | null } => {
-    const now = new Date();
-    switch (datePreset) {
-      case '7d':
-        return { start: subDays(now, 7), end: now };
-      case '30d':
-        return { start: subDays(now, 30), end: now };
-      case '90d':
-        return { start: subMonths(now, 3), end: now };
-      case 'custom':
-        return { start: startDate || null, end: endDate || null };
-      case 'all':
-      default:
-        return { start: null, end: null };
-    }
-  };
-
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
@@ -109,7 +92,32 @@ export function BalanceHistoryFiltered({ transactions }: BalanceHistoryFilteredP
     }
 
     // Filter by date range
-    const { start, end } = getDateRange();
+    const now = new Date();
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    switch (datePreset) {
+      case '7d':
+        start = subDays(now, 7);
+        end = now;
+        break;
+      case '30d':
+        start = subDays(now, 30);
+        end = now;
+        break;
+      case '90d':
+        start = subMonths(now, 3);
+        end = now;
+        break;
+      case 'custom':
+        start = startDate || null;
+        end = endDate || null;
+        break;
+      case 'all':
+      default:
+        break;
+    }
+
     if (start && end) {
       filtered = filtered.filter(tx => {
         const txDate = new Date(tx.createdAt);

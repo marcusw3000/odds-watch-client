@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -90,11 +90,7 @@ export function AdminReportsPage() {
   // Preview modal
   const [previewReport, setPreviewReport] = useState<CommentReport | null>(null);
 
-  useEffect(() => {
-    loadReports();
-  }, [statusFilter, reasonFilter]);
-
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true);
       const data = await CommentService.getReports(
@@ -121,7 +117,11 @@ export function AdminReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [reasonFilter, statusFilter, toast]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

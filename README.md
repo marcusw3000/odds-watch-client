@@ -1,44 +1,47 @@
 # Odds Watch Client
 
-## Projeto
-
-Cliente web da plataforma Odds Watch, construida com Vite, React, TypeScript e Tailwind CSS.
+Cliente web da plataforma Odds Watch, agora estruturado em React Router Framework Mode com React, TypeScript e Tailwind CSS.
 
 ## Desenvolvimento
 
 Tenha Node.js e npm instalados.
 
-Follow these steps:
-
 ```sh
-# Step 1: Clone o repositório.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Entre na pasta do projeto.
 cd odds-watch-client
-
-# Step 3: Instale as dependências.
-npm i
-
-# Step 4: Inicie o servidor de desenvolvimento.
+npm install
 npm run dev
 ```
 
-## Tecnologias
+## Scripts
 
-- Vite
-- TypeScript
+```sh
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
+
+## Stack
+
 - React
-- shadcn-ui
+- React Router Framework
+- TypeScript
 - Tailwind CSS
+- shadcn-ui
+- Supabase
 
 ## Build
+
+O build de producao eh gerado em `build/client`.
 
 ```sh
 npm run build
 ```
 
 ## Preview local
+
+O preview serve a saida gerada em `build/client`.
 
 ```sh
 npm run preview

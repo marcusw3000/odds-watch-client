@@ -84,7 +84,7 @@ serve(async (req) => {
     }
 
     // First get total count for pagination
-    let countQuery = supabaseAdmin
+    const countQuery = supabaseAdmin
       .from("wallets")
       .select("id", { count: "exact", head: true });
 

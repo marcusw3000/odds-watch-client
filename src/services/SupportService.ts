@@ -129,7 +129,7 @@ export async function getTicketMessages(ticketId: string): Promise<SupportMessag
   // Fetch uncached profiles in background (non-blocking for subsequent calls)
   if (uncached.length > 0) {
     supabase.functions.invoke('get-users-display-info-batch', {
-      body: { user_ids: uncached, context: 'support' },
+      body: { user_ids: uncached, ticket_id: ticketId },
     }).then(({ data: batchData }) => {
       if (batchData?.profiles) {
         setCachedProfiles(batchData.profiles);
@@ -143,30 +143,16 @@ export async function getTicketMessages(ticketId: string): Promise<SupportMessag
 }
 
 export async function sendMessage(ticketId: string, message: string): Promise<SupportMessage | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data, error } = await supabase
-    .from('support_messages')
-    .insert({
-      ticket_id: ticketId,
-      sender_id: user.id,
+  const { data, error } = await supabase.functions.invoke('manage-support-tickets', {
+    body: {
+      action: 'send_user_message',
+      ticketId,
       message,
-      is_staff: false,
-    })
-    .select()
-    .single();
+    },
+  });
 
   if (error) throw error;
-
-  // Update ticket status to in_progress if it was waiting_customer
-  await supabase
-    .from('support_tickets')
-    .update({ status: 'in_progress' })
-    .eq('id', ticketId)
-    .eq('status', 'waiting_customer');
-
-  return data as SupportMessage;
+  return (data?.message ?? null) as SupportMessage | null;
 }
 
 // ============= ADMIN METHODS =============
@@ -210,97 +196,52 @@ export async function getTicketById(ticketId: string): Promise<SupportTicket | n
 }
 
 export async function assignTicket(ticketId: string, userId: string | null): Promise<void> {
-  const { error } = await supabase
-    .from('support_tickets')
-    .update({
-      assigned_to: userId,
-      status: userId ? 'in_progress' : 'open',
-    })
-    .eq('id', ticketId);
+  const { error } = await supabase.functions.invoke('manage-support-tickets', {
+    body: {
+      action: 'assign',
+      ticketId,
+      assignedTo: userId,
+    },
+  });
 
   if (error) throw error;
 }
 
 export async function updateTicketStatus(ticketId: string, status: SupportStatus): Promise<void> {
-  const updateData: any = { status };
-  
-  if (status === 'closed' || status === 'resolved') {
-    updateData.closed_at = new Date().toISOString();
-  }
-
-  const { error } = await supabase
-    .from('support_tickets')
-    .update(updateData)
-    .eq('id', ticketId);
+  const { error } = await supabase.functions.invoke('manage-support-tickets', {
+    body: {
+      action: 'update_status',
+      ticketId,
+      status,
+    },
+  });
 
   if (error) throw error;
-
-  // Notify user when ticket is resolved or closed
-  if (status === 'resolved' || status === 'closed') {
-    try {
-      await supabase.functions.invoke('notify-support-reply', {
-        body: {
-          ticket_id: ticketId,
-          message_preview: null,
-          action: status,
-        },
-      });
-    } catch (notifyError) {
-      console.error('Error notifying user about ticket resolution:', notifyError);
-      // Don't fail the operation if notification fails
-    }
-  }
 }
 
 export async function updateTicketPriority(ticketId: string, priority: SupportPriority): Promise<void> {
-  const { error } = await supabase
-    .from('support_tickets')
-    .update({ priority })
-    .eq('id', ticketId);
+  const { error } = await supabase.functions.invoke('manage-support-tickets', {
+    body: {
+      action: 'update_priority',
+      ticketId,
+      priority,
+    },
+  });
 
   if (error) throw error;
 }
 
 export async function sendStaffMessage(ticketId: string, message: string): Promise<SupportMessage | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // Send message
-  const { data, error } = await supabase
-    .from('support_messages')
-    .insert({
-      ticket_id: ticketId,
-      sender_id: user.id,
+  const { data, error } = await supabase.functions.invoke('manage-support-tickets', {
+    body: {
+      action: 'send_staff_message',
+      ticketId,
       message,
-      is_staff: true,
-    })
-    .select()
-    .single();
+    },
+  });
 
   if (error) throw error;
-
-  // Update ticket status to waiting_customer
-  await supabase
-    .from('support_tickets')
-    .update({ status: 'waiting_customer' })
-    .eq('id', ticketId);
-
-  // Notify user about the reply via Edge Function
-  try {
-    const messagePreview = message.length > 100 ? message.substring(0, 100) : message;
-    await supabase.functions.invoke('notify-support-reply', {
-      body: {
-        ticket_id: ticketId,
-        message_preview: messagePreview,
-        action: 'reply',
-      },
-    });
-  } catch (notifyError) {
-    console.error('Error notifying user about support reply:', notifyError);
-    // Don't fail the operation if notification fails
-  }
-
-  return data as SupportMessage;
+  return (data?.message ?? null) as SupportMessage | null;
 }
 
 export async function getTicketStats(): Promise<{

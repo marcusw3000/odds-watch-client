@@ -64,11 +64,13 @@ function transformPayloadToEvent(payload: Record<string, unknown>): MarketEvent 
   };
 }
 
-export function useMarketsRealtime() {
-  const [events, setEvents] = useState<MarketEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function useMarketsRealtime(initialEvents?: MarketEvent[]) {
+  const hasInitialData = initialEvents !== undefined;
+  const [events, setEvents] = useState<MarketEvent[]>(initialEvents ?? []);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
+  const shouldSkipInitialFetchRef = useRef(hasInitialData);
 
   const fetchEvents = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
@@ -90,8 +92,11 @@ export function useMarketsRealtime() {
   }, [toast]);
 
   useEffect(() => {
-    // Initial load
-    fetchEvents();
+    if (shouldSkipInitialFetchRef.current) {
+      shouldSkipInitialFetchRef.current = false;
+    } else {
+      fetchEvents();
+    }
 
     // Throttled update handler (max 1 update per second per market)
     const pendingUpdates = new Map<string, Record<string, unknown>>();

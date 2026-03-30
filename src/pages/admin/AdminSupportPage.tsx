@@ -160,6 +160,7 @@ export default function AdminSupportPage() {
   const pagination = usePagination({
     initialPageSize: 25,
   });
+  const { resetPage } = pagination;
 
   // Tickets query with pagination
   const { data: ticketsData, isLoading: ticketsLoading, isFetching: ticketsFetching } = useQuery({
@@ -175,7 +176,7 @@ export default function AdminSupportPage() {
 
   // Update pagination total when data changes
   const totalCount = ticketsData?.totalCount || 0;
-  const tickets = ticketsData?.tickets || [];
+  const tickets = useMemo(() => ticketsData?.tickets ?? [], [ticketsData?.tickets]);
 
   // Dynamic refetch interval based on ticket status
   const messageRefetchInterval = useMemo(() => {
@@ -183,7 +184,7 @@ export default function AdminSupportPage() {
     // Faster refresh if ticket is actively being worked on
     if (selectedTicket.status === 'in_progress') return 10000;
     return 20000;
-  }, [selectedTicket?.status]);
+  }, [selectedTicket]);
 
   // Messages query for selected ticket
   const { data: messages = [], isLoading: messagesLoading, isFetching: messagesFetching } = useQuery({
@@ -281,8 +282,8 @@ export default function AdminSupportPage() {
 
   // Reset page when filters change
   useEffect(() => {
-    pagination.resetPage();
-  }, [filters, dateFilter]);
+    resetPage();
+  }, [filters, dateFilter, resetPage]);
 
   return (
     <div className="space-y-6">

@@ -125,14 +125,14 @@ export function AdminEventsPage() {
   const { toggleFavorite, isFavorite, favoritesList } = useFavoriteEvents();
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
-  const events = data?.events || [];
+  const events = useMemo(() => data?.events ?? [], [data?.events]);
   const totalCount = data?.totalCount || 0;
 
   // Sort events: favorites first
   const sortedEvents = useMemo(() => {
     if (!events.length) return events;
     
-    let filtered = showOnlyFavorites 
+    const filtered = showOnlyFavorites 
       ? events.filter(e => isFavorite(e.id))
       : events;
     

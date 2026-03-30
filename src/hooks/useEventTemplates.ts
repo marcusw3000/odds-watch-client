@@ -26,28 +26,19 @@ export function useCreateEventTemplate() {
 
   return useMutation({
     mutationFn: async (template: CreateEventTemplateData) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data, error } = await supabase
-        .from('event_templates')
-        .insert([{
-          name: template.name,
-          category: template.category,
-          title_pattern: template.title_pattern,
-          description: template.description || null,
-          resolution: template.resolution ? JSON.parse(JSON.stringify(template.resolution)) : null,
-          card_style: template.card_style || 'default',
-          recurrence_type: template.recurrence_type || 'none',
-          tags: template.tags || [],
-          created_by: user?.id || null,
-        }])
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('manage-event-templates', {
+        method: 'POST',
+        body: {
+          action: 'create',
+          template,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return {
-        ...data,
-        resolution: data.resolution as EventTemplate['resolution'],
+        ...data.template,
+        resolution: data.template.resolution as EventTemplate['resolution'],
       } as EventTemplate;
     },
     onSuccess: () => {
@@ -65,12 +56,16 @@ export function useDeleteEventTemplate() {
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      const { error } = await supabase
-        .from('event_templates')
-        .delete()
-        .eq('id', templateId);
+      const { data, error } = await supabase.functions.invoke('manage-event-templates', {
+        method: 'POST',
+        body: {
+          action: 'delete',
+          templateId,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-templates'] });

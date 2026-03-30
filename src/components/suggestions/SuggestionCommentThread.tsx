@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -53,13 +53,7 @@ export function SuggestionCommentThread({
   const repliesCount = comment.replies_count || 0;
 
   // Auto-load replies for root comments with few replies
-  useEffect(() => {
-    if (depth === 0 && repliesCount > 0 && repliesCount <= AUTO_SHOW_REPLIES_THRESHOLD && !hasLoadedReplies) {
-      loadReplies();
-    }
-  }, [depth, repliesCount, hasLoadedReplies]);
-
-  const loadReplies = async () => {
+  const loadReplies = useCallback(async () => {
     if (hasLoadedReplies && replies.length > 0) {
       setShowReplies(true);
       return;
@@ -76,7 +70,13 @@ export function SuggestionCommentThread({
     } finally {
       setIsLoadingReplies(false);
     }
-  };
+  }, [comment.id, hasLoadedReplies, replies.length, suggestionId]);
+
+  useEffect(() => {
+    if (depth === 0 && repliesCount > 0 && repliesCount <= AUTO_SHOW_REPLIES_THRESHOLD && !hasLoadedReplies) {
+      loadReplies();
+    }
+  }, [depth, repliesCount, hasLoadedReplies, loadReplies]);
 
   const handleReply = () => {
     if (!user) return;

@@ -58,7 +58,7 @@ export class FeeEngine {
         feeAmount = amount * (rule.percent_value || 0);
         break;
 
-      case 'TIERED':
+      case 'TIERED': {
         const tiers = rule.tiers || [];
         for (const tier of tiers) {
           if (amount >= tier.min && (tier.max === null || amount < tier.max)) {
@@ -68,6 +68,7 @@ export class FeeEngine {
           }
         }
         break;
+      }
     }
 
     // Apply min/max fee constraints

@@ -33,11 +33,20 @@ export const CommentService = {
     }
   },
 
-  // Get display info for a user via Edge Function
-  async getUserDisplayInfo(userId: string, context: 'comment' | 'profile' = 'profile'): Promise<{ displayName: string; avatarUrl?: string } | null> {
+  // Get display info for a user via Edge Function.
+  // For private profiles, commentId proves the user authored a visible comment.
+  async getUserDisplayInfo(
+    userId: string,
+    options?: { commentId?: string }
+  ): Promise<{ displayName: string; avatarUrl?: string } | null> {
     try {
+      const query = new URLSearchParams({ user_id: userId });
+      if (options?.commentId) {
+        query.set('comment_id', options.commentId);
+      }
+
       const { data, error } = await supabase.functions.invoke(
-        `get-user-display-info?user_id=${encodeURIComponent(userId)}&context=${context}`
+        `get-user-display-info?${query.toString()}`
       );
 
       if (error || !data) {
@@ -82,14 +91,21 @@ export const CommentService = {
       }
     }
 
-    // Get display names for authors via Edge Function (batch call)
-    const userIds = [...new Set((data || []).map(c => c.user_id))];
+    const userCommentProofs = new Map<string, string>();
+    for (const comment of data || []) {
+      if (!userCommentProofs.has(comment.user_id)) {
+        userCommentProofs.set(comment.user_id, comment.id);
+      }
+    }
+
+    const userIds = [...userCommentProofs.keys()];
     const displayInfoMap = new Map<string, { displayName: string; avatarUrl?: string }>();
     
-    // Fetch display info for all unique users (with comment context to always show name/avatar)
     await Promise.all(
       userIds.map(async (userId) => {
-        const info = await this.getUserDisplayInfo(userId, 'comment');
+        const info = await this.getUserDisplayInfo(userId, {
+          commentId: userCommentProofs.get(userId),
+        });
         if (info) {
           displayInfoMap.set(userId, info);
         }
@@ -145,17 +161,27 @@ export const CommentService = {
       }
     }
 
-    // Get display names via Edge Function
-    const userIds = [...new Set((data || []).map(c => c.user_id))];
-    const parentUserIds = [...new Set((data || []).map(c => (c.parent as any)?.user_id).filter(Boolean))];
-    const allUserIds = [...new Set([...userIds, ...parentUserIds])];
+    const displayProofs = new Map<string, string>();
+    for (const comment of data || []) {
+      if (!displayProofs.has(comment.user_id)) {
+        displayProofs.set(comment.user_id, comment.id);
+      }
+
+      const parentUserId = (comment.parent as any)?.user_id;
+      if (parentUserId && !displayProofs.has(parentUserId) && comment.parent_id) {
+        displayProofs.set(parentUserId, comment.parent_id);
+      }
+    }
+
+    const allUserIds = [...displayProofs.keys()];
     
     const displayInfoMap = new Map<string, { displayName: string; avatarUrl?: string }>();
     
-    // Fetch display info with comment context to always show name/avatar
     await Promise.all(
       allUserIds.map(async (userId) => {
-        const info = await this.getUserDisplayInfo(userId, 'comment');
+        const info = await this.getUserDisplayInfo(userId, {
+          commentId: displayProofs.get(userId),
+        });
         if (info) {
           displayInfoMap.set(userId, info);
         }
@@ -194,6 +220,7 @@ export const CommentService = {
     parentId?: string
   ): Promise<Comment | null> {
     const { data: userData } = await supabase.auth.getUser();
+
     if (!userData.user) {
       throw new Error('Usuário não autenticado');
     }
@@ -624,7 +651,27 @@ export const CommentService = {
     actionTaken?: CommentReport['actionTaken'],
     source: 'market' | 'suggestion' | 'chat' = 'market'
   ): Promise<void> {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data, error } = await supabase.functions.invoke('manage-comment-reports', {
+      method: 'POST',
+      body: {
+        report_id: reportId,
+        status,
+        action_taken: actionTaken ?? 'none',
+        source,
+      },
+    });
+
+    if (error) {
+      console.error('Error updating report:', error);
+      throw new Error('Erro ao atualizar denúncia');
+    }
+
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    return;
+    /*
     if (!userData.user) {
       throw new Error('Usuário não autenticado');
     }
@@ -698,6 +745,7 @@ export const CommentService = {
         throw error;
       }
     }
+    */
   },
 
   // Admin: Get pending reports count (from both tables)

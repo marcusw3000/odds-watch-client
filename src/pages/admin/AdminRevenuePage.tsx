@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,11 +36,7 @@ export function AdminRevenuePage() {
     end: format(new Date(), 'yyyy-MM-dd')
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [revenueData, dayData, typeData] = await Promise.all([
@@ -56,7 +52,11 @@ export function AdminRevenuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange.end, dateRange.start]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {

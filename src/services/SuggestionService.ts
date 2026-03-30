@@ -432,48 +432,36 @@ export const SuggestionService = {
    * Review a suggestion (admin only)
    */
   async reviewSuggestion(id: string, review: ReviewSuggestionData): Promise<Suggestion> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('market_suggestions')
-      .update({
-        status: review.status,
-        admin_notes: review.admin_notes,
-        reviewed_by: user.user.id,
-        reviewed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke('manage-market-suggestions', {
+      method: 'POST',
+      body: {
+        action: 'review',
+        suggestionId: id,
+        review,
+      },
+    });
 
     if (error) throw error;
-    return data as Suggestion;
+    if (data?.error) throw new Error(data.error);
+    return data.suggestion as Suggestion;
   },
 
   /**
    * Implement a suggestion (link to market)
    */
   async implementSuggestion(id: string, marketId: string): Promise<Suggestion> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('market_suggestions')
-      .update({
-        status: 'IMPLEMENTED',
-        market_id: marketId,
-        reviewed_by: user.user.id,
-        reviewed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke('manage-market-suggestions', {
+      method: 'POST',
+      body: {
+        action: 'implement',
+        suggestionId: id,
+        marketId,
+      },
+    });
 
     if (error) throw error;
-    return data as Suggestion;
+    if (data?.error) throw new Error(data.error);
+    return data.suggestion as Suggestion;
   },
 
   /**

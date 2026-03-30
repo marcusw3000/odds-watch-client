@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FinancialRepository } from '@/services/FinancialRepository';
-
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -120,12 +120,16 @@ export function AdminMarketEventsPage() {
   const handleCloseMarket = async (market: Market) => {
     if (!user?.id) return;
 
-    const { error } = await (await import('@/integrations/supabase/client')).supabase
-      .from('markets')
-      .update({ status: 'PENDING' })
-      .eq('id', market.id);
+    const { data, error } = await supabase.functions.invoke('update-admin-event', {
+      method: 'POST',
+      body: {
+        action: 'update_status',
+        eventId: market.id,
+        status: 'PENDING',
+      },
+    });
 
-    if (!error) {
+    if (!error && !data?.error) {
       // Audit logging is now handled server-side via Edge Functions (service_role)
       toast.success('Mercado fechado - aguardando liquidação');
       loadMarkets();

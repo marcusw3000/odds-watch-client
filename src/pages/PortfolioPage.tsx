@@ -86,7 +86,7 @@ export function PortfolioPage() {
       });
       setSearchParams({});
     }
-  }, [searchParams]);
+  }, [searchParams, fetchPortfolio, setSearchParams, toast, verifyDeposit]);
 
   // Listen for portfolio refresh events
   usePortfolioRefreshListener(fetchPortfolio);

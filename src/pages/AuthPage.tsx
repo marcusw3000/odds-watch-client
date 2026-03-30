@@ -17,8 +17,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ReferralService } from '@/services/ReferralService';
-import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Email inválido'),
@@ -55,14 +53,15 @@ export function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
   
-  // Get return URL from location state (for after login)
-  const returnTo = (location.state as { returnTo?: string })?.returnTo || '/';
+  // Get return URL from location state or query string (SSR redirects)
+  const returnTo =
+    (location.state as { returnTo?: string } | null)?.returnTo ||
+    searchParams.get('returnTo') ||
+    '/';
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isOAuthProcessing, setIsOAuthProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -108,18 +107,8 @@ export function AuthPage() {
     }
   }, [referralCode]);
 
-  // Redirect if already logged in (but not during OAuth callback)
+  // Redirect if already logged in.
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const isOAuthCallback = url.searchParams.has('code') || window.location.hash.includes('access_token');
-    
-    // If we're processing an OAuth callback, show loading and let OAuthCallbackHandler handle it
-    if (isOAuthCallback) {
-      console.log('[AuthPage] OAuth callback detected, showing loading state');
-      setIsOAuthProcessing(true);
-      return;
-    }
-    
     if (user) {
       console.log('[AuthPage] User already logged in, redirecting to:', returnTo);
       navigate(returnTo);
@@ -184,30 +173,6 @@ export function AuthPage() {
     }
   };
 
-  // Process pending referral after login
-  useEffect(() => {
-    const processPendingReferral = async () => {
-      if (!user) return;
-      
-      const pendingCode = localStorage.getItem('pendingReferralCode');
-      if (pendingCode) {
-        const { success, error } = await ReferralService.linkReferral(user.id, pendingCode);
-        localStorage.removeItem('pendingReferralCode');
-        
-        if (success) {
-          toast({
-            title: 'Indicação aplicada!',
-            description: 'Você receberá desconto nas taxas por 30 dias.',
-          });
-        } else if (error) {
-          console.error('Failed to link referral:', error);
-        }
-      }
-    };
-    
-    processPendingReferral();
-  }, [user, toast]);
-
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setError(null);
@@ -229,8 +194,8 @@ export function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Use the current origin - Supabase will redirect back here with ?code=...
-          redirectTo: `${window.location.origin}/auth`,
+          // Preserve the intended destination so the server callback can redirect correctly.
+          redirectTo: `${window.location.origin}/auth?returnTo=${encodeURIComponent(returnTo || '/markets')}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ''}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -274,16 +239,6 @@ export function AuthPage() {
       setIsRecoveryLoading(false);
     }
   };
-
-  // Full-screen loading during OAuth callback processing
-  if (isOAuthProcessing) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="text-lg text-muted-foreground">Finalizando login...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 p-4">

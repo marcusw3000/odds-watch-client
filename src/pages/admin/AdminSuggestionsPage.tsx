@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Lightbulb, 
@@ -92,7 +92,7 @@ export function AdminSuggestionsPage() {
   const [adminNotes, setAdminNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchSuggestions = async (showRefreshing = false) => {
+  const fetchSuggestions = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true);
     else setLoading(true);
     
@@ -118,11 +118,11 @@ export function AdminSuggestionsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     fetchSuggestions();
-  }, [statusFilter]);
+  }, [fetchSuggestions]);
 
   const handleRefresh = () => fetchSuggestions(true);
 

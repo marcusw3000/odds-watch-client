@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Gift, Users, TrendingUp, Percent, Settings, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,11 +30,7 @@ export function AdminReferralsPage() {
   const [discountDays, setDiscountDays] = useState('30');
   const [minDeposit, setMinDeposit] = useState('50');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [settingsData, statsData, referralsData] = await Promise.all([
@@ -64,7 +60,11 @@ export function AdminReferralsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSaveSettings = async () => {
     if (!user) return;

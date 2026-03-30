@@ -40,6 +40,9 @@ export function ShareButton({
   showLabel = false,
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const canUseNativeShare =
+    typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '/markets';
 
   // Generate deep link with tracking
   const getShareUrl = (source: 'twitter' | 'facebook' | 'whatsapp' | 'telegram' | 'instagram' | 'copy') => {
@@ -47,7 +50,7 @@ export function ShareButton({
     if (marketId) {
       return generateMarketShareLink(marketId, { outcome, source: source === 'instagram' ? 'copy' : source });
     }
-    return window.location.href;
+    return currentUrl;
   };
 
   const shareText = description || title;
@@ -65,7 +68,7 @@ export function ShareButton({
   };
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
+    if (canUseNativeShare) {
       try {
         const shareUrl = getShareUrl('copy');
         await navigator.share({
@@ -148,7 +151,7 @@ export function ShareButton({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        {navigator.share && (
+        {canUseNativeShare && (
           <>
             <DropdownMenuItem onClick={handleNativeShare}>
               <Share2 className="mr-2 h-4 w-4" />

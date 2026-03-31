@@ -17,6 +17,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   optimizeDeps: {
     include: ["react", "react-dom", "react-router", "react-router-dom", "@tanstack/react-query"],
   },
+  esbuild: mode === 'production' ? {
+    // Drop console.* and debugger statements from client bundle only
+    drop: isSsrBuild ? ['debugger'] : ['console', 'debugger'],
+  } : undefined,
   build: {
     rollupOptions: {
       output:

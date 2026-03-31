@@ -1,30 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Rate limiting: max 10 adjustments per minute per admin
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const userLimit = rateLimitMap.get(userId);
-  
-  if (!userLimit || now > userLimit.resetTime) {
-    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 });
-    return true;
-  }
-  
-  if (userLimit.count >= 10) {
-    return false;
-  }
-  
-  userLimit.count++;
-  return true;
-}
+const corsHeaders = getCorsHeaders();
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -81,8 +59,12 @@ serve(async (req) => {
       });
     }
 
-    // Check rate limit
-    if (!checkRateLimit(adminUserId)) {
+    // Check rate limit via database (persistent across function restarts)
+    const { data: rateLimitOk, error: rateLimitError } = await adminClient.rpc(
+      'check_rate_limit',
+      { p_user_id: adminUserId, p_action: 'adjust-wallet-balance', p_max_requests: 10, p_window_secs: 60 }
+    );
+    if (rateLimitError || !rateLimitOk) {
       return new Response(JSON.stringify({ error: 'Rate limit exceeded. Max 10 adjustments per minute.' }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

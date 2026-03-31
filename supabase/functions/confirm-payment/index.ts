@@ -1,11 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const corsHeaders = getCorsHeaders();
 
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -67,43 +65,43 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Check if this payment was already processed
-    // Note: Stripe IDs are stored as plain text - they are opaque tokens, not sensitive data
-    const { data: existingPayment } = await supabaseAdmin
-      .from("payments")
-      .select("*")
-      .eq("stripe_payment_intent_id", paymentIntentId)
-      .single();
-
-    if (existingPayment?.status === "COMPLETED") {
-      logStep("Payment already processed");
-      return new Response(
-        JSON.stringify({
-          success: true,
-          status: "already_processed",
-          amount: existingPayment.amount,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
-    }
-
     // Check payment status
     if (paymentIntent.status === "succeeded") {
       const amount = paymentIntent.amount / 100; // Convert from cents
 
-      // Update payment record if exists
-      if (existingPayment) {
-        const { error: updateError } = await supabaseAdmin
-          .from("payments")
-          .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
-          .eq("stripe_payment_intent_id", paymentIntentId);
+      // Atomic conditional update: only marks COMPLETED if status is still PENDING/PROCESSING.
+      // If two concurrent requests arrive, only one will win (0 rows affected = race loser).
+      const { data: updatedRows, error: updateError } = await supabaseAdmin
+        .from("payments")
+        .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+        .eq("stripe_payment_intent_id", paymentIntentId)
+        .in("status", ["PENDING", "PROCESSING"])
+        .select("id");
 
-        if (updateError) {
-          logStep("Error updating payment", { error: updateError });
+      if (updateError) {
+        logStep("Error updating payment", { error: updateError });
+        throw new Error("Failed to update payment record");
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        // 0 rows updated: either already COMPLETED or no record exists yet.
+        // Distinguish the two cases with a point-in-time check.
+        const { data: existingCheck } = await supabaseAdmin
+          .from("payments")
+          .select("status, amount")
+          .eq("stripe_payment_intent_id", paymentIntentId)
+          .maybeSingle();
+
+        if (existingCheck?.status === "COMPLETED") {
+          logStep("Payment already processed (race condition guard)");
+          return new Response(
+            JSON.stringify({ success: true, status: "already_processed", amount }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+          );
         }
+        // No record found: payment was initiated outside the normal flow.
+        // Fall through to credit the wallet — atomic_deposit_balance is idempotent at DB level.
+        logStep("No payment record found, proceeding with wallet credit");
       }
 
       // Use atomic deposit function to update wallet balance

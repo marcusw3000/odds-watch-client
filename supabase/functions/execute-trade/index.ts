@@ -1,32 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-// Rate limiting: store trade counts per user in memory (resets on function restart)
-const tradeRateLimits = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_TRADES_PER_WINDOW = 10;
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const userLimit = tradeRateLimits.get(userId);
-  
-  if (!userLimit || now > userLimit.resetAt) {
-    tradeRateLimits.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-  
-  if (userLimit.count >= MAX_TRADES_PER_WINDOW) {
-    return false;
-  }
-  
-  userLimit.count++;
-  return true;
-}
+const corsHeaders = getCorsHeaders();
 
 interface TradeRequest {
   marketId: string;
@@ -88,9 +63,12 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
-    // Check rate limit
-    if (!checkRateLimit(userId)) {
-      console.log(`[EXECUTE-TRADE] Rate limit exceeded for user ${userId}`);
+    // Check rate limit via database (persistent across function restarts)
+    const { data: rateLimitOk, error: rateLimitError } = await supabaseAdmin.rpc(
+      "check_rate_limit",
+      { p_user_id: userId, p_action: "execute-trade", p_max_requests: 10, p_window_secs: 60 }
+    );
+    if (rateLimitError || !rateLimitOk) {
       return new Response(
         JSON.stringify({ success: false, message: "Muitas operações em sequência. Aguarde alguns segundos." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -1,10 +1,24 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { logStep, logError } from '../_shared/logging.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const corsHeaders = getCorsHeaders();
+
+const VALID_CATEGORIES = ['economia', 'política', 'esportes', 'tecnologia', 'entretenimento', 'ciência', 'geopolítica', 'outros'];
+const VALID_MARKET_TYPES = ['BINARY', 'MULTIPLE'];
+const VALID_SETTLEMENT_TYPES = ['MANUAL', 'AUTOMATIC'];
+const VALID_CARD_STYLES = ['default', 'highlight', 'compact'];
+const VALID_RECURRENCE_TYPES = ['none', 'weekly', 'monthly', 'quarterly', 'annually'];
+const VALID_LIQUIDITY = ['low', 'medium', 'high'];
+
+const URL_REGEX = /^https?:\/\/.{1,2000}$/;
+
+function err400(corsH: Record<string, string>, message: string): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 400,
+    headers: { ...corsH, 'Content-Type': 'application/json' },
+  });
+}
 
 interface MarketOptionInput {
   label: string;
@@ -96,20 +110,54 @@ Deno.serve(async (req) => {
 
     logStep(functionName, 'Creating event', { title, category, marketType, liquidity });
 
-    // Validate required fields
-    if (!title || !description || !category || !closeDate || !settlementDate) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // --- Input validation ---
+    if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 500)
+      return err400(corsHeaders, 'Título inválido (3–500 caracteres)');
+
+    if (!description || typeof description !== 'string' || description.trim().length < 10 || description.trim().length > 5000)
+      return err400(corsHeaders, 'Descrição inválida (10–5000 caracteres)');
+
+    if (!category || !VALID_CATEGORIES.includes(category))
+      return err400(corsHeaders, `Categoria inválida. Valores aceitos: ${VALID_CATEGORIES.join(', ')}`);
+
+    if (!closeDate || isNaN(Date.parse(closeDate)))
+      return err400(corsHeaders, 'Data de encerramento inválida');
+
+    if (!settlementDate || isNaN(Date.parse(settlementDate)))
+      return err400(corsHeaders, 'Data de resolução inválida');
+
+    if (imageUrl !== undefined && imageUrl !== null && imageUrl !== '') {
+      if (typeof imageUrl !== 'string' || !URL_REGEX.test(imageUrl))
+        return err400(corsHeaders, 'imageUrl deve ser uma URL HTTP/HTTPS válida');
     }
+
+    if (tags !== undefined) {
+      if (!Array.isArray(tags) || tags.length > 10 || tags.some((t: unknown) => typeof t !== 'string' || t.length > 50))
+        return err400(corsHeaders, 'Tags inválidas: máx 10 itens, cada um com até 50 caracteres');
+    }
+
+    if (!VALID_MARKET_TYPES.includes(marketType))
+      return err400(corsHeaders, `marketType inválido. Aceitos: ${VALID_MARKET_TYPES.join(', ')}`);
+
+    if (settlementType !== undefined && !VALID_SETTLEMENT_TYPES.includes(settlementType))
+      return err400(corsHeaders, `settlementType inválido. Aceitos: ${VALID_SETTLEMENT_TYPES.join(', ')}`);
+
+    if (cardStyle !== undefined && !VALID_CARD_STYLES.includes(cardStyle))
+      return err400(corsHeaders, `cardStyle inválido. Aceitos: ${VALID_CARD_STYLES.join(', ')}`);
+
+    if (recurrenceType !== undefined && !VALID_RECURRENCE_TYPES.includes(recurrenceType))
+      return err400(corsHeaders, `recurrenceType inválido. Aceitos: ${VALID_RECURRENCE_TYPES.join(', ')}`);
+
+    if (!VALID_LIQUIDITY.includes(liquidity))
+      return err400(corsHeaders, `liquidity inválido. Aceitos: ${VALID_LIQUIDITY.join(', ')}`);
+
+    if (typeof maxWinners !== 'number' || !Number.isInteger(maxWinners) || maxWinners < 1 || maxWinners > 100)
+      return err400(corsHeaders, 'maxWinners inválido (inteiro entre 1 e 100)');
+    // --- Fim da validação ---
 
     // Validate that closeDate (trading halt) is before or equal to settlementDate (event date)
     if (new Date(closeDate) > new Date(settlementDate)) {
-      return new Response(JSON.stringify({ error: 'Data de halt de trading deve ser anterior ou igual à data do evento' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return err400(corsHeaders, 'Data de halt de trading deve ser anterior ou igual à data do evento');
     }
 
     // Validate options for MULTIPLE type

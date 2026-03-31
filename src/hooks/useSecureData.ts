@@ -272,9 +272,11 @@ export function useAdminLedger(filters?: {
 // Adjust wallet balance (admin only)
 export function useAdjustWalletBalance() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   return useMutation({
     mutationFn: async (params: { walletId: string; amount: number; reason: string }) => {
+      if (!isAdmin) throw new Error('Unauthorized');
       const { data, error } = await supabase.functions.invoke('adjust-wallet-balance', {
         body: params,
       });
@@ -294,9 +296,11 @@ export function useAdjustWalletBalance() {
 // Manage user roles (admin only)
 export function useManageUserRoles() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   return useMutation({
     mutationFn: async (params: { userId: string; action: 'add' | 'remove'; role: string }) => {
+      if (!isAdmin) throw new Error('Unauthorized');
       const { data, error } = await supabase.functions.invoke('manage-user-roles', {
         body: { 
           user_id: params.userId, 
@@ -421,9 +425,11 @@ export function useAdminUserDetails(userId: string | null) {
 // Block/unblock user (admin only)
 export function useBlockUser() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   return useMutation({
     mutationFn: async (params: { userId: string; action: 'block' | 'unblock'; reason?: string }) => {
+      if (!isAdmin) throw new Error('Unauthorized');
       const { data, error } = await supabase.functions.invoke('block-user', {
         body: { 
           user_id: params.userId, 
@@ -447,14 +453,16 @@ export function useBlockUser() {
 // Send admin warning (admin only)
 export function useSendAdminWarning() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   return useMutation({
-    mutationFn: async (params: { 
-      userId: string; 
-      message: string; 
+    mutationFn: async (params: {
+      userId: string;
+      message: string;
       category?: 'warning' | 'reminder' | 'alert';
       sendEmail?: boolean;
     }) => {
+      if (!isAdmin) throw new Error('Unauthorized');
       const { data, error } = await supabase.functions.invoke('admin-send-warning', {
         body: { 
           user_id: params.userId, 

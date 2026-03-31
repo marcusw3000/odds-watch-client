@@ -1,7 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import * as Sentry from '@sentry/react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface Props {
   children: ReactNode;
@@ -36,13 +34,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Send to Sentry in production
     if (import.meta.env.PROD) {
-      Sentry.captureException(error, {
-        extra: {
-          componentStack: errorInfo.componentStack,
-        },
-        tags: {
-          errorBoundary: 'true',
-        },
+      void import('@sentry/react').then((Sentry) => {
+        Sentry.captureException(error, {
+          extra: {
+            componentStack: errorInfo.componentStack,
+          },
+          tags: {
+            errorBoundary: 'true',
+          },
+        });
       });
     }
   }
@@ -70,7 +70,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-muted-foreground mb-6">
               Ocorreu um erro inesperado. Nossa equipe foi notificada.
             </p>
-            
+
             {import.meta.env.DEV && this.state.error && (
               <div className="text-left bg-muted p-4 rounded-lg mb-6 overflow-auto max-h-48">
                 <p className="text-sm font-mono text-destructive mb-2">
@@ -83,16 +83,24 @@ export class ErrorBoundary extends Component<Props, State> {
                 )}
               </div>
             )}
-            
+
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={this.handleGoHome}>
-                <Home className="h-4 w-4 mr-2" />
-                Ir para início
-              </Button>
-              <Button onClick={this.handleReset}>
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button
+                type="button"
+                onClick={this.handleGoHome}
+                className="inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Ir para inicio
+              </button>
+              <button
+                type="button"
+                onClick={this.handleReset}
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Tentar novamente
-              </Button>
+              </button>
             </div>
           </div>
         </div>

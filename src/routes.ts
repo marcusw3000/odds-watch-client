@@ -1,6 +1,12 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
+  layout("./route-modules/public-info-layout.tsx", { id: "public-info-layout" }, [
+    route("faq", "./route-modules/faq.tsx", { id: "faq" }),
+    route("termos", "./route-modules/termos.tsx", { id: "termos" }),
+    route("privacidade", "./route-modules/privacidade.tsx", { id: "privacidade" }),
+    route("lgpd", "./route-modules/lgpd.tsx", { id: "lgpd" }),
+  ]),
   layout("./route-modules/main-layout.tsx", { id: "main-layout" }, [
     index("./route-modules/index-redirect.tsx", { id: "home-redirect" }),
     route("markets", "./route-modules/markets.tsx", { id: "markets" }),
@@ -10,10 +16,6 @@ export default [
     route("settings", "./route-modules/settings.tsx", { id: "settings" }),
     route("auth", "./route-modules/auth.tsx", { id: "auth" }),
     route("fees", "./route-modules/fees.tsx", { id: "fees" }),
-    route("faq", "./route-modules/faq.tsx", { id: "faq" }),
-    route("termos", "./route-modules/termos.tsx", { id: "termos" }),
-    route("privacidade", "./route-modules/privacidade.tsx", { id: "privacidade" }),
-    route("lgpd", "./route-modules/lgpd.tsx", { id: "lgpd" }),
     route("referral", "./route-modules/referral.tsx", { id: "referral" }),
     route("profile", "./route-modules/profile.tsx", { id: "profile" }),
     route("profile/:userId", "./route-modules/profile.tsx", { id: "profile-user" }),

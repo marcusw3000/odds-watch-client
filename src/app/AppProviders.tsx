@@ -1,15 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { ConnectionStatus } from "@/components/ui/connection-status";
+import { useLocation } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { AuthBootstrap } from "@/hooks/useAuth";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useWebVitals } from "@/hooks/useWebVitals";
-import { ReferralService } from "@/services/ReferralService";
-import { toast } from "sonner";
+
+const AuthSync = lazy(() =>
+  import("@/hooks/AuthSync").then((module) => ({
+    default: module.AuthSync,
+  }))
+);
+
+const DeferredAppShell = lazy(() =>
+  import("./DeferredAppShell").then((module) => ({
+    default: module.DeferredAppShell,
+  }))
+);
+
+const STATIC_PUBLIC_ROUTES = new Set(['/faq', '/termos', '/privacidade', '/lgpd']);
 
 function createQueryClient() {
   return new QueryClient({
@@ -34,6 +42,11 @@ function PostLoginTasks() {
       const pendingCode = localStorage.getItem("pendingReferralCode");
       if (!pendingCode) return;
 
+      const [{ ReferralService }, { toast }] = await Promise.all([
+        import('@/services/ReferralService'),
+        import('sonner'),
+      ]);
+
       const { success, error } = await ReferralService.linkReferral(user.id, pendingCode);
       localStorage.removeItem("pendingReferralCode");
 
@@ -50,11 +63,6 @@ function PostLoginTasks() {
   return null;
 }
 
-function WebVitalsTracker() {
-  useWebVitals();
-  return null;
-}
-
 export function AppProviders({
   children,
   initialAuth,
@@ -62,20 +70,44 @@ export function AppProviders({
   children: React.ReactNode;
   initialAuth?: AuthBootstrap;
 }) {
+  const location = useLocation();
   const [queryClient] = useState(createQueryClient);
+  const [shouldRenderDeferredShell, setShouldRenderDeferredShell] = useState(false);
+  const shouldEnableAuthSync =
+    Boolean(initialAuth?.user) || !STATIC_PUBLIC_ROUTES.has(location.pathname);
+
+  useEffect(() => {
+    const scheduleRender =
+      'requestIdleCallback' in window
+        ? window.requestIdleCallback(() => setShouldRenderDeferredShell(true), { timeout: 2000 })
+        : window.setTimeout(() => setShouldRenderDeferredShell(true), 500);
+
+    return () => {
+      if (typeof scheduleRender === 'number') {
+        window.clearTimeout(scheduleRender);
+        return;
+      }
+
+      window.cancelIdleCallback(scheduleRender);
+    };
+  }, []);
 
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider initialAuth={initialAuth}>
-          <TooltipProvider>
-            <WebVitalsTracker />
-            <PostLoginTasks />
-            <Toaster />
-            <Sonner />
-            <ConnectionStatus />
-            {children}
-          </TooltipProvider>
+          {shouldEnableAuthSync && (
+            <Suspense fallback={null}>
+              <AuthSync />
+            </Suspense>
+          )}
+          <PostLoginTasks />
+          {shouldRenderDeferredShell && (
+            <Suspense fallback={null}>
+              <DeferredAppShell />
+            </Suspense>
+          )}
+          {children}
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -1,17 +1,17 @@
 import { Link } from 'react-router-dom';
 import { ChevronLeft, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 export function TermosPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Button variant="ghost" size="sm" asChild className="mb-4">
-        <Link to="/" className="flex items-center gap-2">
-          <ChevronLeft className="h-4 w-4" />
-          Voltar
-        </Link>
-      </Button>
+      <Link
+        to="/"
+        className="mb-4 inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Voltar
+      </Link>
 
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 rounded-lg bg-primary/10">
@@ -19,7 +19,7 @@ export function TermosPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold">Termos de Uso</h1>
-          <p className="text-sm text-muted-foreground">Última atualização: Janeiro de 2025</p>
+          <p className="text-sm text-muted-foreground">Ultima atualizacao: Janeiro de 2025</p>
         </div>
       </div>
 
@@ -27,125 +27,125 @@ export function TermosPage() {
 
       <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
         <section>
-          <h2 className="text-xl font-semibold mb-3">1. Definições e Escopo</h2>
+          <h2 className="text-xl font-semibold mb-3">1. Definicoes e Escopo</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Bem-vindo à plataforma OddsWatch. Estes Termos de Uso ("Termos") regem o uso de 
-            nossa plataforma de mercados preditivos, incluindo todos os serviços, recursos e 
+            Bem-vindo a plataforma OddsWatch. Estes Termos de Uso ("Termos") regem o uso de
+            nossa plataforma de mercados preditivos, incluindo todos os servicos, recursos e
             funcionalidades oferecidos.
           </p>
           <p className="text-muted-foreground leading-relaxed">
-            Ao criar uma conta ou utilizar nossos serviços, você concorda integralmente com 
-            estes Termos. Se você não concordar, por favor não utilize a plataforma.
+            Ao criar uma conta ou utilizar nossos servicos, voce concorda integralmente com
+            estes Termos. Se voce nao concordar, por favor nao utilize a plataforma.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-3">2. Elegibilidade</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Para utilizar a plataforma, você deve:
+            Para utilizar a plataforma, voce deve:
           </p>
           <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
             <li>Ter pelo menos 18 anos de idade</li>
             <li>Possuir capacidade legal para celebrar contratos vinculativos</li>
-            <li>Não estar impedido de usar a plataforma por leis aplicáveis</li>
-            <li>Fornecer informações verdadeiras e precisas durante o cadastro</li>
+            <li>Nao estar impedido de usar a plataforma por leis aplicaveis</li>
+            <li>Fornecer informacoes verdadeiras e precisas durante o cadastro</li>
           </ul>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-3">3. Natureza dos Mercados Preditivos</h2>
           <p className="text-muted-foreground leading-relaxed">
-            A plataforma OddsWatch oferece mercados preditivos para fins informativos e 
-            educacionais. Os mercados preditivos são instrumentos que agregam opiniões 
+            A plataforma OddsWatch oferece mercados preditivos para fins informativos e
+            educacionais. Os mercados preditivos sao instrumentos que agregam opinioes
             sobre a probabilidade de eventos futuros.
           </p>
           <p className="text-muted-foreground leading-relaxed font-medium">
-            Importante: Esta plataforma NÃO constitui serviço financeiro, aposta ou jogo de azar. 
-            Os contratos adquiridos representam posições sobre previsões de eventos reais.
+            Importante: Esta plataforma NAO constitui servico financeiro, aposta ou jogo de azar.
+            Os contratos adquiridos representam posicoes sobre previsoes de eventos reais.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-3">4. Regras de Uso da Plataforma</h2>
-          <p className="text-muted-foreground leading-relaxed">Ao utilizar a plataforma, você concorda em:</p>
+          <p className="text-muted-foreground leading-relaxed">Ao utilizar a plataforma, voce concorda em:</p>
           <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
-            <li>Não manipular ou tentar manipular resultados de mercados</li>
-            <li>Não criar múltiplas contas para obter vantagens indevidas</li>
-            <li>Não utilizar bots, scripts ou automações não autorizadas</li>
-            <li>Não publicar conteúdo ofensivo, ilegal ou que viole direitos de terceiros</li>
-            <li>Manter a segurança de suas credenciais de acesso</li>
-            <li>Reportar imediatamente qualquer uso não autorizado de sua conta</li>
+            <li>Nao manipular ou tentar manipular resultados de mercados</li>
+            <li>Nao criar multiplas contas para obter vantagens indevidas</li>
+            <li>Nao utilizar bots, scripts ou automacoes nao autorizadas</li>
+            <li>Nao publicar conteudo ofensivo, ilegal ou que viole direitos de terceiros</li>
+            <li>Manter a seguranca de suas credenciais de acesso</li>
+            <li>Reportar imediatamente qualquer uso nao autorizado de sua conta</li>
           </ul>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-3">5. Propriedade Intelectual</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Todo o conteúdo da plataforma, incluindo mas não limitado a textos, gráficos, 
-            logos, ícones, imagens, código-fonte e software, é de propriedade exclusiva 
+            Todo o conteudo da plataforma, incluindo mas nao limitado a textos, graficos,
+            logos, icones, imagens, codigo-fonte e software, e de propriedade exclusiva
             da OddsWatch ou de seus licenciadores.
           </p>
           <p className="text-muted-foreground leading-relaxed">
-            É proibida a reprodução, distribuição, modificação ou uso comercial de qualquer 
-            conteúdo sem autorização prévia e expressa.
+            E proibida a reproducao, distribuicao, modificacao ou uso comercial de qualquer
+            conteudo sem autorizacao previa e expressa.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-3">6. Taxas e Pagamentos</h2>
           <p className="text-muted-foreground leading-relaxed">
-            A plataforma pode cobrar taxas por determinadas operações, incluindo:
+            A plataforma pode cobrar taxas por determinadas operacoes, incluindo:
           </p>
           <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
-            <li>Taxas de transação sobre compra e venda de contratos</li>
-            <li>Taxas de saque para transferências bancárias</li>
-            <li>Outras taxas conforme descritas na página de Taxas</li>
+            <li>Taxas de transacao sobre compra e venda de contratos</li>
+            <li>Taxas de saque para transferencias bancarias</li>
+            <li>Outras taxas conforme descritas na pagina de Taxas</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed">
-            As taxas vigentes estão disponíveis em{' '}
+            As taxas vigentes estao disponiveis em{' '}
             <Link to="/fees" className="text-primary hover:underline">/fees</Link>.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">7. Limitação de Responsabilidade</h2>
+          <h2 className="text-xl font-semibold mb-3">7. Limitacao de Responsabilidade</h2>
           <p className="text-muted-foreground leading-relaxed">
-            A plataforma é fornecida "como está" e "conforme disponível". Não garantimos:
+            A plataforma e fornecida "como esta" e "conforme disponivel". Nao garantimos:
           </p>
           <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
-            <li>Disponibilidade ininterrupta dos serviços</li>
-            <li>Precisão ou confiabilidade das previsões de mercado</li>
-            <li>Resultados financeiros específicos</li>
-            <li>Ausência de erros ou falhas técnicas</li>
+            <li>Disponibilidade ininterrupta dos servicos</li>
+            <li>Precisao ou confiabilidade das previsoes de mercado</li>
+            <li>Resultados financeiros especificos</li>
+            <li>Ausencia de erros ou falhas tecnicas</li>
           </ul>
           <p className="text-muted-foreground leading-relaxed">
-            Em nenhuma circunstância seremos responsáveis por danos indiretos, incidentais, 
+            Em nenhuma circunstancia seremos responsaveis por danos indiretos, incidentais,
             especiais ou consequenciais decorrentes do uso da plataforma.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">8. Resolução de Disputas</h2>
+          <h2 className="text-xl font-semibold mb-3">8. Resolucao de Disputas</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Qualquer disputa relacionada a estes Termos será resolvida primeiramente por 
-            negociação direta. Caso não haja acordo, as partes concordam em submeter a 
-            disputa à arbitragem ou ao foro da comarca de São Paulo/SP.
+            Qualquer disputa relacionada a estes Termos sera resolvida primeiramente por
+            negociacao direta. Caso nao haja acordo, as partes concordam em submeter a
+            disputa a arbitragem ou ao foro da comarca de Sao Paulo/SP.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">9. Modificações dos Termos</h2>
+          <h2 className="text-xl font-semibold mb-3">9. Modificacoes dos Termos</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Reservamo-nos o direito de modificar estes Termos a qualquer momento. 
-            Alterações significativas serão comunicadas por email ou notificação na plataforma. 
-            O uso continuado após as alterações constitui aceitação dos novos termos.
+            Reservamo-nos o direito de modificar estes Termos a qualquer momento.
+            Alteracoes significativas serao comunicadas por email ou notificacao na plataforma.
+            O uso continuado apos as alteracoes constitui aceitacao dos novos termos.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-3">10. Contato</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Para dúvidas sobre estes Termos, entre em contato através da seção de{' '}
+            Para duvidas sobre estes Termos, entre em contato atraves da secao de{' '}
             <Link to="/settings?tab=support" className="text-primary hover:underline">
               Suporte
             </Link>.

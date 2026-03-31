@@ -13,6 +13,8 @@ dist-ssr
 build
 .react-router
 *.local
+.env
+.env.*
 .lovable
 
 # Editor directories and files

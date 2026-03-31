@@ -1,51 +1,37 @@
-import { useState, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Menu, X, LogIn, LogOut, Gift, Trophy, Plus, Calculator, Briefcase, Lightbulb, Headphones, Users, Settings } from 'lucide-react';
+import { TrendingUp, Menu, X, LogIn, Trophy, Briefcase, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { HeaderSearch } from './HeaderSearch';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/formatters';
 import { useAuth } from '@/hooks/useAuth';
-import { useMyLeaderboardProfile } from '@/hooks/useLeaderboard';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
-const DepositModal = lazy(() => import('@/components/payments/DepositModal').then(m => ({ default: m.DepositModal })));
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-// Componente interno para o ícone com indicador de sync
-function BalanceIcon({ isLoading }: { isLoading: boolean }) {
-  return (
-    <div className="relative">
-      <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-      {isLoading && (
-        <span 
-          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse" 
-          aria-label="Atualizando saldo"
-        />
-      )}
-    </div>
-  );
+const HeaderSearch = lazy(() =>
+  import('./HeaderSearch').then((module) => ({
+    default: module.HeaderSearch,
+  }))
+);
+
+const HeaderAuthenticatedControls = lazy(() =>
+  import('./HeaderAuthenticatedControls').then((module) => ({
+    default: module.HeaderAuthenticatedControls,
+  }))
+);
+
+const MobileAuthenticatedMenu = lazy(() =>
+  import('./HeaderAuthenticatedControls').then((module) => ({
+    default: module.MobileAuthenticatedMenu,
+  }))
+);
+
+function SearchFallback({ className }: { className?: string }) {
+  return <div className={cn('h-10 w-full rounded-md bg-secondary/70 animate-pulse', className)} />;
 }
 
-interface HeaderProps {
-  balance?: number;
-  isBalanceLoading?: boolean;
-}
-
-export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps) {
+export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [shouldRenderSearch, setShouldRenderSearch] = useState(false);
   const location = useLocation();
-  const { user, isAdmin, signOut, loading } = useAuth();
-  const { data: myProfile } = useMyLeaderboardProfile();
-
-  // formatCurrency is now imported from @/lib/formatters
+  const { user, loading } = useAuth();
 
   const navItems = [
     { path: '/markets', label: 'Mercados', icon: TrendingUp },
@@ -58,32 +44,35 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
     if (path === '/markets') {
       return location.pathname === '/' || location.pathname === '/markets' || location.pathname.startsWith('/market/');
     }
+
     return location.pathname === path;
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  useEffect(() => {
+    const scheduleRender =
+      'requestIdleCallback' in window
+        ? window.requestIdleCallback(() => setShouldRenderSearch(true), { timeout: 1200 })
+        : window.setTimeout(() => setShouldRenderSearch(true), 200);
 
-  const getUserInitials = () => {
-    if (myProfile?.display_name) {
-      return myProfile.display_name.charAt(0).toUpperCase();
-    }
-    if (!user?.email) return 'U';
-    return user.email.charAt(0).toUpperCase();
-  };
+    return () => {
+      if (typeof scheduleRender === 'number') {
+        window.clearTimeout(scheduleRender);
+        return;
+      }
+
+      window.cancelIdleCallback(scheduleRender);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Skip to content link for keyboard navigation */}
-      <a 
-        href="#main-content" 
+      <a
+        href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"
       >
         Pular para o conteúdo
       </a>
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary">
             <TrendingUp className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
@@ -93,20 +82,24 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
           </span>
         </Link>
 
-        {/* Desktop Search */}
         <div className="hidden md:block flex-1 max-w-md mx-8">
-          <HeaderSearch />
+          {shouldRenderSearch ? (
+            <Suspense fallback={<SearchFallback />}>
+              <HeaderSearch />
+            </Suspense>
+          ) : (
+            <SearchFallback />
+          )}
         </div>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1 min-h-[40px]">
           {navItems.map((item) => (
             <Button
               key={item.path}
               variant="ghost"
               className={cn(
-                "gap-2 px-4",
-                isActive(item.path) && "bg-accent text-accent-foreground"
+                'gap-2 px-4',
+                isActive(item.path) && 'bg-accent text-accent-foreground'
               )}
               asChild
             >
@@ -118,100 +111,13 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
           ))}
         </nav>
 
-        {/* Balance & User Actions */}
         <div className="hidden md:flex items-center gap-3">
-          {user && (
-            <>
-              <div className="flex items-center gap-1 rounded-lg bg-secondary pl-4 pr-1 py-1">
-                <BalanceIcon isLoading={isBalanceLoading} />
-                <span className="font-mono font-semibold text-foreground mr-1">
-                  {formatCurrency(balance)}
-                </span>
-                <Button 
-                  size="sm" 
-                  className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground"
-                  onClick={() => setShowDepositModal(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <NotificationBell />
-            </>
-          )}
-          
           {loading ? (
-            <div className="h-9 w-9 rounded-full bg-secondary animate-pulse" />
+            <div className="h-9 w-28 rounded-lg bg-secondary animate-pulse" />
           ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={myProfile?.avatar_url || undefined} alt="Avatar" />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex flex-col space-y-1 p-2">
-                  <p className="text-sm font-medium leading-none">{user.email}</p>
-                  {isAdmin && (
-                    <p className="text-xs leading-none text-primary">Administrador</p>
-                  )}
-                </div>
-                <DropdownMenuSeparator />
-                {isAdmin && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin">Painel Admin</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem asChild>
-                  <Link to="/profile">
-                    <User className="mr-2 h-4 w-4" />
-                    Meu Perfil
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configurações
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/copy-traders">
-                    <Users className="mr-2 h-4 w-4" />
-                    Copy Trading
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/referral">
-                    <Gift className="mr-2 h-4 w-4" />
-                    Indicar Amigos
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/fees">
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Taxas
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings?tab=support">
-                    <Headphones className="mr-2 h-4 w-4" />
-                    Suporte
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Suspense fallback={<div className="h-9 w-28 rounded-lg bg-secondary animate-pulse" />}>
+              <HeaderAuthenticatedControls />
+            </Suspense>
           ) : (
             <Button asChild>
               <Link to="/auth">
@@ -222,7 +128,6 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <Button
           variant="ghost"
           size="icon"
@@ -233,42 +138,22 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
         </Button>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background animate-fade-in">
           <div className="container mx-auto px-4 py-4 space-y-4">
-            {/* Mobile Search */}
-            <HeaderSearch className="w-full" />
-
-            {user && (
-              <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <BalanceIcon isLoading={isBalanceLoading} />
-                  <span className="text-sm text-muted-foreground">Saldo</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold">
-                    {formatCurrency(balance)}
-                  </span>
-                  <Button 
-                    size="sm" 
-                    className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground"
-                    onClick={() => {
-                      setShowDepositModal(true);
-                      setMobileMenuOpen(false);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+            {shouldRenderSearch ? (
+              <Suspense fallback={<SearchFallback className="w-full" />}>
+                <HeaderSearch className="w-full" />
+              </Suspense>
+            ) : (
+              <SearchFallback className="w-full" />
             )}
-            
+
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => (
                 <Button
                   key={item.path}
-                  variant={isActive(item.path) ? "secondary" : "ghost"}
+                  variant={isActive(item.path) ? 'secondary' : 'ghost'}
                   className="justify-start gap-2"
                   onClick={() => setMobileMenuOpen(false)}
                   asChild
@@ -279,70 +164,14 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
                   </Link>
                 </Button>
               ))}
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                  asChild
-                >
-                  <Link to="/settings">
-                    <Settings className="h-4 w-4" />
-                    Configurações
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                  asChild
-                >
-                  <Link to="/copy-traders">
-                    <Users className="h-4 w-4" />
-                    Copy Trading
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                  asChild
-                >
-                  <Link to="/settings?tab=support">
-                    <Headphones className="h-4 w-4" />
-                    Suporte
-                  </Link>
-                </Button>
-                {isAdmin && (
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                  asChild
-                >
-                  <Link to="/admin">
-                    <User className="h-4 w-4" />
-                    Painel Admin
-                  </Link>
-                </Button>
-              )}
             </nav>
 
-            {user ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={myProfile?.avatar_url || undefined} alt="Avatar" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-muted-foreground truncate">{user.email}</span>
-                </div>
-                <Button variant="outline" className="w-full" onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </Button>
-              </div>
+            {loading ? (
+              <div className="h-24 rounded-lg bg-secondary animate-pulse" />
+            ) : user ? (
+              <Suspense fallback={<div className="h-24 rounded-lg bg-secondary animate-pulse" />}>
+                <MobileAuthenticatedMenu onNavigate={() => setMobileMenuOpen(false)} />
+              </Suspense>
             ) : (
               <Button className="w-full" asChild>
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
@@ -353,13 +182,6 @@ export function Header({ balance = 2500, isBalanceLoading = false }: HeaderProps
             )}
           </div>
         </div>
-      )}
-
-      {/* Deposit Modal */}
-      {showDepositModal && (
-        <Suspense fallback={null}>
-          <DepositModal onClose={() => setShowDepositModal(false)} />
-        </Suspense>
       )}
     </header>
   );

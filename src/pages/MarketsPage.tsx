@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, RefreshCw, Search, Loader2 } from 'lucide-react';
 import { MarketEvent, UserContract } from '@/types/market';
@@ -24,12 +24,8 @@ import { useInfiniteMarkets } from '@/hooks/useInfiniteMarkets';
 import { useViewportSkeletons } from '@/hooks/useViewportSkeletons';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { usePriceHistoryBatch, PriceHistoryContext } from '@/hooks/usePriceHistoryBatch';
+import { usePortfolioBalance } from '@/hooks/usePortfolioBalance';
 import { cn } from '@/lib/utils';
-
-interface LayoutContext {
-  userBalance: number;
-  setUserBalance: React.Dispatch<React.SetStateAction<number>>;
-}
 
 interface MarketsPageProps {
   initialEvents?: MarketEvent[];
@@ -37,9 +33,9 @@ interface MarketsPageProps {
 }
 
 export function MarketsPage({ initialEvents, initialCategories }: MarketsPageProps) {
-  const { userBalance, setUserBalance } = useOutletContext<LayoutContext>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { balance: userBalance, setBalance: setUserBalance } = usePortfolioBalance();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Use realtime hook for markets data

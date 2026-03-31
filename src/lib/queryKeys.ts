@@ -17,7 +17,7 @@ export const queryKeys = {
   
   // Portfolio
   portfolio: {
-    balance: ['portfolio', 'balance'] as const,
+    balance: (userId?: string) => ['portfolio', 'balance', userId] as const,
     user: (userId?: string) => ['portfolio', userId] as const,
     contracts: (userId?: string) => ['portfolio', 'contracts', userId] as const,
   },

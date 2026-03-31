@@ -27,12 +27,7 @@ export function CardCountdown({ statusInfo }: CardCountdownProps) {
       colorClass = 'text-warning';
       break;
     case 'PENDING':
-      return (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
-          <Timer className="h-3 w-3" />
-          <span className="font-mono">Aguardando</span>
-        </div>
-      );
+      return null;
     case 'SETTLED':
       return null;
     default:

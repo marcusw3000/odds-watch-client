@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { AuthBootstrap } from "@/hooks/useAuth";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const AuthSync = lazy(() =>
   import("@/hooks/AuthSync").then((module) => ({
@@ -95,6 +96,7 @@ export function AppProviders({
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
         <AuthProvider initialAuth={initialAuth}>
           {shouldEnableAuthSync && (
             <Suspense fallback={null}>
@@ -109,6 +111,7 @@ export function AppProviders({
           )}
           {children}
         </AuthProvider>
+        </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

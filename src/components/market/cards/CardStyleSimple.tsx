@@ -98,7 +98,7 @@ export const CardStyleSimple = memo(function CardStyleSimple({
 
       {/* Zone 2: Status */}
       <div className={gridClasses.status}>
-        <MarketStatusBadge 
+        <MarketStatusBadge
           status={statusInfo.status}
           timeToEvent={statusInfo.timeToEvent}
           result={event.result}

@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     const data = await browsePolymarketCache(filters).catch(async (error): Promise<CatalogPage> => {
         console.error("[Polymarket cache] Failed to browse persistent catalog", error);
         // Legacy Gamma fallback cannot faithfully reproduce arbitrary filters or pagination.
-        if (filters.page !== 1 || filters.status !== "open" || filters.sort !== "volume" || filters.minVolume || filters.endAfter || filters.endBefore || (filters.query && filters.category)) throw error;
+        if (filters.page !== 1 || filters.status !== "open" || filters.sort !== "volume" || filters.minVolume || filters.endAfter || filters.endBefore || filters.subcategory || (filters.query && filters.category)) throw error;
         const fallback = filters.query.length >= 2 ? await searchPolymarketMarkets(filters.query)
           : filters.category ? await listPolymarketCategory(filters.category)
           : await listPolymarketMarkets({ limit: 24 });

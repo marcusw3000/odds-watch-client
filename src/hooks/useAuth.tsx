@@ -12,6 +12,7 @@ interface AuthState {
   session: Session | null;
   isAdmin: boolean;
   loading: boolean;
+  actionsReady: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string, cpf?: string, phone?: string, referralCode?: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
@@ -63,6 +64,7 @@ export function AuthProvider({
       session,
       isAdmin,
       loading,
+      actionsReady: actions !== unavailableAuthActions,
       signIn: actions.signIn,
       signUp: actions.signUp,
       signOut: actions.signOut,

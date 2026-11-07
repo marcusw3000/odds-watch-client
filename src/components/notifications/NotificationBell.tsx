@@ -93,6 +93,7 @@ const GROUPABLE_TYPES: NotificationType[] = ['COMMENT_LIKE', 'ACHIEVEMENT_UNLOCK
 // Get link for notification based on type and data
 function getNotificationLink(notification: Notification): string | null {
   const { type, data } = notification;
+  if (data?.source === 'paper_copy') return '/copy-trading';
   const polymarketLink = polymarketNotificationLink(notification);
   if (polymarketLink) return polymarketLink;
   

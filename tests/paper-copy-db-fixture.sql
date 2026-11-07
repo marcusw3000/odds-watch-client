@@ -1,0 +1,16 @@
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE service_role NOLOGIN BYPASSRLS;
+CREATE SCHEMA auth;
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+GRANT USAGE ON SCHEMA auth TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon,authenticated,service_role;
+CREATE TABLE public.profiles(id uuid PRIMARY KEY, is_public boolean, show_trades boolean);
+CREATE TABLE public.notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,type text,title text,message text,data jsonb);
+CREATE TABLE public.polymarket_paper_wallets(user_id uuid PRIMARY KEY,balance_usd numeric NOT NULL DEFAULT 10000,round_id uuid NOT NULL DEFAULT gen_random_uuid(),updated_at timestamptz DEFAULT now());
+CREATE TABLE public.polymarket_paper_positions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,market_id text,market_question text,outcome_label text,outcome_token_id text,shares numeric,average_price numeric,legacy_shares numeric DEFAULT 0,legacy_cost numeric DEFAULT 0,verified_cost numeric DEFAULT 0,updated_at timestamptz DEFAULT now());
+CREATE TABLE public.polymarket_paper_trades(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,market_id text,outcome_label text,side text,price numeric,shares numeric,notional_usd numeric,created_at timestamptz DEFAULT now());
+CREATE TABLE public.polymarket_paper_requests(user_id uuid,request_id uuid,round_id uuid,market_id text,outcome_label text,side text,shares numeric,result jsonb,PRIMARY KEY(user_id,request_id));
+CREATE TABLE public.polymarket_paper_ranking_stats(user_id uuid PRIMARY KEY,realized_profit numeric DEFAULT 0,realized_cost numeric DEFAULT 0,volume_usd numeric DEFAULT 0,trade_count integer DEFAULT 0,winning_trades integer DEFAULT 0,updated_at timestamptz DEFAULT now());
+GRANT USAGE ON SCHEMA public TO anon,authenticated,service_role;

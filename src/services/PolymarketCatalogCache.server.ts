@@ -9,6 +9,7 @@ export const CATEGORY_SLUGS = ["brazil", "politics", "sports", "crypto", "esport
 export interface CatalogFilters {
   query: string;
   category: string;
+  subcategory: string;
   status: "open" | "closed" | "all";
   sort: "volume" | "end_date" | "updated";
   minVolume: string;
@@ -44,6 +45,7 @@ function validDate(value: string | null): string {
 export function parseCatalogFilters(params: URLSearchParams): CatalogFilters {
   // An explicit empty category selects Em alta; searches without a category remain global.
   const category = params.get("category") ?? (params.get("q")?.trim() ? "" : "brazil");
+  const subcategory = params.get("subcategory") ?? "";
   const status = params.get("status");
   const sort = params.get("sort");
   const rawVolume = params.get("minVolume") ?? "";
@@ -52,6 +54,7 @@ export function parseCatalogFilters(params: URLSearchParams): CatalogFilters {
   return {
     query: (params.get("q") ?? "").trim().replace(/\s+/g, " ").slice(0, 80),
     category: /^[a-z0-9-]{1,80}$/.test(category) ? category : "",
+    subcategory: category === "brazil" && /^[a-z0-9-]{1,80}$/.test(subcategory) && subcategory !== "brazil" ? subcategory : "",
     status: status === "closed" || status === "all" ? status : "open",
     sort: sort === "end_date" || sort === "updated" ? sort : "volume",
     minVolume: rawVolume && Number.isFinite(amount) && amount >= 0 && amount <= 1e12 ? String(amount) : "",
@@ -95,7 +98,7 @@ export async function browsePolymarketCache(filters: CatalogFilters): Promise<Ca
 async function queryPolymarketCache(filters: CatalogFilters): Promise<CatalogPage> {
   const columns = "event_id,title,image_url,volume_usd,end_date,synced_at,polymarket_market_cache(market_id,event_id,slug,question,image_url,protocol_version,outcomes,volume_usd,market_status)";
   let query = db.from("polymarket_event_cache").select(columns, { count: "exact" }).eq("source", "polymarket");
-  if (filters.category) query = query.contains("tags", [filters.category]);
+  if (filters.category) query = query.contains("tags", [filters.category, ...(filters.subcategory ? [filters.subcategory] : [])]);
   if (filters.status !== "all") query = query.eq("event_status", filters.status).eq("polymarket_market_cache.market_status", filters.status);
   // Escape LIKE metacharacters so searches for % and _ are treated as literals.
   if (filters.query) query = query.ilike("search_text", `%${filters.query.replace(/[\\%_]/g, "\\$&")}%`);

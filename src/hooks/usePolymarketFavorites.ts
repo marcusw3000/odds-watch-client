@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface PolymarketFavorite { market_id: string; }
 const queryKey = (userId?: string) => ["polymarket-favorites", userId] as const;
@@ -26,8 +27,8 @@ export function usePolymarketFavorites() {
     mutationFn: async (marketId: string) => {
       if (!user) throw new Error("Authentication required");
       const { error } = await supabase.from("polymarket_favorites")
-        .upsert({ user_id: user.id, source: "polymarket", market_id: marketId }, { onConflict: "user_id,source,market_id" });
-      if (error) throw error;
+        .insert({ user_id: user.id, source: "polymarket", market_id: marketId });
+      if (error && error.code !== "23505") throw error;
     },
     onMutate: async (marketId) => {
       await queryClient.cancelQueries({ queryKey: queryKey(user?.id) });
@@ -37,7 +38,10 @@ export function usePolymarketFavorites() {
       ]);
       return { previous };
     },
-    onError: (_error, _marketId, context) => queryClient.setQueryData(queryKey(user?.id), context?.previous),
+    onError: (_error, _marketId, context) => {
+      queryClient.setQueryData(queryKey(user?.id), context?.previous ?? []);
+      toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKey(user?.id) }),
   });
 
@@ -55,7 +59,10 @@ export function usePolymarketFavorites() {
         current.filter((favorite) => favorite.market_id !== marketId));
       return { previous };
     },
-    onError: (_error, _marketId, context) => queryClient.setQueryData(queryKey(user?.id), context?.previous),
+    onError: (_error, _marketId, context) => {
+      queryClient.setQueryData(queryKey(user?.id), context?.previous ?? []);
+      toast.error("Não foi possível remover dos favoritos. Tente novamente.");
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKey(user?.id) }),
   });
 

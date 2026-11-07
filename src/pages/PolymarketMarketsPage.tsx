@@ -21,6 +21,14 @@ const categories = [
   { label: "Economia", value: "economy" }, { label: "Clima", value: "weather" }, { label: "Arte", value: "art" },
 ];
 
+const brazilTopics = [
+  { label: "Política", value: "politics" },
+  { label: "Eleições", value: "elections" },
+  { label: "Esportes", value: "sports" },
+  { label: "Economia", value: "economy" },
+  { label: "Cripto", value: "crypto" },
+];
+
 function formatUsd(value: string | null) {
   if (value === null || !Number.isFinite(Number(value))) return "—";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: Number(value) >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(Number(value));
@@ -113,6 +121,7 @@ function catalogUrl(filters: CatalogFilters, changes: Partial<CatalogFilters>) {
   const params = new URLSearchParams();
   if (next.query) params.set("q", next.query);
   params.set("category", next.category);
+  if (next.category === "brazil" && next.subcategory) params.set("subcategory", next.subcategory);
   if (next.status !== "open") params.set("status", next.status);
   if (next.sort !== "volume") params.set("sort", next.sort);
   if (next.minVolume) params.set("minVolume", next.minVolume);
@@ -129,9 +138,9 @@ export function PolymarketMarketsPage({ data, fx, filters, tags, featured, error
   return (
     <section className="mx-auto w-full max-w-[1440px] space-y-6 py-1">
       <nav aria-label="Categorias Polymarket" className="flex gap-1 overflow-x-auto border-b border-border pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {categories.map((item) => <Link key={item.value} to={catalogUrl(filters, { category: item.value, page: 1 })} aria-current={filters.category === item.value ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filters.category === item.value ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>{item.value === "brazil" && <svg aria-hidden="true" viewBox="0 0 28 20" className="h-4 w-[22px] shrink-0 rounded-[2px]"><rect width="28" height="20" fill="#009739" /><path d="M14 2.5 25 10 14 17.5 3 10Z" fill="#ffdf00" /><circle cx="14" cy="10" r="4.3" fill="#002776" /><path d="M10.1 8.8c2.8-.5 5.6.3 8.1 2" fill="none" stroke="white" strokeWidth=".8" /></svg>}{item.label}</Link>)}
+        {categories.map((item) => <Link key={item.value} to={catalogUrl(filters, { category: item.value, subcategory: "", page: 1 })} aria-current={filters.category === item.value ? "page" : undefined} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filters.category === item.value ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>{item.value === "brazil" && <svg aria-hidden="true" viewBox="0 0 28 20" className="h-4 w-[22px] shrink-0 rounded-[2px]"><rect width="28" height="20" fill="#009739" /><path d="M14 2.5 25 10 14 17.5 3 10Z" fill="#ffdf00" /><circle cx="14" cy="10" r="4.3" fill="#002776" /><path d="M10.1 8.8c2.8-.5 5.6.3 8.1 2" fill="none" stroke="white" strokeWidth=".8" /></svg>}{item.label}</Link>)}
       </nav>
-      <Suspense fallback={null}><Await resolve={tags}>{(items) => items.length > 0 && <nav aria-label="Tópicos da Polymarket" className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{items.map((tag) => <Link key={tag.value} to={catalogUrl(filters, { category: tag.value, page: 1 })} aria-current={filters.category === tag.value ? "page" : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${filters.category === tag.value ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>{tag.label}</Link>)}</nav>}</Await></Suspense>
+      {filters.category === "brazil" ? <nav aria-label="Subcategorias do Brasil" className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{[{ label: "Todos", value: "" }, ...brazilTopics].map((tag) => <Link key={tag.value} to={catalogUrl(filters, { subcategory: tag.value, page: 1 })} aria-current={filters.subcategory === tag.value ? "page" : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${filters.subcategory === tag.value ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>{tag.label}</Link>)}</nav> : <Suspense fallback={null}><Await resolve={tags}>{(items) => items.length > 0 && <nav aria-label="Tópicos da Polymarket" className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{items.map((tag) => <Link key={tag.value} to={catalogUrl(filters, { category: tag.value, subcategory: "", page: 1 })} aria-current={filters.category === tag.value ? "page" : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${filters.category === tag.value ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>{tag.label}</Link>)}</nav>}</Await></Suspense>}
 
       {showFeatured && <Suspense fallback={<div role="status" className="min-h-[240px] rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Carregando destaque...</div>}><Await resolve={featured} errorElement={<FeaturedMarket market={data.markets[0]} analytics={null} />}>{({ featuredEvent, featuredSeries, analytics }) => featuredEvent && featuredSeries.length ? <FeaturedEvent event={featuredEvent} series={featuredSeries} /> : <FeaturedMarket market={data.markets[0]} analytics={analytics} />}</Await></Suspense>}
 
@@ -139,6 +148,7 @@ export function PolymarketMarketsPage({ data, fx, filters, tags, featured, error
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 id="all-markets" className="text-xl font-bold tracking-tight">{data.searchQuery ? "Resultados da pesquisa" : filters.category ? categories.find((item) => item.value === filters.category)?.label ?? filters.category : "Todos os eventos"}</h1><p className="mt-1 text-xs text-muted-foreground">{data.events ? `${(data.totalMatches ?? data.events.length).toLocaleString("pt-BR")} eventos encontrados na cache` : `${data.markets.length} mercados nesta amostra`}</p></div><div className="flex items-center gap-1"><Button variant="ghost" size="icon" asChild><Link to="/polymarket/favorites" aria-label="Meus favoritos"><Bookmark className="h-4 w-4" /></Link></Button><Button variant="outline" size="sm" asChild><Link to="/polymarket/paper"><FlaskConical className="h-4 w-4" /> Paper Trading</Link></Button><Button variant="ghost" size="icon" onClick={() => navigate(0)} aria-label="Atualizar mercados"><RefreshCw className="h-4 w-4" /></Button></div></div>
         <Form key={JSON.stringify(filters)} method="get" className="space-y-3">
           <input type="hidden" name="category" value={filters.category} />
+          {filters.subcategory && <input type="hidden" name="subcategory" value={filters.subcategory} />}
           <div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input name="q" aria-label="Pesquisar mercados Polymarket" type="search" maxLength={80} defaultValue={filters.query} placeholder="Pesquisar mercados" className="pl-9" /></div><Button type="submit">Pesquisar</Button><Button variant="outline" size="icon" asChild><Link to="/polymarket" aria-label="Limpar filtros"><X className="h-4 w-4" /></Link></Button></div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <label className="space-y-1 text-xs text-muted-foreground">Status<select name="status" defaultValue={filters.status} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"><option value="open">Abertos</option><option value="closed">Encerrados</option><option value="all">Todos</option></select></label>

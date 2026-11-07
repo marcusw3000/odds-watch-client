@@ -1,6 +1,8 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
+  route("api/polymarket/leaderboard", "./route-modules/polymarket-leaderboard-data.ts", { id: "polymarket-leaderboard-data" }),
+  route("api/polymarket/biggest-wins", "./route-modules/polymarket-biggest-wins.ts", { id: "polymarket-biggest-wins" }),
   route("api/polymarket/portfolio-quotes", "./route-modules/polymarket-portfolio-quotes.ts", { id: "polymarket-portfolio-quotes" }),
   route("api/polymarket/market/:id/share", "./route-modules/polymarket-share-market.ts", { id: "polymarket-share-market" }),
   layout("./route-modules/public-info-layout.tsx", { id: "public-info-layout" }, [
@@ -15,11 +17,13 @@ export default [
     route("polymarket", "./route-modules/polymarket-markets.tsx", { id: "polymarket-markets" }),
     route("polymarket/paper", "./route-modules/polymarket-paper.tsx", { id: "polymarket-paper" }),
     route("polymarket/favorites", "./route-modules/polymarket-favorites.tsx", { id: "polymarket-favorites" }),
+    route("polymarket/trader/:address", "./route-modules/polymarket-trader.tsx", { id: "polymarket-trader" }),
     route("polymarket/event/:id", "./route-modules/polymarket-event-detail.tsx", { id: "polymarket-event-detail" }),
     route("polymarket/market/:id", "./route-modules/polymarket-market-detail.tsx", { id: "polymarket-market-detail" }),
     route("market/:id", "./route-modules/market-detail.tsx", { id: "market-detail" }),
     route("portfolio", "./route-modules/portfolio.tsx", { id: "portfolio" }),
     route("leaderboard", "./route-modules/leaderboard.tsx", { id: "leaderboard" }),
+    route("copy-trading", "./route-modules/paper-copy-trading.tsx", { id: "paper-copy-trading" }),
     route("settings", "./route-modules/settings.tsx", { id: "settings" }),
     route("auth", "./route-modules/auth.tsx", { id: "auth" }),
     route("fees", "./route-modules/fees.tsx", { id: "fees" }),

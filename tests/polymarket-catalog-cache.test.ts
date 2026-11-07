@@ -11,6 +11,21 @@ describe("Polymarket catalog filters", () => {
     expect(parseCatalogFilters(new URLSearchParams("q=bitcoin&category=brazil")).category).toBe("brazil");
   });
 
+  it("combines a Brazil subcategory with the country filter", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("polymarket_catalog_sync_public")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response("[]", { status: 200, headers: { "Content-Type": "application/json", "Content-Range": "*/0" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { browsePolymarketCache, parseCatalogFilters } = await import("@/services/PolymarketCatalogCache.server");
+    const filters = parseCatalogFilters(new URLSearchParams("category=brazil&subcategory=politics&page=2"));
+    await browsePolymarketCache(filters);
+    const request = fetchMock.mock.calls.map(([url]) => String(url)).find((url) => url.includes("polymarket_event_cache"));
+    expect(new URL(request!).searchParams.get("tags")).toContain("{brazil,politics}");
+    expect(parseCatalogFilters(new URLSearchParams("category=sports&subcategory=politics")).subcategory).toBe("");
+    expect(parseCatalogFilters(new URLSearchParams("category=brazil&subcategory=invalid%2Ftag")).subcategory).toBe("");
+  });
+
   it("normalizes invalid input and preserves safe filters", async () => {
     const { parseCatalogFilters } = await import("@/services/PolymarketCatalogCache.server");
     expect(parseCatalogFilters(new URLSearchParams("category=invalid%2Fcategory&status=oops&sort=oops&page=-2&endAfter=2026-02-31&minVolume=-1"))).toMatchObject({ category: "", status: "open", sort: "volume", page: 1, endAfter: "", minVolume: "" });

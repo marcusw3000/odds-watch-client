@@ -43,10 +43,14 @@ try {
   check(!stats.error && stats.data?.[0]?.total_trades === 2 && Number(stats.data[0].total_volume) > 0 && Math.abs(Number(stats.data[0].total_profit) - expectedProfit) < 0.000001, "Estatísticas simuladas incorretas.");
   const leaderboard = await client.rpc("get_paper_leaderboard", { p_sort: "trades", p_limit: 100 });
   check(!leaderboard.error && leaderboard.data?.some((row) => row.user_id === userId && row.total_trades === 2), "Participante temporário não apareceu no ranking.");
+  const paged = await client.rpc("get_paper_leaderboard_page", { p_sort: "trades", p_limit: 100, p_offset: 0 });
+  check(!paged.error && paged.data?.some((row) => row.user_id === userId && row.total_trades === 2), "Participante temporário não apareceu no ranking paginado.");
   const hideProfit = await client.from("profiles").update({ show_profit: false }).eq("id", userId);
   check(!hideProfit.error, "Não foi possível atualizar a privacidade do perfil.");
   const hiddenProfit = await client.rpc("get_paper_leaderboard", { p_sort: "trades", p_limit: 100 });
   check(!hiddenProfit.error && hiddenProfit.data?.some((row) => row.user_id === userId && row.total_profit === null), "A privacidade do lucro não foi respeitada.");
+  const hiddenPaged = await client.rpc("get_paper_leaderboard_page", { p_sort: "trades", p_limit: 100, p_offset: 0 });
+  check(!hiddenPaged.error && hiddenPaged.data?.some((row) => row.user_id === userId && row.total_profit === null), "A privacidade do lucro no ranking paginado não foi respeitada.");
   const forbiddenProfile = await client.from("profiles").update({ total_profit: 1234 }).eq("id", userId);
   check(Boolean(forbiddenProfile.error), "O campo financeiro do perfil está gravável.");
   const reset = await client.rpc("reset_polymarket_paper_wallet");

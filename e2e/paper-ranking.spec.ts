@@ -18,8 +18,10 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
     if (path.endsWith("/rpc/get_polymarket_paper_wallet")) return reply({ user_id: user.id, balance_usd: 10000, round_id: "4788abf8-4844-442a-9e03-6fcac9c0d129" });
     if (path.endsWith("/polymarket_paper_positions")) return reply([{ id: "position-1", market_id: "559687", market_question: "Mercado de teste", outcome_label: "Yes", outcome_token_id: "token-yes", shares: 10, average_price: 0.25 }]);
     if (path.endsWith("/polymarket_paper_trades")) return reply(trades ? [{ id: "trade-1", market_id: "559687", side: "BUY", outcome_label: "Yes", price: 0.001, shares: 10, notional_usd: 0.01 }, { id: "trade-2", market_id: "559687", side: "SELL", outcome_label: "Yes", price: 0.002, shares: 1, notional_usd: 0.002 }] : []);
+    if (path.endsWith("/paper_portfolio_snapshots")) return reply([{ observed_at: new Date().toISOString(), open_pnl: 2.5 }, { observed_at: new Date(Date.now()-3600000).toISOString(), open_pnl: 1 }]);
+    if (path.endsWith("/snapshot-paper-portfolio")) return reply({ recorded: 1, failed: 0 });
     if (path.endsWith("/rpc/get_my_paper_ranking_stats")) return reply([{ total_profit: 0, roi_percent: 0, total_volume: trades ? 0.01 : 0, total_trades: trades, winning_trades: 0 }]);
-    if (path.endsWith("/rpc/get_paper_leaderboard")) return reply(trades ? [{ rank: 1, user_id: user.id, display_name: "Teste Paper", avatar_url: null, total_profit: 0, roi_percent: 0, total_volume: 0.01, total_trades: trades, winning_trades: 0, show_profit: true, show_roi: true, show_volume: true, show_trades: true }] : []);
+    if (path.endsWith("/rpc/get_paper_leaderboard") || path.endsWith("/rpc/get_paper_leaderboard_page")) return reply(trades ? [{ rank: 1, user_id: user.id, display_name: "Teste Paper", avatar_url: null, total_profit: 0, roi_percent: 0, total_volume: 0.01, total_trades: trades, winning_trades: 0, show_profit: true, show_roi: true, show_volume: true, show_trades: true }] : []);
     if (path.endsWith("/profiles")) return reply({ id: user.id, display_name: "Teste Paper", is_public: true, show_profit: true, show_roi: true, show_volume: true, show_trades: true });
     if (path.endsWith("/execute-polymarket-paper-trade")) {
       const body = route.request().postDataJSON();
@@ -68,8 +70,10 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
   await expect(page.getByText("Operações verificadas", { exact: true }).locator("..")).toContainText("1");
   await page.goto("/portfolio");
   await expect(page.getByText('Lucro / Prejuízo em aberto')).toBeVisible();
-  await expect(page.getByText('US$ 2,50')).toBeVisible();
-  await expect(page.getByText('Gráfico desta sessão.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Lucro / Prejuízo em aberto').locator('..').getByText('US$ 2,50')).toBeVisible();
+  await expect(page.getByText('Amostras de preço público', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: '1M', exact: true }).click();
+  await expect(page.getByRole('button', { name: '1M', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole("tab", { name: "Histórico de trades" }).click();
   await expect(page.getByRole("button", { name: "Compartilhar card" })).toHaveCount(1);
   await page.getByRole("button", { name: "Compartilhar card" }).click();

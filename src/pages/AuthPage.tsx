@@ -59,7 +59,7 @@ export function AuthPage() {
     (location.state as { returnTo?: string } | null)?.returnTo ||
     searchParams.get('returnTo') ||
     '/';
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, actionsReady } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -416,7 +416,7 @@ export function AuthPage() {
                   <Button 
                     type="submit" 
                     className="w-full h-11 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]" 
-                    disabled={isLoading}
+                    disabled={isLoading || !actionsReady}
                   >
                     {isLoading ? (
                       <>
@@ -676,7 +676,7 @@ export function AuthPage() {
                   <Button 
                     type="submit" 
                     className="w-full h-11 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]" 
-                    disabled={isLoading}
+                    disabled={isLoading || !actionsReady}
                   >
                     {isLoading ? (
                       <>

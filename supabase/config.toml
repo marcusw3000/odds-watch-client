@@ -135,6 +135,12 @@ verify_jwt = false
 [functions.execute-polymarket-paper-trade]
 verify_jwt = false
 
+[functions.process-paper-copy]
+verify_jwt = true
+
+[functions.snapshot-paper-portfolio]
+verify_jwt = true
+
 [functions.link-referral]
 verify_jwt = false
 

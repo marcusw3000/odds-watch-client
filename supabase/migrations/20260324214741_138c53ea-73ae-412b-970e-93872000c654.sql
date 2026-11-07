@@ -1,8 +1,15 @@
 -- 1. user_achievements: Remove INSERT policy for authenticated users
 DROP POLICY IF EXISTS "System can grant achievements" ON public.user_achievements;
 
--- 2. referral_commissions: Remove INSERT policy for authenticated users
-DROP POLICY IF EXISTS "System can insert commissions" ON public.referral_commissions;
+-- 2. referral_commissions: Remove INSERT policy for authenticated users.
+-- The table is optional until the referral schema is versioned.
+DO $$
+BEGIN
+  IF to_regclass('public.referral_commissions') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "System can insert commissions" ON public.referral_commissions;
+  END IF;
+END;
+$$;
 
 -- 3. payments: Restrict INSERT to enforce status=PENDING and fee=0
 DROP POLICY IF EXISTS "Users can create own payments" ON public.payments;

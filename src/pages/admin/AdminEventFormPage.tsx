@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Info, CalendarIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,14 +41,9 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { SuggestionService } from '@/services/SuggestionService';
-import { notifySuggestionImplemented } from '@/services/NotificationService';
 
 export function AdminEventFormPage() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
-  const suggestionId = searchParams.get('suggestion_id');
   const navigate = useNavigate();
   const isEditing = Boolean(id);
 
@@ -274,29 +269,6 @@ export function AdminEventFormPage() {
           })) : undefined,
         });
         toast.success('Evento criado com sucesso');
-
-        // Link suggestion to market and notify author
-        if (suggestionId) {
-          try {
-            const { data: suggestionData } = await supabase
-              .from('market_suggestions')
-              .select('user_id, title')
-              .eq('id', suggestionId)
-              .single();
-
-            if (suggestionData) {
-              await SuggestionService.implementSuggestion(suggestionId, result.event.id);
-              await notifySuggestionImplemented(
-                suggestionData.user_id,
-                suggestionId,
-                suggestionData.title,
-                result.event.id
-              );
-            }
-          } catch (linkError) {
-            console.error('Error linking suggestion to market:', linkError);
-          }
-        }
 
         navigate(`/admin/events/${result.event.id}`);
       }

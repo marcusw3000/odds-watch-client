@@ -53,13 +53,15 @@ Deno.serve(async (req) => {
 
     // Check rate limit (1 export per hour)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: recentExports } = await supabase
+    const { data: recentExports, error: rateLimitError } = await supabase
       .from('audit_logs')
       .select('id')
       .eq('user_id', user.id)
       .eq('action', 'DATA_EXPORT')
       .gte('created_at', oneHourAgo)
       .limit(1);
+
+    if (rateLimitError) throw rateLimitError;
 
     if (recentExports && recentExports.length > 0) {
       // IMPORTANT:
@@ -80,36 +82,54 @@ Deno.serve(async (req) => {
       );
     }
 
+    // PostgREST imposes a page limit. Read every page so exports are not silently truncated.
+    const fetchAll = async (table: string, columns: string, userColumn = 'user_id') => {
+      const rows: Record<string, unknown>[] = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase.from(table).select(columns).eq(userColumn, user.id)
+          .order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        rows.push(...(data ?? []));
+        if (!data || data.length < pageSize) return rows;
+      }
+    };
     // Fetch all user data
     const [
       profileResult,
       walletResult,
-      contractsResult,
-      transactionsResult,
-      paymentsResult,
-      notificationsResult,
-      achievementsResult,
-      commentsResult,
-      favoritesResult,
+      paperWalletResult,
+      positionsResult,
+      paperTrades,
+      payments,
+      notifications,
+      comments,
+      favorites,
+      referralCodeResult,
+      receivedReferralResult,
+      sharedReferrals,
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('wallets').select('balance_available, total_deposited, currency, created_at').eq('user_id', user.id).single(),
-      supabase.from('user_contracts').select('*, markets!user_contracts_market_id_fkey(title)').eq('user_id', user.id),
-      supabase.from('transactions').select('*, markets!fk_transactions_market(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(500),
-      supabase.from('payments').select('id, type, amount, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100),
-      supabase.from('notifications').select('id, type, title, message, created_at, is_read').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
-      supabase.from('user_achievements').select('*, achievements(name, description)').eq('user_id', user.id),
-      supabase.from('comments').select('id, content, created_at, market_id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
-      supabase.from('user_favorites').select('market_id, created_at').eq('user_id', user.id),
+      supabase.from('wallets').select('balance_available, total_deposited, currency, created_at').eq('user_id', user.id).maybeSingle(),
+      supabase.from('polymarket_paper_wallets').select('balance_usd, updated_at').eq('user_id', user.id).maybeSingle(),
+      supabase.from('polymarket_paper_positions').select('market_id, market_question, outcome_label, shares, average_price, updated_at').eq('user_id', user.id),
+      fetchAll('polymarket_paper_trades', 'id, market_id, outcome_label, side, shares, price, notional_usd, created_at'),
+      fetchAll('payments', 'id, type, amount, status, created_at'),
+      fetchAll('notifications', 'id, type, title, message, created_at, is_read'),
+      fetchAll('polymarket_event_comments', 'id, event_id, content, created_at'),
+      fetchAll('polymarket_favorites', 'market_id, created_at'),
+      supabase.from('paper_referral_codes').select('code, created_at').eq('owner_id', user.id).maybeSingle(),
+      supabase.from('paper_referral_links').select('created_at').eq('referred_id', user.id).maybeSingle(),
+      fetchAll('paper_referral_links', 'created_at', 'referrer_id'),
     ]);
+    for (const result of [profileResult, walletResult, paperWalletResult, positionsResult, referralCodeResult, receivedReferralResult]) {
+      if (result.error) throw result.error;
+    }
 
     // Mask sensitive data
     const profile = profileResult.data ? {
       display_name: profileResult.data.display_name,
       bio: profileResult.data.bio,
-      total_trades: profileResult.data.total_trades,
-      total_profit: profileResult.data.total_profit,
-      total_volume: profileResult.data.total_volume,
       created_at: profileResult.data.created_at,
     } : null;
 
@@ -120,33 +140,18 @@ Deno.serve(async (req) => {
       email_hint: user.email ? `${user.email.substring(0, 3)}***@***` : null,
       profile,
       wallet: walletResult.data,
-      contracts: contractsResult.data?.map(c => ({
-        market_title: (c as any).markets?.title || 'Unknown',
-        position: c.position,
-        shares: c.shares,
-        average_price: c.average_price,
-        total_invested: c.total_invested,
-        status: c.status,
-        created_at: c.created_at,
-      })) || [],
-      transactions: transactionsResult.data?.map(t => ({
-        type: t.type,
-        position: t.position,
-        shares: t.shares,
-        price_per_share: t.price_per_share,
-        total_amount: t.total_amount,
-        market_title: (t as any).markets?.title || 'Unknown',
-        created_at: t.created_at,
-      })) || [],
-      payments: paymentsResult.data || [],
-      notifications: notificationsResult.data || [],
-      achievements: achievementsResult.data?.map(a => ({
-        name: (a as any).achievements?.name,
-        description: (a as any).achievements?.description,
-        earned_at: a.earned_at,
-      })) || [],
-      comments: commentsResult.data || [],
-      favorites: favoritesResult.data || [],
+      paper_wallet: paperWalletResult.data,
+      positions: positionsResult.data || [],
+      paper_trades: paperTrades,
+      payments,
+      notifications,
+      comments,
+      favorites,
+      paper_referral: {
+        code: referralCodeResult.data,
+        received_invitation: receivedReferralResult.data,
+        shared_invitations: sharedReferrals,
+      },
     };
 
     // Log the export
@@ -154,8 +159,8 @@ Deno.serve(async (req) => {
       user_id: user.id,
       action: 'DATA_EXPORT',
       details: { format, record_counts: {
-        contracts: exportData.contracts.length,
-        transactions: exportData.transactions.length,
+        positions: exportData.positions.length,
+        paper_trades: exportData.paper_trades.length,
         payments: exportData.payments.length,
       }},
     });
@@ -164,37 +169,14 @@ Deno.serve(async (req) => {
 
     // Convert to CSV if requested
     if (format === 'csv') {
-      const csvSections: string[] = [];
-      
-      // Profile section
-      if (profile) {
-        csvSections.push('=== PERFIL ===');
-        csvSections.push(`Display Name,${profile.display_name || ''}`);
-        csvSections.push(`Total Trades,${profile.total_trades || 0}`);
-        csvSections.push(`Total Profit,${profile.total_profit || 0}`);
-        csvSections.push('');
+      const csv = (value: unknown) => `"${String(value ?? '').replace(/^[=+\-@\t\r]/, "'$&").replace(/"/g, '""')}"`;
+      const rows = ['categoria,dados_json'];
+      for (const [category, value] of Object.entries(exportData)) {
+        for (const item of Array.isArray(value) ? value : [value]) {
+          if (item !== null && item !== undefined) rows.push(`${csv(category)},${csv(JSON.stringify(item))}`);
+        }
       }
-
-      // Transactions section
-      if (exportData.transactions.length > 0) {
-        csvSections.push('=== TRANSAÇÕES ===');
-        csvSections.push('Data,Tipo,Mercado,Posição,Contratos,Preço,Total');
-        exportData.transactions.forEach(t => {
-          csvSections.push(`${t.created_at},${t.type},${t.market_title},${t.position},${t.shares},${t.price_per_share},${t.total_amount}`);
-        });
-        csvSections.push('');
-      }
-
-      // Payments section
-      if (exportData.payments.length > 0) {
-        csvSections.push('=== PAGAMENTOS ===');
-        csvSections.push('Data,Tipo,Valor,Status');
-        exportData.payments.forEach(p => {
-          csvSections.push(`${p.created_at},${p.type},${p.amount},${p.status}`);
-        });
-      }
-
-      return new Response(JSON.stringify({ csv: csvSections.join('\n') }), {
+      return new Response(JSON.stringify({ csv: rows.join('\n') }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

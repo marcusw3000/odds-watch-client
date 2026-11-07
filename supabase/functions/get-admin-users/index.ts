@@ -83,154 +83,35 @@ serve(async (req) => {
       }
     }
 
-    // First get total count for pagination
-    const countQuery = supabaseAdmin
-      .from("wallets")
-      .select("id", { count: "exact", head: true });
-
-    const { count: totalCount } = await countQuery;
-
-    // Build main query - fetch all wallets with pagination
-    let walletsQuery = supabaseAdmin
-      .from("wallets")
-      .select("id, user_id, balance_available, balance_locked, currency, created_at, updated_at");
-
-    // Apply sorting for wallet fields
-    if (sortBy === "balance_available" || sortBy === "balance_total") {
-      walletsQuery = walletsQuery.order("balance_available", { ascending: sortOrder === "asc" });
-    } else if (sortBy === "updated_at" || sortBy === "created_at") {
-      walletsQuery = walletsQuery.order(sortBy, { ascending: sortOrder === "asc" });
-    } else {
-      walletsQuery = walletsQuery.order("updated_at", { ascending: false });
-    }
-
-    walletsQuery = walletsQuery.range(offset, offset + limit - 1);
-
-    const { data: walletsData, error: walletsError } = await walletsQuery;
-
-    if (walletsError) {
-      console.error("[GET-ADMIN-USERS] Error fetching wallets:", walletsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch users" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Get user IDs and fetch profiles
-    const userIds = (walletsData || []).map((w: any) => w.user_id);
-
-    const { data: profilesData } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name, full_name, email, phone, is_blocked, blocked_at, blocked_reason")
-      .in("id", userIds);
-
-    const profilesMap = new Map<string, { 
-      display_name: string | null; 
-      full_name: string | null; 
-      email: string | null;
-      phone: string | null;
-      is_blocked: boolean;
-      blocked_at: string | null;
-      blocked_reason: string | null;
-    }>();
-    (profilesData || []).forEach((p: any) => {
-      profilesMap.set(p.id, {
-        display_name: p.display_name,
-        full_name: p.full_name,
-        email: p.email,
-        phone: p.phone,
-        is_blocked: p.is_blocked ?? false,
-        blocked_at: p.blocked_at,
-        blocked_reason: p.blocked_reason,
-      });
-    });
-
-    // Fetch roles for all users
-    const { data: rolesData } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id, role")
-      .in("user_id", userIds);
-
-    const rolesMap = new Map<string, string[]>();
-    (rolesData || []).forEach((r: { user_id: string; role: string }) => {
-      const existing = rolesMap.get(r.user_id) || [];
-      existing.push(r.role);
-      rolesMap.set(r.user_id, existing);
-    });
-
-    // Build response with filtering
-    let users = (walletsData || [])
-      .map((wallet: any) => {
-        const profile = profilesMap.get(wallet.user_id);
-        const displayName = profile?.display_name || profile?.full_name || "Sem nome";
-        const email = profile?.email;
-        const roles = rolesMap.get(wallet.user_id) || [];
-
-        return {
-          id: wallet.id,
-          user_id: wallet.user_id,
-          display_name: displayName,
-          email: email ?? "N/A",
-          phone: profile?.phone ?? null,
-          balance_available: wallet.balance_available,
-          balance_locked: wallet.balance_locked,
-          currency: wallet.currency,
-          is_blocked: profile?.is_blocked ?? false,
-          blocked_at: profile?.blocked_at ?? null,
-          blocked_reason: profile?.blocked_reason ?? null,
-          created_at: wallet.created_at,
-          updated_at: wallet.updated_at,
-          roles: roles,
-        };
-      });
-
-    // Apply search filter (client-side for simplicity with joined data)
-    if (search) {
-      const searchLower = search.toLowerCase();
-      users = users.filter((u: any) => {
-        const matchesName = u.display_name.toLowerCase().includes(searchLower);
-        const matchesEmail = u.email?.toLowerCase().includes(searchLower);
-        const matchesId = u.user_id.toLowerCase().includes(searchLower);
-        const matchesRole = u.roles.some((r: string) => r.toLowerCase().includes(searchLower));
-        return matchesName || matchesEmail || matchesId || matchesRole;
-      });
-    }
-
-    // Apply blocked filter
-    if (filterBlocked !== null) {
-      users = users.filter((u: any) => u.is_blocked === filterBlocked);
-    }
-
-    // Apply role filter
+    const orderField = ["display_name", "email", "created_at", "updated_at"].includes(sortBy) ? sortBy : "updated_at";
+    let query = supabaseAdmin.from("profiles").select("id,display_name,full_name,email,phone,is_blocked,blocked_at,blocked_reason,created_at,updated_at", { count: "exact" });
+    const cleanSearch = String(search).replace(/[(),%_\\]/g, "").trim().slice(0, 100);
+    if (cleanSearch) query = query.or(`display_name.ilike.%${cleanSearch}%,full_name.ilike.%${cleanSearch}%,email.ilike.%${cleanSearch}%`);
+    if (filterBlocked !== null) query = query.eq("is_blocked", filterBlocked);
     if (filterRole) {
-      users = users.filter((u: any) => u.roles.includes(filterRole));
+      const { data: roleMatches, error } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", filterRole);
+      if (error) throw error;
+      const ids = (roleMatches ?? []).map((row: any) => row.user_id);
+      if (!ids.length) return new Response(JSON.stringify({ users: [], pagination: { total: 0, limit, offset, hasMore: false } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      query = query.in("id", ids);
     }
-
-    // Sort by display_name or email if requested (needs to be done after joining)
-    if (sortBy === "display_name") {
-      users.sort((a: any, b: any) => {
-        const cmp = a.display_name.localeCompare(b.display_name);
-        return sortOrder === "asc" ? cmp : -cmp;
-      });
-    } else if (sortBy === "email") {
-      users.sort((a: any, b: any) => {
-        const cmp = (a.email || "").localeCompare(b.email || "");
-        return sortOrder === "asc" ? cmp : -cmp;
-      });
+    const { data: profiles, count, error: profilesError } = await query.order(orderField, { ascending: sortOrder === "asc" }).order("id").range(offset, offset + limit - 1);
+    if (profilesError) throw profilesError;
+    const ids = (profiles ?? []).map((profile: any) => profile.id);
+    let wallets: any[] = [], roles: any[] = [];
+    if (ids.length) {
+      const [walletResult, roleResult] = await Promise.all([
+        supabaseAdmin.from("polymarket_paper_wallets").select("user_id,balance_usd").in("user_id", ids),
+        supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", ids),
+      ]);
+      if (walletResult.error || roleResult.error) throw walletResult.error ?? roleResult.error;
+      wallets = walletResult.data ?? []; roles = roleResult.data ?? [];
     }
-
-    return new Response(
-      JSON.stringify({ 
-        users,
-        pagination: {
-          total: totalCount || 0,
-          limit,
-          offset,
-          hasMore: offset + users.length < (totalCount || 0),
-        }
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const users = (profiles ?? []).map((profile: any) => {
+      const wallet = wallets.find(row => row.user_id === profile.id);
+      return { ...profile, id: profile.id, user_id: profile.id, display_name: profile.display_name || profile.full_name || "Sem nome", email: profile.email ?? "N/A", balance_available: wallet ? Number(wallet.balance_usd) : null, balance_locked: 0, currency: "USD", roles: roles.filter(row => row.user_id === profile.id).map(row => row.role) };
+    });
+    return new Response(JSON.stringify({ users, pagination: { total: count ?? 0, limit, offset, hasMore: offset + users.length < (count ?? 0) } }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("[GET-ADMIN-USERS] Error:", error);
     return new Response(

@@ -367,7 +367,7 @@ export function AdminReportsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Badge variant={report.source === 'chat' ? 'default' : report.source === 'suggestion' ? 'outline' : 'secondary'} className="text-xs">
-                            {report.source === 'chat' ? '💬 Chat' : report.source === 'suggestion' ? 'Sugestão' : 'Mercado'}
+                            {report.source === 'chat' ? '💬 Chat' : report.source === 'suggestion' ? 'Sugestão' : 'Polymarket'}
                           </Badge>
                         </div>
                         <p className="text-sm font-medium truncate">
@@ -422,9 +422,9 @@ export function AdminReportsPage() {
                           </DropdownMenuItem>
                           {report.source === 'market' && report.comment?.marketId && (
                             <DropdownMenuItem asChild>
-                              <Link to={`/market/${report.comment.marketId}`} target="_blank">
+                              <Link to={`/polymarket/event/${report.comment.marketId}`} target="_blank">
                                 <ExternalLink className="h-4 w-4 mr-2" />
-                                Ver no Mercado
+                                Ver evento
                               </Link>
                             </DropdownMenuItem>
                           )}

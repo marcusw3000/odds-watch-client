@@ -1,13 +1,14 @@
 import { Wallet, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 import { UserPortfolio } from '@/types/market';
-import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/contexts/CurrencyContext';
 
 interface PortfolioOverviewProps {
   portfolio: UserPortfolio;
 }
 
 export function PortfolioOverview({ portfolio }: PortfolioOverviewProps) {
+  const { formatUsdFromBrl } = useDisplayCurrency();
   // formatCurrency is now imported from @/lib/formatters
 
   const activeContracts = portfolio.contracts.filter(c => c.status === 'ACTIVE');
@@ -20,21 +21,21 @@ export function PortfolioOverview({ portfolio }: PortfolioOverviewProps) {
   const stats = [
     {
       label: 'Saldo Disponível',
-      value: formatCurrency(portfolio.balance),
+      value: formatUsdFromBrl(portfolio.balance),
       icon: Wallet,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
       label: 'Total Investido',
-      value: formatCurrency(totalInvested),
+      value: formatUsdFromBrl(totalInvested),
       icon: BarChart3,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
     },
     {
       label: 'Lucro/Prejuízo',
-      value: formatCurrency(portfolio.totalProfit),
+      value: formatUsdFromBrl(portfolio.totalProfit),
       icon: portfolio.totalProfit >= 0 ? TrendingUp : TrendingDown,
       color: portfolio.totalProfit >= 0 ? 'text-success' : 'text-destructive',
       bgColor: portfolio.totalProfit >= 0 ? 'bg-success/10' : 'bg-destructive/10',

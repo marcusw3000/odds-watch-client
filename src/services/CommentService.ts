@@ -447,17 +447,16 @@ export const CommentService = {
 
   // Admin: Get all reports (from both market comments and suggestion comments)
   async getReports(status?: string, reason?: string): Promise<CommentReport[]> {
-    // Fetch from market comment_reports
-    let marketQuery = supabase
-      .from('comment_reports')
+    // Event comments and global chat are moderated independently.
+    let marketQuery = (supabase as any)
+      .from('polymarket_comment_reports')
       .select(`
         *,
         comments:comment_id (
           id,
           content,
           user_id,
-          market_id,
-          markets:market_id (title)
+          event_id
         )
       `)
       .order('created_at', { ascending: false });
@@ -469,27 +468,9 @@ export const CommentService = {
       marketQuery = marketQuery.eq('reason', reason);
     }
 
-    // Fetch from suggestion_comment_reports
-    let suggestionQuery = supabase
-      .from('suggestion_comment_reports')
-      .select(`
-        *,
-        suggestion_comments:comment_id (
-          id,
-          content,
-          user_id,
-          suggestion_id,
-          suggestions:suggestion_id (title)
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (status) {
-      suggestionQuery = suggestionQuery.eq('status', status);
-    }
-    if (reason) {
-      suggestionQuery = suggestionQuery.eq('reason', reason);
-    }
+    // Sugestões foram removidas; preserva o formato combinado de relatórios
+    // enquanto não retorna nem consulta a tabela legada.
+    const suggestionQuery = Promise.resolve({ data: [], error: null });
 
     // Fetch from chat_reports
     let chatQuery = supabase
@@ -518,32 +499,21 @@ export const CommentService = {
       chatQuery
     ]);
 
-    if (marketResult.error) {
-      console.error('Error fetching market reports:', marketResult.error);
-    }
-    if (suggestionResult.error) {
-      console.error('Error fetching suggestion reports:', suggestionResult.error);
-    }
-    if (chatResult.error) {
-      console.error('Error fetching chat reports:', chatResult.error);
-    }
+    if (marketResult.error) throw marketResult.error;
+    if (chatResult.error) throw chatResult.error;
 
-    const marketData = marketResult.data || [];
-    const suggestionData = suggestionResult.data || [];
+    const marketData: any[] = marketResult.data || [];
+    const suggestionData: any[] = suggestionResult.data || [];
     const chatData = chatResult.data || [];
 
     // Collect all unique user IDs for display info
     const marketReporterIds = marketData.map(r => r.reporter_id);
     const marketAuthorIds = marketData.map(r => (r.comments as any)?.user_id).filter(Boolean);
-    const suggestionReporterIds = suggestionData.map(r => r.reporter_id);
-    const suggestionAuthorIds = suggestionData.map(r => (r.suggestion_comments as any)?.user_id).filter(Boolean);
     const chatReporterIds = chatData.map(r => r.reporter_id);
     
     const allUserIds = [...new Set([
       ...marketReporterIds, 
       ...marketAuthorIds, 
-      ...suggestionReporterIds, 
-      ...suggestionAuthorIds,
       ...chatReporterIds
     ])];
 
@@ -576,40 +546,17 @@ export const CommentService = {
       createdAt: new Date(report.created_at),
       reporterName: getName(report.reporter_id),
       commentAuthorName: (report.comments as any)?.user_id ? getName((report.comments as any).user_id) : undefined,
-      marketTitle: (report.comments as any)?.markets?.title,
+      marketTitle: (report.comments as any)?.event_id ? `Evento ${(report.comments as any).event_id}` : undefined,
       source: 'market' as const,
       comment: (report.comments as any) ? {
         id: (report.comments as any).id,
         content: (report.comments as any).content,
         userId: (report.comments as any).user_id,
-        marketId: (report.comments as any).market_id,
+        marketId: (report.comments as any).event_id,
       } as any : undefined,
     }));
 
-    // Map suggestion reports
-    const suggestionReports: CommentReport[] = suggestionData.map(report => ({
-      id: report.id,
-      commentId: report.comment_id,
-      reporterId: report.reporter_id,
-      reason: report.reason as CommentReport['reason'],
-      description: report.description || undefined,
-      status: report.status as CommentReport['status'],
-      reviewedBy: report.reviewed_by || undefined,
-      reviewedAt: report.reviewed_at ? new Date(report.reviewed_at) : undefined,
-      actionTaken: report.action_taken as CommentReport['actionTaken'],
-      createdAt: new Date(report.created_at),
-      reporterName: getName(report.reporter_id),
-      commentAuthorName: (report.suggestion_comments as any)?.user_id ? getName((report.suggestion_comments as any).user_id) : undefined,
-      suggestionTitle: (report.suggestion_comments as any)?.suggestions?.title,
-      suggestionId: (report.suggestion_comments as any)?.suggestion_id,
-      source: 'suggestion' as const,
-      comment: (report.suggestion_comments as any) ? {
-        id: (report.suggestion_comments as any).id,
-        content: (report.suggestion_comments as any).content,
-        userId: (report.suggestion_comments as any).user_id,
-        marketId: undefined,
-      } as any : undefined,
-    }));
+    const suggestionReports: CommentReport[] = [];
 
     // Map chat reports
     const chatReports: CommentReport[] = chatData.map(report => {
@@ -750,13 +697,9 @@ export const CommentService = {
 
   // Admin: Get pending reports count (from both tables)
   async getPendingReportsCount(): Promise<number> {
-    const [marketCount, suggestionCount, chatCount] = await Promise.all([
-      supabase
-        .from('comment_reports')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'PENDING'),
-      supabase
-        .from('suggestion_comment_reports')
+    const [marketCount, chatCount] = await Promise.all([
+      (supabase as any)
+        .from('polymarket_comment_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'PENDING'),
       supabase
@@ -768,13 +711,10 @@ export const CommentService = {
     if (marketCount.error) {
       console.error('Error fetching market pending reports count:', marketCount.error);
     }
-    if (suggestionCount.error) {
-      console.error('Error fetching suggestion pending reports count:', suggestionCount.error);
-    }
     if (chatCount.error) {
       console.error('Error fetching chat pending reports count:', chatCount.error);
     }
 
-    return (marketCount.count || 0) + (suggestionCount.count || 0) + (chatCount.count || 0);
+    return (marketCount.count || 0) + (chatCount.count || 0);
   },
 };

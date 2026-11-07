@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadBlob } from '@/lib/download';
 
 type ExportFormat = 'json' | 'csv';
 
@@ -67,14 +68,7 @@ export const ExportDataButton = forwardRef<HTMLDivElement>((_, ref) => {
         ? new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
         : new Blob([data.csv], { type: 'text/csv' });
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `meus-dados-${new Date().toISOString().split('T')[0]}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `meus-dados-${new Date().toISOString().split('T')[0]}.${format}`);
 
       toast({
         title: 'Exportação concluída',

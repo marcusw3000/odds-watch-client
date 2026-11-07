@@ -1,6 +1,7 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
+  route("api/polymarket/market/:id/share", "./route-modules/polymarket-share-market.ts", { id: "polymarket-share-market" }),
   layout("./route-modules/public-info-layout.tsx", { id: "public-info-layout" }, [
     route("faq", "./route-modules/faq.tsx", { id: "faq" }),
     route("termos", "./route-modules/termos.tsx", { id: "termos" }),
@@ -10,6 +11,11 @@ export default [
   layout("./route-modules/main-layout.tsx", { id: "main-layout" }, [
     index("./route-modules/index-redirect.tsx", { id: "home-redirect" }),
     route("markets", "./route-modules/markets.tsx", { id: "markets" }),
+    route("polymarket", "./route-modules/polymarket-markets.tsx", { id: "polymarket-markets" }),
+    route("polymarket/paper", "./route-modules/polymarket-paper.tsx", { id: "polymarket-paper" }),
+    route("polymarket/favorites", "./route-modules/polymarket-favorites.tsx", { id: "polymarket-favorites" }),
+    route("polymarket/event/:id", "./route-modules/polymarket-event-detail.tsx", { id: "polymarket-event-detail" }),
+    route("polymarket/market/:id", "./route-modules/polymarket-market-detail.tsx", { id: "polymarket-market-detail" }),
     route("market/:id", "./route-modules/market-detail.tsx", { id: "market-detail" }),
     route("portfolio", "./route-modules/portfolio.tsx", { id: "portfolio" }),
     route("leaderboard", "./route-modules/leaderboard.tsx", { id: "leaderboard" }),
@@ -19,19 +25,10 @@ export default [
     route("referral", "./route-modules/referral.tsx", { id: "referral" }),
     route("profile", "./route-modules/profile.tsx", { id: "profile" }),
     route("profile/:userId", "./route-modules/profile.tsx", { id: "profile-user" }),
-    route("suggestions", "./route-modules/suggestions.tsx", { id: "suggestions" }),
-    route("suggestions/:id", "./route-modules/suggestion-detail.tsx", { id: "suggestion-detail" }),
-    route("copy-traders", "./route-modules/copy-traders.tsx", { id: "copy-traders" }),
-    route("trader/dashboard", "./route-modules/trader-dashboard.tsx", { id: "trader-dashboard" }),
   ]),
   route("admin/login", "./route-modules/admin-login.tsx", { id: "admin-login" }),
   route("admin", "./route-modules/admin-layout.tsx", { id: "admin-layout" }, [
     index("./route-modules/admin-dashboard.tsx", { id: "admin-dashboard" }),
-    route("events", "./route-modules/admin-events.tsx", { id: "admin-events" }),
-    route("events/new", "./route-modules/admin-event-form.tsx", { id: "admin-events-new" }),
-    route("events/:id", "./route-modules/admin-event-detail.tsx", { id: "admin-events-detail" }),
-    route("events/:id/edit", "./route-modules/admin-event-form.tsx", { id: "admin-events-edit" }),
-    route("settlements", "./route-modules/admin-settlements.tsx", { id: "admin-settlements" }),
     route("audit", "./route-modules/admin-audit.tsx", { id: "admin-audit" }),
     route("financial", "./route-modules/admin-financial-overview.tsx", { id: "admin-financial" }),
     route("fees", "./route-modules/admin-fees.tsx", { id: "admin-fees" }),
@@ -39,13 +36,9 @@ export default [
     route("revenue", "./route-modules/admin-revenue.tsx", { id: "admin-revenue" }),
     route("audit-logs", "./route-modules/admin-audit-logs.tsx", { id: "admin-audit-logs" }),
     route("users", "./route-modules/admin-users.tsx", { id: "admin-users" }),
-    route("market-events", "./route-modules/admin-market-events.tsx", { id: "admin-market-events" }),
     route("referrals", "./route-modules/admin-referrals.tsx", { id: "admin-referrals" }),
     route("reports", "./route-modules/admin-reports.tsx", { id: "admin-reports" }),
-    route("suggestions", "./route-modules/admin-suggestions.tsx", { id: "admin-suggestions" }),
     route("support", "./route-modules/admin-support.tsx", { id: "admin-support" }),
-    route("copy-trade-settings", "./route-modules/admin-copy-trade-settings.tsx", { id: "admin-copy-trade-settings" }),
-    route("copy-traders", "./route-modules/admin-copy-traders.tsx", { id: "admin-copy-traders" }),
     route("system", "./route-modules/admin-system.tsx", { id: "admin-system" }),
   ]),
   route("*", "./route-modules/not-found.tsx", { id: "not-found" }),

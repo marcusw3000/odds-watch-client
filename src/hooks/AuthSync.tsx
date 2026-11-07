@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, startTransition } from 'react';
 
 import { unavailableAuthActions, useAuthController } from './useAuth';
 
@@ -56,7 +56,7 @@ export function AuthSync() {
   }, []);
 
   const signUp = useCallback(
-    async (email: string, password: string, fullName?: string, cpf?: string, phone?: string) => {
+    async (email: string, password: string, fullName?: string, cpf?: string, phone?: string, referralCode?: string) => {
       const supabase = await getSupabaseClient();
       const redirectUrl = typeof window === 'undefined' ? undefined : `${window.location.origin}/`;
       const { error } = await supabase.auth.signUp({
@@ -68,6 +68,7 @@ export function AuthSync() {
             full_name: fullName || '',
             cpf: cpf ? cpf.replace(/\D/g, '') : null,
             phone: phone ? phone.replace(/\D/g, '') : null,
+            ...(referralCode ? { paper_referral_code: referralCode.trim().toUpperCase() } : {}),
           },
         },
       });
@@ -84,10 +85,10 @@ export function AuthSync() {
   }, []);
 
   useEffect(() => {
-    setActions({ signIn, signUp, signOut });
+    startTransition(() => setActions({ signIn, signUp, signOut }));
 
     return () => {
-      setActions(unavailableAuthActions);
+      startTransition(() => setActions(unavailableAuthActions));
     };
   }, [setActions, signIn, signOut, signUp]);
 

@@ -1,10 +1,12 @@
 import { memo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Briefcase, Trophy, User } from 'lucide-react';
+import { Briefcase, Trophy, User } from 'lucide-react';
+import { KalshiIcon, PolymarketIcon } from './MarketBrandIcons';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { path: '/markets', icon: Home, label: 'Mercados' },
+  { path: '/polymarket', icon: PolymarketIcon, label: 'Polymarket' },
+  { path: '/kalshi', icon: KalshiIcon, label: 'Kalshi', unavailable: true },
   { path: '/portfolio', icon: Briefcase, label: 'Portfólio' },
   { path: '/leaderboard', icon: Trophy, label: 'Ranking' },
   { path: '/profile', icon: User, label: 'Perfil' },
@@ -23,7 +25,21 @@ export const BottomNav = memo(function BottomNav() {
       <div className="flex items-center justify-around h-16 px-2">
         {NAV_ITEMS.map(item => {
           const isActive = location.pathname === item.path || 
-            (item.path === '/markets' && location.pathname === '/');
+            (item.path === '/polymarket' && location.pathname.startsWith('/polymarket'));
+
+          if (item.unavailable) {
+            return (
+              <div
+                key={item.path}
+                aria-disabled="true"
+                className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl cursor-not-allowed text-muted-foreground/60"
+              >
+                <item.icon className="h-5 w-5 animate-pulse" aria-hidden="true" />
+                <span className="text-[10px] font-medium tracking-tight">Kalshi</span>
+                <span className="text-[9px] leading-none animate-pulse">Indisponível</span>
+              </div>
+            );
+          }
           
           return (
             <NavLink

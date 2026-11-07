@@ -1,6 +1,6 @@
-import { useState, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Wallet, LogOut, Gift, Plus, Calculator, Headphones, Users, Settings } from 'lucide-react';
+import { User, Wallet, LogOut, Gift, Plus, Calculator, Headphones, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,14 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyLeaderboardProfile } from '@/hooks/useLeaderboard';
-import { usePortfolioBalance } from '@/hooks/usePortfolioBalance';
-import { formatCurrency } from '@/lib/formatters';
-
-const DepositModal = lazy(() =>
-  import('@/components/payments/DepositModal').then((module) => ({
-    default: module.DepositModal,
-  }))
-);
+import { usePolymarketPaperTrading } from '@/hooks/usePolymarketPaperTrading';
 
 const NotificationBell = lazy(() =>
   import('@/components/notifications/NotificationBell').then((module) => ({
@@ -44,7 +37,8 @@ function BalanceIcon({ isLoading }: { isLoading: boolean }) {
 function useHeaderUserState() {
   const { user, isAdmin, signOut } = useAuth();
   const { data: myProfile } = useMyLeaderboardProfile();
-  const { balance, isLoading } = usePortfolioBalance();
+  const paper = usePolymarketPaperTrading();
+  const paperBalance = paper.data ? Number(paper.data.wallet.balance_usd) : null;
 
   const getUserInitials = () => {
     if (myProfile?.display_name) {
@@ -63,15 +57,14 @@ function useHeaderUserState() {
     isAdmin,
     signOut,
     myProfile,
-    balance,
-    isBalanceLoading: isLoading,
+    paperBalance,
+    isPaperBalanceLoading: paper.isLoading,
     getUserInitials,
   };
 }
 
 export function HeaderAuthenticatedControls() {
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const { user, isAdmin, signOut, myProfile, balance, isBalanceLoading, getUserInitials } = useHeaderUserState();
+  const { user, isAdmin, signOut, myProfile, paperBalance, isPaperBalanceLoading, getUserInitials } = useHeaderUserState();
 
   if (!user) {
     return null;
@@ -83,18 +76,14 @@ export function HeaderAuthenticatedControls() {
 
   return (
     <>
-      <div className="flex items-center gap-1 rounded-lg bg-secondary pl-4 pr-1 py-1">
-        <BalanceIcon isLoading={isBalanceLoading} />
+      <div className="flex items-center gap-1 rounded-lg bg-secondary pl-4 pr-1 py-1" aria-label="Saldo virtual Paper Trading">
+          <BalanceIcon isLoading={isPaperBalanceLoading} />
         <span className="font-mono font-semibold text-foreground mr-1">
-          {formatCurrency(balance)}
+          {paperBalance === null ? 'Saldo indisponível' : `US$ ${paperBalance.toFixed(2)}`}
         </span>
-        <Button
-          size="sm"
-          className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground"
-          onClick={() => setShowDepositModal(true)}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+          <Button size="sm" className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
+            <Link to="/polymarket/paper" aria-label="Abrir carteira Paper Trading"><Plus className="h-4 w-4" /></Link>
+          </Button>
       </div>
       <Suspense fallback={null}>
         <NotificationBell />
@@ -139,12 +128,6 @@ export function HeaderAuthenticatedControls() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/copy-traders">
-              <Users className="mr-2 h-4 w-4" />
-              Copy Trading
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
             <Link to="/referral">
               <Gift className="mr-2 h-4 w-4" />
               Indicar Amigos
@@ -170,18 +153,12 @@ export function HeaderAuthenticatedControls() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {showDepositModal && (
-        <Suspense fallback={null}>
-          <DepositModal onClose={() => setShowDepositModal(false)} />
-        </Suspense>
-      )}
     </>
   );
 }
 
 export function MobileAuthenticatedMenu({ onNavigate }: { onNavigate: () => void }) {
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const { user, isAdmin, signOut, myProfile, balance, isBalanceLoading, getUserInitials } = useHeaderUserState();
+  const { user, isAdmin, signOut, myProfile, paperBalance, isPaperBalanceLoading, getUserInitials } = useHeaderUserState();
 
   if (!user) {
     return null;
@@ -196,20 +173,16 @@ export function MobileAuthenticatedMenu({ onNavigate }: { onNavigate: () => void
     <>
       <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
         <div className="flex items-center gap-2">
-          <BalanceIcon isLoading={isBalanceLoading} />
-          <span className="text-sm text-muted-foreground">Saldo</span>
+          <BalanceIcon isLoading={isPaperBalanceLoading} />
+          <span className="text-sm text-muted-foreground">Saldo virtual</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="font-mono font-semibold">
-            {formatCurrency(balance)}
+            {paperBalance === null ? 'Indisponível' : `US$ ${paperBalance.toFixed(2)}`}
           </span>
-          <Button
-            size="sm"
-            className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground"
-            onClick={() => setShowDepositModal(true)}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+            <Button size="sm" className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
+              <Link to="/polymarket/paper" onClick={onNavigate} aria-label="Abrir carteira Paper Trading"><Plus className="h-4 w-4" /></Link>
+            </Button>
         </div>
       </div>
 
@@ -223,17 +196,6 @@ export function MobileAuthenticatedMenu({ onNavigate }: { onNavigate: () => void
           <Link to="/settings">
             <Settings className="h-4 w-4" />
             Configuracoes
-          </Link>
-        </Button>
-        <Button
-          variant="ghost"
-          className="justify-start gap-2"
-          onClick={onNavigate}
-          asChild
-        >
-          <Link to="/copy-traders">
-            <Users className="h-4 w-4" />
-            Copy Trading
           </Link>
         </Button>
         <Button
@@ -278,11 +240,6 @@ export function MobileAuthenticatedMenu({ onNavigate }: { onNavigate: () => void
         </Button>
       </div>
 
-      {showDepositModal && (
-        <Suspense fallback={null}>
-          <DepositModal onClose={() => setShowDepositModal(false)} />
-        </Suspense>
-      )}
     </>
   );
 }

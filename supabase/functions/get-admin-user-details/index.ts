@@ -88,96 +88,29 @@ serve(async (req) => {
       .eq("id", user_id)
       .maybeSingle();
 
-    if (profileError || !profile) {
+    if (profileError) throw profileError;
+    if (!profile) {
       return new Response(
         JSON.stringify({ error: "User not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Fetch wallet
-    const { data: wallet } = await supabaseAdmin
-      .from("wallets")
-      .select("*")
-      .eq("user_id", user_id)
-      .maybeSingle();
-
-    // Fetch roles
-    const { data: roles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user_id);
-
-    // Fetch recent contracts (last 50)
-    const { data: contracts } = await supabaseAdmin
-      .from("user_contracts")
-      .select(`
-        id,
-        market_id,
-        position,
-        shares,
-        average_price,
-        total_invested,
-        created_at,
-        updated_at,
-        option_id,
-        markets!inner(id, title, status, result)
-      `)
-      .eq("user_id", user_id)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    // Fetch recent ledger entries (last 50)
-    const { data: ledgerEntries } = await supabaseAdmin
-      .from("ledger_entries")
-      .select("*")
-      .eq("user_id", user_id)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    // Fetch recent notifications (last 20)
-    const { data: notifications } = await supabaseAdmin
-      .from("notifications")
-      .select("id, type, title, message, is_read, created_at")
-      .eq("user_id", user_id)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    // Fetch referral stats
-    const { data: referralStats } = await supabaseAdmin
-      .from("referrals")
-      .select("id, status, created_at")
-      .eq("referrer_id", user_id);
-
-    // Fetch admin audit logs for this user
-    const { data: auditLogs } = await supabaseAdmin
-      .from("admin_audit_logs")
-      .select("id, action, entity, entity_id, before_data, after_data, created_at, actor_user_id")
-      .eq("entity_id", user_id)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    // Calculate stats - status values are: OPEN, HALTED, PENDING, SETTLED (uppercase enum)
-    const contractStats = contracts ? {
-      total: contracts.length,
-      active: contracts.filter((c: any) => 
-        c.markets?.status === 'OPEN' || c.markets?.status === 'HALTED'
-      ).length,
-      won: contracts.filter((c: any) => 
-        c.markets?.status === 'SETTLED' && 
-        c.markets?.result?.toUpperCase() === c.position?.toUpperCase()
-      ).length,
-      lost: contracts.filter((c: any) => 
-        c.markets?.status === 'SETTLED' && 
-        c.markets?.result?.toUpperCase() !== c.position?.toUpperCase()
-      ).length,
-    } : { total: 0, active: 0, won: 0, lost: 0 };
-
-    const referralStatsComputed = referralStats ? {
-      total: referralStats.length,
-      activated: referralStats.filter((r: any) => r.status === "activated").length,
-      pending: referralStats.filter((r: any) => r.status === "pending").length,
-    } : { total: 0, activated: 0, pending: 0 };
+    const [walletResult, rolesResult, positionsResult, tradesResult, notificationsResult, referralsResult, auditResult] = await Promise.all([
+      supabaseAdmin.from("polymarket_paper_wallets").select("balance_usd,updated_at").eq("user_id", user_id).maybeSingle(),
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", user_id),
+      supabaseAdmin.from("polymarket_paper_positions").select("id,market_id,market_question,outcome_label,shares,average_price,updated_at").eq("user_id", user_id).order("updated_at", { ascending: false }),
+      supabaseAdmin.from("polymarket_paper_trades").select("id,market_id,outcome_label,side,price,shares,notional_usd,created_at").eq("user_id", user_id).order("created_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("notifications").select("id,type,title,message,is_read,created_at").eq("user_id", user_id).order("created_at", { ascending: false }).limit(20),
+      supabase.rpc("get_admin_user_paper_referrals", { p_user: user_id }),
+      supabaseAdmin.from("admin_audit_logs").select("id,action,created_at").eq("entity_id", user_id).order("created_at", { ascending: false }).limit(20),
+    ]);
+    for (const result of [walletResult, rolesResult, positionsResult, tradesResult, notificationsResult, referralsResult, auditResult]) if (result.error) throw result.error;
+    const paper = { wallet: walletResult.data, positions: positionsResult.data ?? [], trades: tradesResult.data ?? [] };
+    const roles = rolesResult.data ?? [];
+    const notifications = notificationsResult.data ?? [];
+    const auditLogs = auditResult.data ?? [];
+    const referralStatsComputed = referralsResult.data;
 
     logger.step("User details fetched successfully");
 
@@ -208,41 +141,11 @@ serve(async (req) => {
           created_at: profile.created_at,
           updated_at: profile.updated_at,
         },
-        wallet: wallet ? {
-          id: wallet.id,
-          balance_available: wallet.balance_available,
-          balance_locked: wallet.balance_locked,
-          currency: wallet.currency,
-          created_at: wallet.created_at,
-          updated_at: wallet.updated_at,
-        } : null,
-        roles: (roles || []).map((r: any) => r.role),
-        contracts: (contracts || []).map((c: any) => ({
-          id: c.id,
-          market_id: c.market_id,
-          market_title: c.markets?.title,
-          market_status: c.markets?.status,
-          market_result: c.markets?.result,
-          position: c.position,
-          shares: c.shares,
-          average_price: c.average_price,
-          total_invested: c.total_invested,
-          created_at: c.created_at,
-          option_id: c.option_id,
-        })),
-        contractStats,
-        ledgerEntries: ledgerEntries || [],
+        paper,
+        roles: roles.map((r: any) => r.role),
         notifications: notifications || [],
         referralStats: referralStatsComputed,
-        auditLogs: (auditLogs || []).map((log: any) => ({
-          id: log.id,
-          action: log.action,
-          entity: log.entity,
-          before_data: log.before_data,
-          after_data: log.after_data,
-          created_at: log.created_at,
-          actor_user_id: log.actor_user_id,
-        })),
+        auditLogs: auditLogs.map((log: any) => ({ id: log.id, action_type: log.action, created_at: log.created_at })),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

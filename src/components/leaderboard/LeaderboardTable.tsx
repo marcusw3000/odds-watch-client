@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrencyWithSign, formatPercent } from '@/lib/formatters';
+import { formatPercent } from '@/lib/formatters';
 import type { LeaderboardEntry, LeaderboardSortBy } from '@/types/leaderboard';
 
 interface LeaderboardTableProps {
@@ -23,7 +23,7 @@ export function LeaderboardTable({
   currentUserId 
 }: LeaderboardTableProps) {
   // Using formatCurrencyWithSign and formatPercent from @/lib/formatters
-  const formatCurrency = (value: number) => formatCurrencyWithSign(value);
+  const formatCurrency = (value: number) => `${value < 0 ? '-' : '+'}${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(Math.abs(value))}`;
   const formatPercentage = (value: number) => formatPercent(value);
 
   const getRankBadge = (rank: number) => {
@@ -152,7 +152,7 @@ export function LeaderboardTable({
                 <TableCell>
                   {entry.show_volume ? (
                     <span className="font-mono text-muted-foreground">
-                      R${(Math.round(entry.total_volume * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(entry.total_volume)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground flex items-center gap-1">
@@ -164,9 +164,9 @@ export function LeaderboardTable({
                   {entry.show_trades ? (
                     <div className="flex items-center gap-2">
                       <span className="font-mono">{entry.total_trades}</span>
-                      <span className="text-xs text-muted-foreground">
+                      {entry.show_profit && <span className="text-xs text-muted-foreground">
                         ({entry.winning_trades}W)
-                      </span>
+                      </span>}
                     </div>
                   ) : (
                     <span className="text-muted-foreground flex items-center gap-1">

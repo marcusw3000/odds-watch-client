@@ -1,10 +1,11 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense, startTransition } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { AuthBootstrap } from "@/hooks/useAuth";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
 
 const AuthSync = lazy(() =>
   import("@/hooks/AuthSync").then((module) => ({
@@ -40,21 +41,20 @@ function PostLoginTasks() {
     const processPendingReferral = async () => {
       if (!user) return;
 
-      const pendingCode = localStorage.getItem("pendingReferralCode");
+      const handledKey = `paperReferralHandled:${user.id}`;
+      const metadataCode = typeof user.user_metadata?.paper_referral_code === 'string' ? user.user_metadata.paper_referral_code : null;
+      const pendingCode = (localStorage.getItem(handledKey) ? null : metadataCode) || localStorage.getItem("pendingReferralCode");
       if (!pendingCode) return;
-
-      const [{ ReferralService }, { toast }] = await Promise.all([
-        import('@/services/ReferralService'),
-        import('sonner'),
-      ]);
-
-      const { success, error } = await ReferralService.linkReferral(user.id, pendingCode);
-      localStorage.removeItem("pendingReferralCode");
-
-      if (success) {
-        toast.success("Indicacao aplicada! Voce recebera desconto nas taxas por 30 dias.");
-      } else if (error) {
-        console.error("Failed to link referral:", error);
+      try {
+        const [{ applyPaperReferral }, { toast }] = await Promise.all([import('@/services/PaperReferralService'), import('sonner')]);
+        const result = await applyPaperReferral(pendingCode);
+        localStorage.removeItem("pendingReferralCode");
+        localStorage.setItem(handledKey, '1');
+        if (result === 'applied') toast.success('Convite do simulador vinculado.');
+        else if (result !== 'already_linked') toast.error(result === 'ineligible' ? 'O convite é válido apenas para contas recentes sem operações.' : 'Não foi possível aplicar este convite.');
+      } catch (error) {
+        // Keep the code so a transient network or deployment error can be retried.
+        console.error('Failed to link paper referral:', error);
       }
     };
 
@@ -67,9 +67,11 @@ function PostLoginTasks() {
 export function AppProviders({
   children,
   initialAuth,
+  usdBrlRate,
 }: {
   children: React.ReactNode;
   initialAuth?: AuthBootstrap;
+  usdBrlRate?: number | null;
 }) {
   const location = useLocation();
   const [queryClient] = useState(createQueryClient);
@@ -78,24 +80,20 @@ export function AppProviders({
     Boolean(initialAuth?.user) || !STATIC_PUBLIC_ROUTES.has(location.pathname);
 
   useEffect(() => {
-    const scheduleRender =
-      'requestIdleCallback' in window
-        ? window.requestIdleCallback(() => setShouldRenderDeferredShell(true), { timeout: 2000 })
-        : window.setTimeout(() => setShouldRenderDeferredShell(true), 500);
+    const scheduleRender = globalThis.setTimeout(
+      () => startTransition(() => setShouldRenderDeferredShell(true)),
+      500,
+    );
 
     return () => {
-      if (typeof scheduleRender === 'number') {
-        window.clearTimeout(scheduleRender);
-        return;
-      }
-
-      window.cancelIdleCallback(scheduleRender);
+      globalThis.clearTimeout(scheduleRender);
     };
   }, []);
 
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <CurrencyProvider usdBrlRate={usdBrlRate}>
         <TooltipProvider>
         <AuthProvider initialAuth={initialAuth}>
           {shouldEnableAuthSync && (
@@ -112,6 +110,7 @@ export function AppProviders({
           {children}
         </AuthProvider>
         </TooltipProvider>
+        </CurrencyProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

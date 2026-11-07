@@ -31,19 +31,20 @@ export function useAdminNotifications() {
   const queryClient = useQueryClient();
   const [readAlerts, setReadAlerts] = useState<Set<string>>(getReadAlerts);
 
-  const { data: alerts = [], isLoading } = useQuery<AdminAlert[]>({
+  const { data: alerts = [], isLoading, isError } = useQuery<AdminAlert[]>({
     queryKey: ['admin-alerts'],
     queryFn: async () => {
       const allAlerts: AdminAlert[] = [];
       const storedReadAlerts = getReadAlerts();
 
       // Fetch open support tickets
-      const { data: tickets } = await supabase
+      const { data: tickets, error: ticketError } = await supabase
         .from('support_tickets')
         .select('id, subject, created_at')
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(10);
+      if (ticketError) throw ticketError;
 
       tickets?.forEach((t) => {
         allAlerts.push({
@@ -54,73 +55,6 @@ export function useAdminNotifications() {
           link: '/admin/support',
           createdAt: new Date(t.created_at),
           read: storedReadAlerts.has(`ticket-${t.id}`),
-        });
-      });
-
-      // Fetch markets expiring within 24h
-      const threshold = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      const now = new Date();
-
-      const { data: expiringMarkets } = await supabase
-        .from('markets')
-        .select('id, title, close_date')
-        .eq('status', 'OPEN')
-        .lt('close_date', threshold.toISOString())
-        .gt('close_date', now.toISOString());
-
-      expiringMarkets?.forEach((m) => {
-        allAlerts.push({
-          id: `expiring-${m.id}`,
-          type: 'market_expiring',
-          title: 'Mercado Expirando',
-          description: m.title,
-          link: `/admin/events/${m.id}`,
-          createdAt: new Date(m.close_date!),
-          read: storedReadAlerts.has(`expiring-${m.id}`),
-        });
-      });
-
-      // Fetch contested markets
-      const { data: contestedMarkets } = await supabase
-        .from('markets')
-        .select('id, title, updated_at')
-        .eq('status', 'CONTESTED')
-        .order('updated_at', { ascending: false })
-        .limit(5);
-
-      contestedMarkets?.forEach((m) => {
-        allAlerts.push({
-          id: `contested-${m.id}`,
-          type: 'contestation',
-          title: 'Mercado Contestado',
-          description: m.title,
-          link: `/admin/events/${m.id}`,
-          createdAt: new Date(m.updated_at),
-          read: storedReadAlerts.has(`contested-${m.id}`),
-        });
-      });
-
-      // Fetch high value deposits (> R$ 1000 in last 24h)
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const { data: highDeposits } = await supabase
-        .from('ledger_entries')
-        .select('id, amount, created_at, user_id')
-        .eq('ref_type', 'DEPOSIT')
-        .eq('direction', 'CREDIT')
-        .gt('amount', 1000)
-        .gte('created_at', oneDayAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      highDeposits?.forEach((d) => {
-        allAlerts.push({
-          id: `deposit-${d.id}`,
-          type: 'high_deposit',
-          title: 'Depósito Alto',
-          description: `R$ ${d.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-          link: '/admin/ledger',
-          createdAt: new Date(d.created_at),
-          read: storedReadAlerts.has(`deposit-${d.id}`),
         });
       });
 
@@ -140,18 +74,6 @@ export function useAdminNotifications() {
           event: 'INSERT',
           schema: 'public',
           table: 'support_tickets',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['admin-alerts'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'markets',
-          filter: 'status=eq.CONTESTED',
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['admin-alerts'] });
@@ -194,6 +116,7 @@ export function useAdminNotifications() {
     alerts: alertsWithReadStatus,
     unreadCount,
     isLoading,
+    isError,
     markAsRead,
     markAllAsRead,
   };

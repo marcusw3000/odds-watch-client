@@ -30,6 +30,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { useAdminLedger, useFeePolicySnapshot, type LedgerEntrySecure } from '@/hooks/useSecureData';
 import { Search, Download, Eye, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { downloadBlob } from '@/lib/download';
 
 export function AdminLedgerPage() {
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntrySecure | null>(null);
@@ -100,12 +101,7 @@ export function AdminLedgerPage() {
 
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ledger-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    downloadBlob(blob, `ledger-${format(new Date(), 'yyyy-MM-dd')}.csv`);
   };
 
   const formatCurrency = (value: number) => {

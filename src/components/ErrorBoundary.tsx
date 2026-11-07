@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = '/markets';
+    window.location.href = '/polymarket';
   };
 
   render() {

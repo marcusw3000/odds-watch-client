@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Transaction } from '@/types/market';
 import { cn } from '@/lib/utils';
+import { downloadBlob } from '@/lib/download';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -180,10 +181,7 @@ export function BalanceHistoryFiltered({ transactions }: BalanceHistoryFilteredP
 
     const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `historico-movimentacao-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
+    downloadBlob(blob, `historico-movimentacao-${format(new Date(), 'yyyy-MM-dd')}.csv`);
   };
 
   const clearFilters = () => {

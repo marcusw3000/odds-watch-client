@@ -13,7 +13,7 @@ interface AuthState {
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName?: string, cpf?: string, phone?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName?: string, cpf?: string, phone?: string, referralCode?: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
 }
 

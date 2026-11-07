@@ -33,7 +33,7 @@ function getAlertIcon(type: AdminAlert['type']) {
 }
 
 export function AdminNotificationBell() {
-  const { alerts, unreadCount, isLoading, markAsRead, markAllAsRead } = useAdminNotifications();
+  const { alerts, unreadCount, isLoading, isError, markAsRead, markAllAsRead } = useAdminNotifications();
 
   return (
     <Popover>
@@ -67,6 +67,8 @@ export function AdminNotificationBell() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : isError ? (
+            <p role="alert" className="text-center text-destructive py-8 text-sm">Não foi possível carregar os alertas.</p>
           ) : alerts.length === 0 ? (
             <p className="text-center text-muted-foreground py-8 text-sm">
               Nenhum alerta

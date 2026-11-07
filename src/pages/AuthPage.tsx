@@ -147,9 +147,11 @@ export function AuthPage() {
     setSuccessMessage(null);
 
     try {
-      const { error: signUpError } = await signUp(data.email, data.password, data.fullName, data.cpf, data.phone);
+      if (referralCode) localStorage.setItem('pendingReferralCode', referralCode);
+      const { error: signUpError } = await signUp(data.email, data.password, data.fullName, data.cpf, data.phone, referralCode || undefined);
       
       if (signUpError) {
+        if (referralCode) localStorage.removeItem('pendingReferralCode');
         if (signUpError.message.includes('User already registered')) {
           setError('Este email já está cadastrado. Faça login.');
           setActiveTab('login');
@@ -159,14 +161,10 @@ export function AuthPage() {
         return;
       }
       
-      // Link referral if code was provided
-      if (referralCode) {
-        localStorage.setItem('pendingReferralCode', referralCode);
-      }
-      
       setSuccessMessage('Conta criada! Verifique seu email para confirmar o cadastro.');
       signupForm.reset();
     } catch (err) {
+      if (referralCode) localStorage.removeItem('pendingReferralCode');
       setError('Ocorreu um erro. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -181,8 +179,8 @@ export function AuthPage() {
     if (returnTo && returnTo !== '/') {
       localStorage.setItem('authReturnTo', returnTo);
     } else {
-      // Default to /markets if no specific return URL
-      localStorage.setItem('authReturnTo', '/markets');
+      // Default to the public Polymarket catalog if no specific return URL
+      localStorage.setItem('authReturnTo', '/polymarket');
     }
     if (referralCode) {
       localStorage.setItem('pendingReferralCode', referralCode);
@@ -195,7 +193,7 @@ export function AuthPage() {
         provider: 'google',
         options: {
           // Preserve the intended destination so the server callback can redirect correctly.
-          redirectTo: `${window.location.origin}/auth?returnTo=${encodeURIComponent(returnTo || '/markets')}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ''}`,
+          redirectTo: `${window.location.origin}/auth?returnTo=${encodeURIComponent(returnTo || '/polymarket')}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ''}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -253,7 +251,7 @@ export function AuthPage() {
           <CardTitle className="text-2xl font-bold">Bem-vindo ao OddsWatch</CardTitle>
           <CardDescription className="text-base">
             {referralCode 
-              ? 'Você foi indicado! Crie sua conta e ganhe desconto nas taxas.'
+              ? 'Você recebeu um convite para participar do simulador.'
               : 'Entre na sua conta ou crie uma nova'
             }
           </CardDescription>
@@ -264,7 +262,7 @@ export function AuthPage() {
             <Alert className="bg-primary/10 border-primary/30 animate-in fade-in-0 duration-300">
               <Gift className="h-4 w-4 text-primary" />
               <AlertDescription className="text-primary">
-                Código de indicação: <strong>{referralCode}</strong> - Você ganhará desconto nas taxas!
+                Código de indicação: <strong>{referralCode}</strong>. A indicação não oferece comissão ou desconto.
               </AlertDescription>
             </Alert>
           )}

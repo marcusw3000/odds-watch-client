@@ -1,1 +1,1 @@
-export { AdminReferralsPage as default } from "@/pages/admin/AdminReferralsPage";
+export { default } from "@/pages/admin/PaperReferralsAdminPage";

@@ -10,7 +10,7 @@ const corsHeaders = {
 
 interface WarnUserRequest {
   report_id: string;
-  source: "market" | "suggestion";
+  source: "market";
 }
 
 Deno.serve(async (req) => {
@@ -96,8 +96,8 @@ Deno.serve(async (req) => {
     logger.step("Request parsed", { report_id, source });
 
     // Get report and comment details based on source
-    const tableName = source === "suggestion" ? "suggestion_comment_reports" : "comment_reports";
-    const commentsTable = source === "suggestion" ? "suggestion_comments" : "comments";
+    const tableName = "comment_reports";
+    const commentsTable = "comments";
 
     const { data: report, error: reportError } = await supabaseService
       .from(tableName)
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     };
     const reasonLabel = reasonLabels[report.reason] || report.reason;
     const commentPreview = comment.content.slice(0, 50);
-    const contextLabel = source === "suggestion" ? "sugestão" : "mercado";
+    const contextLabel = "mercado";
 
     // Create notification using service role (bypasses RLS)
     const notificationData = {

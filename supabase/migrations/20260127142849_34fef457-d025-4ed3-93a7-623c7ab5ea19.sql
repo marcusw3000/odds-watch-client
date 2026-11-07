@@ -3,37 +3,42 @@
 -- P1: Fix permissive RLS policies on daily_volume_snapshots
 -- =====================================================
 
--- Schedule auto-expire-markets to run every 5 minutes
-SELECT cron.schedule(
-  'auto-expire-markets',
-  '*/5 * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://nfwxyftsdhgxfrnrvsdo.supabase.co/functions/v1/auto-expire-markets',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('supabase.service_role_key', true)
-    ),
-    body := '{}'::jsonb
-  );
-  $$
-);
-
--- Also schedule check-economic-events to run every hour for more thorough checks
-SELECT cron.schedule(
-  'check-economic-events',
-  '0 * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://nfwxyftsdhgxfrnrvsdo.supabase.co/functions/v1/check-economic-events',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('supabase.service_role_key', true)
-    ),
-    body := '{}'::jsonb
-  );
-  $$
-);
+-- Schedules are optional during a fresh installation: the extensions are
+-- enabled separately in the Supabase dashboard before jobs are activated.
+DO $cron$
+BEGIN
+  IF to_regnamespace('cron') IS NOT NULL AND to_regnamespace('net') IS NOT NULL THEN
+    PERFORM cron.schedule(
+      'auto-expire-markets',
+      '*/5 * * * *',
+      $request$
+      SELECT net.http_post(
+        url := 'https://tztqsorbugjhwljbiano.supabase.co/functions/v1/auto-expire-markets',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || current_setting('supabase.service_role_key', true)
+        ),
+        body := '{}'::jsonb
+      );
+      $request$
+    );
+    PERFORM cron.schedule(
+      'check-economic-events',
+      '0 * * * *',
+      $request$
+      SELECT net.http_post(
+        url := 'https://tztqsorbugjhwljbiano.supabase.co/functions/v1/check-economic-events',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || current_setting('supabase.service_role_key', true)
+        ),
+        body := '{}'::jsonb
+      );
+      $request$
+    );
+  END IF;
+END;
+$cron$;
 
 -- =====================================================
 -- Fix RLS policies on daily_volume_snapshots

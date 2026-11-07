@@ -1,1 +1,1 @@
-export { AdminLedgerPage as default } from "@/pages/admin/AdminLedgerPage";
+export { default } from "@/pages/admin/LegacyFinancialPage";

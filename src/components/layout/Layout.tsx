@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense, Component, type ReactNode } from 'react';
+import { useEffect, useState, lazy, Suspense, Component, startTransition, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
@@ -48,18 +48,13 @@ export function Layout() {
   const [shouldRenderChat, setShouldRenderChat] = useState(false);
 
   useEffect(() => {
-    const scheduleRender =
-      'requestIdleCallback' in window
-        ? window.requestIdleCallback(() => setShouldRenderChat(true), { timeout: 1500 })
-        : window.setTimeout(() => setShouldRenderChat(true), 250);
+    const scheduleRender = globalThis.setTimeout(
+      () => startTransition(() => setShouldRenderChat(true)),
+      250,
+    );
 
     return () => {
-      if (typeof scheduleRender === 'number') {
-        window.clearTimeout(scheduleRender);
-        return;
-      }
-
-      window.cancelIdleCallback(scheduleRender);
+      globalThis.clearTimeout(scheduleRender);
     };
   }, []);
 

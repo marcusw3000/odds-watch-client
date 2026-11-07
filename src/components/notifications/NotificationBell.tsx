@@ -22,6 +22,7 @@ import {
 } from '@/hooks/useNotifications';
 import { useToast } from '@/hooks/use-toast';
 import type { NotificationType, Notification } from '@/types/notification';
+import { polymarketNotificationLink } from '@/lib/notificationLinks';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NotificationSkeleton } from './NotificationSkeleton';
@@ -92,6 +93,8 @@ const GROUPABLE_TYPES: NotificationType[] = ['COMMENT_LIKE', 'ACHIEVEMENT_UNLOCK
 // Get link for notification based on type and data
 function getNotificationLink(notification: Notification): string | null {
   const { type, data } = notification;
+  const polymarketLink = polymarketNotificationLink(notification);
+  if (polymarketLink) return polymarketLink;
   
   switch (type) {
     case 'MARKET_CLOSING_SOON':
@@ -103,15 +106,6 @@ function getNotificationLink(notification: Notification): string | null {
     case 'COMMENT_LIKE':
     case 'PRICE_ALERT':
       return data?.market_id ? `/market/${data.market_id}` : null;
-    
-    case 'SUGGESTION_COMMENT_MENTION':
-    case 'SUGGESTION_COMMENT_REPLY':
-    case 'SUGGESTION_APPROVED':
-    case 'SUGGESTION_REJECTED':
-      return data?.suggestion_id ? `/suggestions/${data.suggestion_id}` : '/suggestions';
-    
-    case 'SUGGESTION_IMPLEMENTED':
-      return data?.market_id ? `/market/${data.market_id}` : '/suggestions';
     
     case 'DEPOSIT_CONFIRMED':
     case 'WITHDRAWAL_COMPLETED':
@@ -236,7 +230,7 @@ function groupNotifications(notifications: Notification[]): DisplayNotification[
 export function NotificationBell() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notifications, unreadCount, isLoading } = useNotifications();
+  const { notifications, unreadCount, isLoading, error } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const deleteNotification = useDeleteNotification();
@@ -352,6 +346,8 @@ export function NotificationBell() {
         <ScrollArea className="h-[400px]" aria-live="polite" aria-label="Lista de notificações">
           {isLoading ? (
             <NotificationSkeleton count={3} />
+          ) : error ? (
+            <div className="p-8 text-center text-sm text-destructive" role="alert">Não foi possível carregar as notificações.</div>
           ) : displayNotifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground" role="status">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" aria-hidden="true" />

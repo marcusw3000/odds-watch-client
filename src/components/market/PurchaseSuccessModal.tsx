@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { generateMarketShareLink, generateSocialShareLinks } from '@/lib/deepLinks';
 import { haptics } from '@/lib/haptics';
+import { downloadBlob } from '@/lib/download';
 
 // Custom X icon
 const XIcon = () => (
@@ -85,14 +86,7 @@ export function PurchaseSuccessModal({
       // Convert to blob and download
       canvas.toBlob((blob) => {
         if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `posicao-${outcome.toLowerCase()}-${Date.now()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+          downloadBlob(blob, `posicao-${outcome.toLowerCase()}-${Date.now()}.png`);
           toast.success('Imagem baixada com sucesso!');
         }
       }, 'image/png', 1.0);

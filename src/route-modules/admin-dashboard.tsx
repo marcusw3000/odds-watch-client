@@ -1,1 +1,1 @@
-export { AdminDashboard as default } from "@/pages/admin/AdminDashboard";
+export { default } from "@/pages/admin/PolymarketAdminDashboard";

@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type ReportSource = "market" | "suggestion" | "chat";
+type ReportSource = "market" | "chat";
 type ReportStatus = "PENDING" | "REVIEWED" | "DISMISSED" | "ACTIONED";
 type ReportAction = "none" | "hidden" | "deleted" | "user_warned";
 
@@ -21,15 +21,6 @@ function isUuid(value: string): boolean {
 }
 
 function getSourceConfig(source: ReportSource) {
-  if (source === "suggestion") {
-    return {
-      reportTable: "suggestion_comment_reports",
-      contentTable: "suggestion_comments",
-      referenceColumn: "comment_id",
-      notificationContext: "sugest\u00e3o",
-    };
-  }
-
   if (source === "chat") {
     return {
       reportTable: "chat_reports",
@@ -40,8 +31,8 @@ function getSourceConfig(source: ReportSource) {
   }
 
   return {
-    reportTable: "comment_reports",
-    contentTable: "comments",
+    reportTable: "polymarket_comment_reports",
+    contentTable: "polymarket_event_comments",
     referenceColumn: "comment_id",
     notificationContext: "mercado",
   };
@@ -99,7 +90,7 @@ Deno.serve(async (req) => {
       return json(400, { error: "report_id inv\u00e1lido" });
     }
 
-    if (!source || !["market", "suggestion", "chat"].includes(source)) {
+    if (!source || !["market", "chat"].includes(source)) {
       return json(400, { error: "source inv\u00e1lido" });
     }
 

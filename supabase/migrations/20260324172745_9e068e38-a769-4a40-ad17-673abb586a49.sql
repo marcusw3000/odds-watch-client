@@ -30,9 +30,15 @@ CREATE POLICY "Users can insert own messages"
 -- Enable Realtime for the messages table
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 
--- Schedule cleanup every 3 hours: delete messages older than 6 hours
-SELECT cron.schedule(
-  'cleanup-chat-messages',
-  '0 */3 * * *',
-  $$DELETE FROM public.messages WHERE created_at < now() - interval '6 hours'$$
-);
+-- Schedule cleanup only when pg_cron has been enabled for this project.
+DO $cron$
+BEGIN
+  IF to_regnamespace('cron') IS NOT NULL THEN
+    PERFORM cron.schedule(
+      'cleanup-chat-messages',
+      '0 */3 * * *',
+      $request$DELETE FROM public.messages WHERE created_at < now() - interval '6 hours'$request$
+    );
+  END IF;
+END;
+$cron$;

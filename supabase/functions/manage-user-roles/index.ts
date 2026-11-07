@@ -122,7 +122,7 @@ serve(async (req) => {
         .from("user_roles")
         .upsert(
           { user_id, role },
-          { onConflict: "user_id,role" }
+          { onConflict: "user_id,role", ignoreDuplicates: true }
         );
 
       if (insertError) {

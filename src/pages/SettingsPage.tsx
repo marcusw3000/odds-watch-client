@@ -5,7 +5,7 @@ import { ExportDataButton } from '@/components/settings/ExportDataButton';
 import { SupportTicketsList } from '@/components/support/SupportTicketsList';
 import { ProfilePrivacySettings } from '@/components/profile/ProfilePrivacySettings';
 import { useAuth } from '@/hooks/useAuth';
-import { useMyLeaderboardProfile, useMyStatistics, useUpdateLeaderboardProfile } from '@/hooks/useLeaderboard';
+import { useMyLeaderboardProfile, useUpdateLeaderboardProfile } from '@/hooks/useLeaderboard';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,11 +17,9 @@ export function SettingsPage() {
   const initialTab = searchParams.get('tab') || 'notifications';
   
   const { data: leaderboardProfile, isLoading: profileLoading } = useMyLeaderboardProfile();
-  const { data: statistics } = useMyStatistics();
   const updateProfile = useUpdateLeaderboardProfile();
 
-  // Combine profile and statistics into UserProfile format
-  const profile: UserProfile | null = leaderboardProfile && statistics ? {
+  const profile: UserProfile | null = leaderboardProfile ? {
     id: leaderboardProfile.id,
     email: null,
     full_name: null,
@@ -33,14 +31,14 @@ export function SettingsPage() {
     show_roi: leaderboardProfile.show_roi,
     show_volume: leaderboardProfile.show_volume,
     show_trades: leaderboardProfile.show_trades,
-    total_profit: statistics.total_profit,
-    roi_percent: statistics.roi_percent,
-    total_volume: statistics.total_volume,
-    total_trades: statistics.total_trades,
-    winning_trades: statistics.winning_trades,
-    current_streak: statistics.current_streak,
-    best_streak: statistics.best_streak,
-    best_trade_profit: statistics.best_trade_profit,
+    total_profit: 0,
+    roi_percent: 0,
+    total_volume: 0,
+    total_trades: 0,
+    winning_trades: 0,
+    current_streak: 0,
+    best_streak: 0,
+    best_trade_profit: 0,
     created_at: leaderboardProfile.created_at,
     updated_at: leaderboardProfile.updated_at,
   } : null;
@@ -154,7 +152,7 @@ export function SettingsPage() {
             <CardContent className="space-y-4">
               <ExportDataButton />
               <p className="text-xs text-muted-foreground">
-                O arquivo incluirá: perfil, transações, contratos, pagamentos, notificações, conquistas e comentários.
+                O arquivo incluirá perfil, carteira, posições e operações simuladas, convites, favoritos, pagamentos, notificações e comentários.
                 Você pode exportar seus dados uma vez por hora.
               </p>
             </CardContent>

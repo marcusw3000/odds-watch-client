@@ -4,16 +4,18 @@ import { Trophy, Award, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { LeaderboardTable } from '@/components/leaderboard/LeaderboardTable';
-import { AchievementsBadges } from '@/components/leaderboard/AchievementsBadges';
+import { PaperProfileAchievements } from '@/components/profile/PaperProfileSections';
+import { usePaperProfile } from '@/hooks/usePaperProfile';
 import { MyStatsCard } from '@/components/leaderboard/MyStatsCard';
-import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { usePaperLeaderboard } from '@/hooks/usePaperLeaderboard';
 import { useAuth } from '@/hooks/useAuth';
 import type { LeaderboardSortBy } from '@/types/leaderboard';
 
 export function LeaderboardPage() {
   const { user } = useAuth();
   const [sortBy, setSortBy] = useState<LeaderboardSortBy>('profit');
-  const { data: entries, isLoading } = useLeaderboard(sortBy, 50);
+  const { data: entries, isLoading, isError } = usePaperLeaderboard(sortBy, 50);
+  const paperProfile = usePaperProfile(user?.id);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -36,7 +38,7 @@ export function LeaderboardPage() {
           )}
         </div>
         <p className="text-muted-foreground">
-          Ranking dos melhores traders da plataforma. Participe e mostre suas habilidades!
+          Ranking do Paper Trading Polymarket em USD virtual. A classificação usa apenas resultados realizados em operações verificadas.
         </p>
       </div>
 
@@ -56,18 +58,18 @@ export function LeaderboardPage() {
         <TabsContent value="ranking" className="space-y-6">
           {user && <MyStatsCard />}
           
-          <LeaderboardTable
+          {isError ? <p role="alert" className="text-destructive">Não foi possível carregar o ranking simulado.</p> : <LeaderboardTable
             entries={entries || []}
             isLoading={isLoading}
             sortBy={sortBy}
             onSortChange={setSortBy}
             currentUserId={user?.id}
-          />
+          />}
         </TabsContent>
 
         {/* Achievements Tab */}
         <TabsContent value="achievements">
-          <AchievementsBadges />
+          {!user ? <p>Entre para acompanhar suas conquistas no simulador.</p> : paperProfile.isLoading ? <p>Carregando conquistas...</p> : paperProfile.isError || !paperProfile.data ? <p role="alert">Não foi possível carregar as conquistas. <button className="underline" onClick={() => paperProfile.refetch()}>Tentar novamente</button></p> : <PaperProfileAchievements data={paperProfile.data} />}
         </TabsContent>
       </Tabs>
     </div>

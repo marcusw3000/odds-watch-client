@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, Menu, X, LogIn, Trophy, Briefcase, Lightbulb } from 'lucide-react';
+import { TrendingUp, Menu, X, LogIn, Trophy, Briefcase } from 'lucide-react';
+import { KalshiIcon, PolymarketIcon } from './MarketBrandIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,33 +35,25 @@ export function Header() {
   const { user, loading } = useAuth();
 
   const navItems = [
-    { path: '/markets', label: 'Mercados', icon: TrendingUp },
-    { path: '/suggestions', label: 'Sugestões', icon: Lightbulb },
+    { path: '/polymarket', label: 'Polymarket', icon: PolymarketIcon },
+    { path: '/kalshi', label: 'Kalshi', icon: KalshiIcon, unavailable: true },
     { path: '/leaderboard', label: 'Ranking', icon: Trophy },
     { path: '/portfolio', label: 'Portfólio', icon: Briefcase },
   ];
 
   const isActive = (path: string) => {
-    if (path === '/markets') {
-      return location.pathname === '/' || location.pathname === '/markets' || location.pathname.startsWith('/market/');
-    }
-
-    return location.pathname === path;
+    return location.pathname === path ||
+      (path === '/polymarket' && location.pathname.startsWith('/polymarket'));
   };
 
   useEffect(() => {
-    const scheduleRender =
-      'requestIdleCallback' in window
-        ? window.requestIdleCallback(() => setShouldRenderSearch(true), { timeout: 1200 })
-        : window.setTimeout(() => setShouldRenderSearch(true), 200);
+    const scheduleRender = globalThis.setTimeout(
+      () => setShouldRenderSearch(true),
+      200,
+    );
 
     return () => {
-      if (typeof scheduleRender === 'number') {
-        window.clearTimeout(scheduleRender);
-        return;
-      }
-
-      window.cancelIdleCallback(scheduleRender);
+      globalThis.clearTimeout(scheduleRender);
     };
   }, []);
 
@@ -93,7 +86,19 @@ export function Header() {
         </div>
 
         <nav className="hidden md:flex items-center gap-1 min-h-[40px]">
-          {navItems.map((item) => (
+          {navItems.map((item) => item.unavailable ? (
+            <Button
+              key={item.path}
+              variant="ghost"
+              disabled
+              aria-label="Kalshi indisponível"
+              className="gap-2 px-4 cursor-not-allowed opacity-60"
+            >
+              <item.icon className="h-4 w-4 animate-pulse" aria-hidden="true" />
+              {item.label}
+              <span className="text-[10px] font-medium text-muted-foreground animate-pulse">Indisponível</span>
+            </Button>
+          ) : (
             <Button
               key={item.path}
               variant="ghost"
@@ -150,7 +155,18 @@ export function Header() {
             )}
 
             <nav className="flex flex-col gap-2">
-              {navItems.map((item) => (
+              {navItems.map((item) => item.unavailable ? (
+                <Button
+                  key={item.path}
+                  variant="ghost"
+                  disabled
+                  className="justify-start gap-2 cursor-not-allowed opacity-60"
+                >
+                  <item.icon className="h-4 w-4 animate-pulse" aria-hidden="true" />
+                  {item.label}
+                  <span className="text-xs animate-pulse">Indisponível</span>
+                </Button>
+              ) : (
                 <Button
                   key={item.path}
                   variant={isActive(item.path) ? 'secondary' : 'ghost'}

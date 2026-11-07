@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { MarketDataProvider } from '@/services/MarketDataProvider';
 
 // Types for secure data responses
 export interface SecureBalance {
@@ -42,7 +43,7 @@ export interface AdminUser {
   display_name: string;
   email: string;
   phone?: string;
-  balance_available: number;
+  balance_available: number | null;
   balance_locked: number;
   currency: string;
   is_blocked: boolean;
@@ -143,8 +144,19 @@ export function useSecurePortfolio() {
       const { data, error } = await supabase.functions.invoke('get-user-portfolio');
       
       if (error) {
-        console.error('Error fetching secure portfolio:', error);
-        throw error;
+        // The portfolio Edge Function can be temporarily unavailable after a
+        // project migration. The authenticated repository query is protected
+        // by RLS and keeps the user's portfolio available in that situation.
+        console.error('Error fetching secure portfolio, using authenticated fallback:', error);
+        const fallback = await MarketDataProvider.getUserPortfolio();
+        const totalInvested = fallback.contracts
+          .filter((contract) => contract.status === 'ACTIVE')
+          .reduce((sum, contract) => sum + (contract.priceAtPurchase / 100) * contract.quantity, 0);
+
+        return {
+          ...fallback,
+          totalInvested,
+        };
       }
       
       const portfolio = data as any;
@@ -339,43 +351,12 @@ export interface AdminUserDetails {
     created_at: string;
     updated_at: string;
   };
-  wallet: {
-    id: string;
-    balance_available: number;
-    balance_locked: number;
-    currency: string;
-    created_at: string;
-    updated_at: string;
-  } | null;
-  roles: string[];
-  contracts: Array<{
-    id: string;
-    market_id: string;
-    market_title: string;
-    market_status: string;
-    market_result: string | null;
-    position: string;
-    shares: number;
-    average_price: number;
-    total_invested: number;
-    created_at: string;
-    option_id: string | null;
-  }>;
-  contractStats: {
-    total: number;
-    active: number;
-    won: number;
-    lost: number;
+  paper: {
+    wallet: { balance_usd: number; updated_at: string } | null;
+    positions: Array<{ id: string; market_id: string; market_question: string; outcome_label: string; shares: number; average_price: number; updated_at: string }>;
+    trades: Array<{ id: string; market_id: string; outcome_label: string; side: 'BUY' | 'SELL'; price: number; shares: number; notional_usd: number; created_at: string }>;
   };
-  ledgerEntries: Array<{
-    id: string;
-    ref_type: string;
-    direction: string;
-    amount: number;
-    net_amount: number;
-    status: string;
-    created_at: string;
-  }>;
+  roles: string[];
   notifications: Array<{
     id: string;
     type: string;

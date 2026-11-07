@@ -586,10 +586,11 @@ export const MarketDataProvider = {
       | { balance_available: number; total_deposited: number; total_withdrawn: number }
       | null;
 
-    // Get contracts - use explicit FK to avoid PGRST201 ambiguity error
+    // Do not depend on a PostgREST FK constraint name here. The project can be
+    // migrated independently and the portfolio itself must remain available.
     const contractsResult = await supabase
       .from('user_contracts')
-      .select('*, markets!user_contracts_market_id_fkey(title)')
+      .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -598,10 +599,10 @@ export const MarketDataProvider = {
       throw contractsResult.error;
     }
 
-    // Get transactions - use explicit FK to avoid PGRST201 ambiguity error
+    // Same rationale as contracts: titles are optional presentation data.
     const transactionsResult = await supabase
       .from('transactions')
-      .select('*, markets!transactions_market_id_fkey(title)')
+      .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);

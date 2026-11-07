@@ -150,7 +150,7 @@ export default function AdminSupportPage() {
   };
 
   // Stats query
-  const { data: stats } = useQuery({
+  const { data: stats, isError: statsError } = useQuery({
     queryKey: ['support-stats'],
     queryFn: getTicketStats,
     refetchInterval: 30000,
@@ -163,7 +163,7 @@ export default function AdminSupportPage() {
   const { resetPage } = pagination;
 
   // Tickets query with pagination
-  const { data: ticketsData, isLoading: ticketsLoading, isFetching: ticketsFetching } = useQuery({
+  const { data: ticketsData, isLoading: ticketsLoading, isFetching: ticketsFetching, isError: ticketsError } = useQuery({
     queryKey: ['admin-support-tickets', filters, pagination.page, pagination.pageSize],
     queryFn: () => getAllTickets({
       ...filters,
@@ -187,7 +187,7 @@ export default function AdminSupportPage() {
   }, [selectedTicket]);
 
   // Messages query for selected ticket
-  const { data: messages = [], isLoading: messagesLoading, isFetching: messagesFetching } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading, isFetching: messagesFetching, isError: messagesError } = useQuery({
     queryKey: ['ticket-messages', selectedTicket?.id],
     queryFn: () => (selectedTicket ? getTicketMessages(selectedTicket.id) : Promise.resolve([])),
     enabled: !!selectedTicket,
@@ -287,6 +287,7 @@ export default function AdminSupportPage() {
 
   return (
     <div className="space-y-6">
+      {statsError && <p role="alert" className="text-destructive">Não foi possível carregar as estatísticas de suporte.</p>}
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -589,7 +590,7 @@ export default function AdminSupportPage() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredTickets.length === 0 ? (
+          ) : ticketsError ? <p role="alert" className="py-8 text-center text-destructive">Não foi possível carregar os tickets.</p> : filteredTickets.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Headphones className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>Nenhum ticket encontrado</p>
@@ -759,7 +760,7 @@ export default function AdminSupportPage() {
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
-                ) : (
+                ) : messagesError ? <p role="alert" className="text-destructive">Não foi possível carregar as mensagens.</p> : (
                   <div className="space-y-4">
                     {messages.map((message) => (
                       <div

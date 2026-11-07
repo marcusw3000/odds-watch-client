@@ -1,0 +1,64 @@
+import { expect, test } from "@playwright/test";
+
+// Auth and write endpoints are simulated: this never touches a real account or wallet.
+test("authenticated simulated trade updates the paper leaderboard", async ({ page }) => {
+  const user = { id: "8bf77056-eaa6-471a-9bba-3e2ef09c3932", aud: "authenticated", role: "authenticated", email: "paper@example.test", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+  const token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: user.id, exp: expiresAt, aud: "authenticated", role: "authenticated" })}.signature`;
+  let trades = 0;
+  await page.route("**/*.supabase.co/**", async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    const reply = async (body: unknown, status = 200) => route.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS" } });
+    if (path === "/auth/v1/token") return reply({ access_token: token, refresh_token: "fake-refresh", token_type: "bearer", expires_in: 3600, expires_at: expiresAt, user });
+    if (path === "/auth/v1/user") return reply(user);
+    if (path.endsWith("/rpc/has_role")) return reply(false);
+    if (path.endsWith("/rpc/get_polymarket_paper_wallet")) return reply({ user_id: user.id, balance_usd: 10000, round_id: "4788abf8-4844-442a-9e03-6fcac9c0d129" });
+    if (path.endsWith("/polymarket_paper_trades")) return reply(trades ? [{ id: "trade-1", market_id: "559687", side: "BUY", outcome_label: "Yes", price: 0.001, shares: 10, notional_usd: 0.01 }, { id: "trade-2", market_id: "559687", side: "SELL", outcome_label: "Yes", price: 0.002, shares: 1, notional_usd: 0.002 }] : []);
+    if (path.endsWith("/rpc/get_my_paper_ranking_stats")) return reply([{ total_profit: 0, roi_percent: 0, total_volume: trades ? 0.01 : 0, total_trades: trades, winning_trades: 0 }]);
+    if (path.endsWith("/rpc/get_paper_leaderboard")) return reply(trades ? [{ rank: 1, user_id: user.id, display_name: "Teste Paper", avatar_url: null, total_profit: 0, roi_percent: 0, total_volume: 0.01, total_trades: trades, winning_trades: 0, show_profit: true, show_roi: true, show_volume: true, show_trades: true }] : []);
+    if (path.endsWith("/profiles")) return reply({ id: user.id, display_name: "Teste Paper", is_public: true, show_profit: true, show_roi: true, show_volume: true, show_trades: true });
+    if (path.endsWith("/execute-polymarket-paper-trade")) {
+      const body = route.request().postDataJSON();
+      expect(body).toHaveProperty("requestId"); expect(body).toHaveProperty("roundId"); expect(body).not.toHaveProperty("p_price");
+      trades += 1; return reply({ success: true, price: 0.001, notional_usd: 0.01 });
+    }
+    return reply([]);
+  });
+  await page.route("**/api/polymarket/market/559687/share", route => route.fulfill({ json: { question: "Mercado de teste", imageUrl: null } }));
+  await page.goto("/auth?returnTo=%2Fpolymarket%2Fmarket%2F559687%3Foutcome%3DYes");
+  await page.getByPlaceholder("seu@email.com").fill(user.email);
+  await page.locator('input[autocomplete="current-password"]').fill("PaperTest123!");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(/\/polymarket\/market\/559687/);
+  await page.getByRole("button", { name: "Comprar no simulador" }).click();
+  await expect(page.getByText("Operação simulada registrada.")).toBeVisible();
+  const preview = page.getByRole("dialog", { name: "Compartilhar minha previsão" });
+  await expect(preview).toBeVisible();
+  await expect(preview.getByText("Compra simulada · Paper Trading")).toBeVisible();
+  await expect(preview.getByText("0,1¢")).toBeVisible();
+  await expect(preview.getByText("SIM", { exact: true })).toBeVisible();
+  await expect(preview.getByRole("button", { name: "Baixar PNG" })).toBeEnabled({ timeout: 15000 });
+  const download = page.waitForEvent("download");
+  await preview.getByRole("button", { name: "Baixar PNG" }).click();
+  expect((await download).suggestedFilename()).toBe("minha-previsao.png");
+  await preview.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("link", { name: "Ranking", exact: true }).first().click();
+  await expect(page.getByText("Teste Paper").first()).toBeVisible();
+  await expect(page.getByText("Operações verificadas", { exact: true })).toBeVisible();
+  await expect(page.getByText("Operações verificadas", { exact: true }).locator("..")).toContainText("1");
+  await page.goto("/portfolio");
+  await page.getByRole("tab", { name: "Histórico de trades" }).click();
+  await expect(page.getByRole("button", { name: "Compartilhar card" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Compartilhar card" }).click();
+  const historyPreview = page.getByRole("dialog", { name: "Compartilhar minha previsão" });
+  await expect(historyPreview.getByText("Mercado de teste")).toBeVisible();
+  await expect(historyPreview.getByText("0,1¢")).toBeVisible();
+  await expect(historyPreview.getByText("10", { exact: true })).toBeVisible();
+  await expect(historyPreview.getByRole("button", { name: "Baixar PNG" })).toBeEnabled({ timeout: 15000 });
+  const historyDownload = page.waitForEvent("download");
+  await historyPreview.getByRole("button", { name: "Baixar PNG" }).click();
+  expect((await historyDownload).suggestedFilename()).toBe("minha-previsao.png");
+});

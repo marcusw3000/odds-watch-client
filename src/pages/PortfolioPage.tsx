@@ -24,7 +24,7 @@ export function PortfolioPage() {
   const verifyDeposit = useVerifyDeposit();
 
   // Use secure Edge Function to fetch portfolio data
-  const { data: portfolio, isLoading, refetch, isRefetching } = useSecurePortfolio();
+  const { data: portfolio, isLoading, error, refetch, isRefetching } = useSecurePortfolio();
   const { refreshPortfolio } = useSecureDataRefresh();
 
   const fetchPortfolio = useCallback(async () => {
@@ -126,6 +126,7 @@ export function PortfolioPage() {
       <div className="text-center py-16">
         <Briefcase className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
         <h3 className="text-lg font-medium mb-2">Erro ao carregar portfólio</h3>
+        {error instanceof Error && <p className="mb-4 text-sm text-muted-foreground">{error.message}</p>}
         <Button variant="outline" onClick={() => fetchPortfolio()}>
           Tentar novamente
         </Button>

@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export function NotificationSettings() {
   const { user } = useAuth();
-  const { data: preferences, isLoading } = useNotificationPreferences();
+  const { data: preferences, isLoading, error } = useNotificationPreferences();
   const updatePreferences = useUpdateNotificationPreferences();
   const { toast } = useToast();
 
@@ -77,6 +77,8 @@ export function NotificationSettings() {
       </Card>
     );
   }
+
+  if (error) return <Card><CardContent className="py-8 text-sm text-destructive" role="alert">Não foi possível carregar as preferências de notificações.</CardContent></Card>;
 
   return (
     <Card>

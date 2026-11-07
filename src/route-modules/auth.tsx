@@ -8,7 +8,7 @@ import type { Route } from "./+types/auth";
 
 function sanitizeReturnTo(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/markets";
+    return "/polymarket";
   }
 
   return value;

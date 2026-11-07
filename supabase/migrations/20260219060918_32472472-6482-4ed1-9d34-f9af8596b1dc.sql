@@ -40,5 +40,13 @@ CREATE TRIGGER protect_copy_subscription_fields_trigger
   EXECUTE FUNCTION protect_copy_subscription_fields();
 
 -- 2. Revogar grants de escrita em referral_settings (defesa em profundidade)
-REVOKE INSERT, UPDATE, DELETE ON public.referral_settings
-  FROM anon, authenticated;
+-- A tabela ainda não fazia parte do baseline versionado; mantenha esta
+-- proteção condicional para instalações novas.
+DO $$
+BEGIN
+  IF to_regclass('public.referral_settings') IS NOT NULL THEN
+    REVOKE INSERT, UPDATE, DELETE ON public.referral_settings
+      FROM anon, authenticated;
+  END IF;
+END;
+$$;

@@ -6,10 +6,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  isRouteErrorResponse,
   useLoaderData,
+  useRouteError,
 } from "react-router";
 import { AppProviders } from "./app/AppProviders";
 import { getServerAuthState } from "./integrations/supabase/server";
+import { getUsdBrlFxQuote } from "./services/UsdBrlFxProvider.server";
 import stylesheet from "./index.css?url";
 import type { Route } from "./+types/root";
 
@@ -65,7 +68,10 @@ export const meta: MetaFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const auth = await getServerAuthState(request);
+  const [auth, fx] = await Promise.all([
+    getServerAuthState(request),
+    getUsdBrlFxQuote().catch(() => null),
+  ]);
 
   return data(
     {
@@ -73,6 +79,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         isAdmin: auth.isAdmin,
         user: auth.user,
       },
+      usdBrlRate: fx ? Number(fx.rate) : null,
     },
     {
       headers: auth.headers,
@@ -82,14 +89,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" translate="no" className="notranslate">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="notranslate" translate="no">
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -99,11 +106,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Root() {
-  const { auth } = useLoaderData<typeof loader>();
+  const { auth, usdBrlRate } = useLoaderData<typeof loader>();
 
   return (
-    <AppProviders initialAuth={auth}>
+    <AppProviders initialAuth={auth} usdBrlRate={usdBrlRate}>
       <Outlet />
     </AppProviders>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const message = isRouteErrorResponse(error)
+    ? `${error.status} ${error.statusText}`
+    : error instanceof Error
+      ? error.message
+      : "Erro desconhecido ao carregar esta página.";
+
+  console.error("[RouteErrorBoundary]", {
+    path: typeof window === "undefined" ? "server" : window.location.pathname,
+    error,
+  });
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background p-4 notranslate" translate="no">
+      <section className="max-w-md space-y-4 text-center">
+        <h1 className="text-2xl font-bold">Não foi possível abrir esta página</h1>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <div className="flex justify-center gap-3">
+          <button type="button" className="rounded-md border px-4 py-2 text-sm font-medium" onClick={() => window.location.reload()}>
+            Tentar novamente
+          </button>
+          <a href="/polymarket" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Ir para Polymarket
+          </a>
+        </div>
+      </section>
+    </main>
   );
 }

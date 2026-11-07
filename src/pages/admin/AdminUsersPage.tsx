@@ -57,7 +57,6 @@ import {
 } from '@/components/ui/select';
 import { 
   useAdminUsers, 
-  useAdjustWalletBalance, 
   useManageUserRoles, 
   useBlockUser,
   useSendAdminWarning,
@@ -133,13 +132,7 @@ export function AdminUsersPage() {
   });
   const [searchInput, setSearchInput] = useState('');
 
-  // Adjustment dialog state
-  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-  const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
-  const [adjustmentAmount, setAdjustmentAmount] = useState('');
-  const [adjustmentReason, setAdjustmentReason] = useState('');
 
   // Role management dialog state
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -163,24 +156,24 @@ export function AdminUsersPage() {
   const [detailsUserId, setDetailsUserId] = useState<string | null>(null);
 
   // Use secure hooks
-  const { data, isLoading, refetch } = useAdminUsers(filters);
+  const { data, isLoading, isError, refetch } = useAdminUsers(filters);
   const users = data?.users ?? [];
   const pagination = data?.pagination ?? { total: 0, limit: 20, offset: 0, hasMore: false };
   
-  const adjustBalance = useAdjustWalletBalance();
   const manageRoles = useManageUserRoles();
   const blockUser = useBlockUser();
   const sendWarning = useSendAdminWarning();
-  const { data: userDetails, isLoading: detailsLoading } = useAdminUserDetails(detailsUserId);
+  const { data: userDetails, isLoading: detailsLoading, isError: detailsError } = useAdminUserDetails(detailsUserId);
 
   // Pagination calculations
   const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
   const totalPages = Math.ceil(pagination.total / pagination.limit);
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | null) => {
+    if (value === null) return "Não iniciada";
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'USD'
     }).format(value);
   };
 
@@ -235,51 +228,6 @@ export function AdminUsersPage() {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copiado!`);
-  };
-
-  // Adjustment functions
-  const openAdjustDialog = (targetUser: AdminUser, type: 'add' | 'subtract') => {
-    setSelectedUser(targetUser);
-    setAdjustmentType(type);
-    setAdjustmentAmount('');
-    setAdjustmentReason('');
-    setAdjustDialogOpen(true);
-  };
-
-  const handleProceedToConfirm = () => {
-    if (!adjustmentAmount || parseFloat(adjustmentAmount) <= 0) {
-      toast.error('Informe um valor válido');
-      return;
-    }
-    if (!adjustmentReason.trim() || adjustmentReason.trim().length < 3) {
-      toast.error('Informe o motivo do ajuste (mínimo 3 caracteres)');
-      return;
-    }
-    setAdjustDialogOpen(false);
-    setConfirmDialogOpen(true);
-  };
-
-  const handleConfirmAdjustment = async () => {
-    if (!selectedUser) return;
-
-    const amount = parseFloat(adjustmentAmount);
-    const finalAmount = adjustmentType === 'add' ? amount : -amount;
-
-    try {
-      await adjustBalance.mutateAsync({
-        walletId: selectedUser.id,
-        amount: finalAmount,
-        reason: adjustmentReason.trim(),
-      });
-
-      toast.success('Saldo ajustado com sucesso');
-      refetch();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao ajustar saldo');
-    }
-
-    setConfirmDialogOpen(false);
-    setSelectedUser(null);
   };
 
   // Role management functions
@@ -448,14 +396,16 @@ export function AdminUsersPage() {
     );
   }
 
+  if (isError) return <div role="alert" className="space-y-3 text-destructive"><p>Não foi possível carregar os usuários.</p><Button variant="outline" onClick={() => void refetch()}>Tentar novamente</Button></div>;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Users className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Usuários e Carteiras</h1>
+          <h1 className="text-2xl font-bold">Usuários e Paper Trading</h1>
           <p className="text-muted-foreground">
-            Gerenciamento de usuários, saldos e permissões
+            Gerenciamento de contas, saldo virtual e permissões
           </p>
         </div>
       </div>
@@ -472,7 +422,7 @@ export function AdminUsersPage() {
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
-                placeholder="Buscar por email, nome, ID ou role..."
+                placeholder="Buscar por email ou nome..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -578,18 +528,7 @@ export function AdminUsersPage() {
                   </Button>
                 </TableHead>
                 <TableHead>Roles</TableHead>
-                <TableHead className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="font-semibold -mr-3"
-                    onClick={() => handleSort('balance_available')}
-                  >
-                    Saldo Disponível
-                    <SortIcon field="balance_available" />
-                  </Button>
-                </TableHead>
-                <TableHead className="text-right">Saldo Total</TableHead>
+                <TableHead className="text-right">Saldo virtual (USD)</TableHead>
                 <TableHead>
                   <Button 
                     variant="ghost" 
@@ -645,12 +584,7 @@ export function AdminUsersPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono font-medium text-green-600">
-                    {formatCurrency(targetUser.balance_available)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-bold">
-                    {formatCurrency(targetUser.balance_available + targetUser.balance_locked)}
-                  </TableCell>
+                  <TableCell className="text-right font-mono font-medium">{formatCurrency(targetUser.balance_available)}</TableCell>
                   <TableCell>
                     {format(new Date(targetUser.updated_at), 'dd/MM/yyyy HH:mm')}
                   </TableCell>
@@ -678,14 +612,6 @@ export function AdminUsersPage() {
                         <DropdownMenuItem onClick={() => openRoleDialog(targetUser)}>
                           <Shield className="h-4 w-4 mr-2" />
                           Gerenciar Roles
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openAdjustDialog(targetUser, 'add')}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Creditar Saldo
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openAdjustDialog(targetUser, 'subtract')}>
-                          <Minus className="h-4 w-4 mr-2" />
-                          Debitar Saldo
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => openWarningDialog(targetUser)}>
@@ -793,8 +719,8 @@ export function AdminUsersPage() {
             <Tabs defaultValue="profile" className="mt-6">
               <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="profile">Perfil</TabsTrigger>
-                <TabsTrigger value="wallet">Carteira</TabsTrigger>
-                <TabsTrigger value="contracts">Contratos</TabsTrigger>
+                <TabsTrigger value="wallet">Carteira paper</TabsTrigger>
+                <TabsTrigger value="contracts">Posições</TabsTrigger>
                 <TabsTrigger value="activity">Atividade</TabsTrigger>
               </TabsList>
 
@@ -864,11 +790,11 @@ export function AdminUsersPage() {
                       </div>
                       <div>
                         <p className="text-2xl font-bold text-green-600">{userDetails.referralStats.activated}</p>
-                        <p className="text-sm text-muted-foreground">Ativadas</p>
+                        <p className="text-sm text-muted-foreground">Com operações</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold text-yellow-600">{userDetails.referralStats.pending}</p>
-                        <p className="text-sm text-muted-foreground">Pendentes</p>
+                        <p className="text-sm text-muted-foreground">Sem operações</p>
                       </div>
                     </div>
                   </div>
@@ -876,151 +802,12 @@ export function AdminUsersPage() {
               </TabsContent>
 
               <TabsContent value="wallet" className="space-y-4 mt-4">
-                {userDetails.wallet ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-center">
-                            <p className="text-sm text-muted-foreground">Disponível</p>
-                            <p className="text-2xl font-bold text-green-600">
-                              {formatCurrency(userDetails.wallet.balance_available)}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-center">
-                            <p className="text-sm text-muted-foreground">Bloqueado</p>
-                            <p className="text-2xl font-bold text-yellow-600">
-                              {formatCurrency(userDetails.wallet.balance_locked)}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <div className="border rounded-lg">
-                      <div className="p-3 border-b bg-muted/50">
-                        <h4 className="font-medium">Transações Recentes</h4>
-                      </div>
-                      <ScrollArea className="h-64">
-                        <div className="p-3 space-y-2">
-                          {userDetails.ledgerEntries.length > 0 ? (
-                            userDetails.ledgerEntries.slice(0, 20).map((entry) => (
-                              <div key={entry.id} className="flex items-center justify-between p-2 border rounded text-sm">
-                                <div className="flex items-center gap-2">
-                                  {entry.direction === 'CREDIT' ? (
-                                    <Plus className="h-4 w-4 text-green-500" />
-                                  ) : (
-                                    <Minus className="h-4 w-4 text-red-500" />
-                                  )}
-                                  <span>{entry.ref_type}</span>
-                                </div>
-                                <div className="text-right">
-                                  <p className={entry.direction === 'CREDIT' ? 'text-green-600' : 'text-red-600'}>
-                                    {entry.direction === 'CREDIT' ? '+' : '-'}{formatCurrency(entry.amount)}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {format(new Date(entry.created_at), 'dd/MM HH:mm')}
-                                  </p>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-center text-muted-foreground py-8">Nenhuma transação</p>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">Carteira não encontrada</p>
-                )}
+                <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Saldo virtual disponível · Paper Trading</p><p className="text-2xl font-bold">{userDetails.paper.wallet ? formatCurrency(Number(userDetails.paper.wallet.balance_usd)) : 'Carteira ainda não iniciada'}</p><p className="mt-2 text-xs text-muted-foreground">USD virtual; não representa fundos reais.</p></CardContent></Card>
+                <div className="border rounded-lg p-4 space-y-2"><h4 className="font-medium">Operações simuladas recentes</h4>{userDetails.paper.trades.length ? userDetails.paper.trades.map(trade => <div key={trade.id} className="flex justify-between gap-3 border-b py-2 text-sm"><span>{trade.side === 'BUY' ? 'Compra' : 'Venda'} · {trade.outcome_label} · {Number(trade.shares).toLocaleString('pt-BR')} shares</span><span>{(Number(trade.price) * 100).toFixed(2)}¢</span></div>) : <p className="text-sm text-muted-foreground">Nenhuma operação simulada.</p>}</div>
               </TabsContent>
-
-              <TabsContent value="contracts" className="space-y-4 mt-4">
-                <div className="grid grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="pt-4 text-center">
-                      <FileText className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-2xl font-bold">{userDetails.contractStats.total}</p>
-                      <p className="text-xs text-muted-foreground">Total</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 text-center">
-                      <Clock className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                      <p className="text-2xl font-bold">{userDetails.contractStats.active}</p>
-                      <p className="text-xs text-muted-foreground">Ativos</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 text-center">
-                      <CheckCircle className="h-6 w-6 mx-auto mb-2 text-green-500" />
-                      <p className="text-2xl font-bold">{userDetails.contractStats.won}</p>
-                      <p className="text-xs text-muted-foreground">Ganhos</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4 text-center">
-                      <XCircle className="h-6 w-6 mx-auto mb-2 text-red-500" />
-                      <p className="text-2xl font-bold">{userDetails.contractStats.lost}</p>
-                      <p className="text-xs text-muted-foreground">Perdidos</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="border rounded-lg">
-                  <div className="p-3 border-b bg-muted/50">
-                    <h4 className="font-medium">Contratos Recentes</h4>
-                  </div>
-                  <ScrollArea className="h-64">
-                    <div className="p-3 space-y-2">
-                      {userDetails.contracts.length > 0 ? (
-                        userDetails.contracts.slice(0, 20).map((contract) => {
-                          // Determine contract status based on market status and result
-                          const isActive = contract.market_status === 'active' || contract.market_status === 'halted';
-                          const isWon = contract.market_status === 'settled' && 
-                            contract.market_result?.toUpperCase() === contract.position?.toUpperCase();
-                          const isLost = contract.market_status === 'settled' && 
-                            contract.market_result?.toUpperCase() !== contract.position?.toUpperCase();
-                          const statusLabel = isWon ? 'GANHO' : isLost ? 'PERDIDO' : 'ATIVO';
-                          
-                          return (
-                            <div key={contract.id} className="p-3 border rounded space-y-1">
-                              <p className="font-medium text-sm truncate">{contract.market_title}</p>
-                              <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={contract.position === 'YES' ? 'default' : 'secondary'}>
-                                    {contract.position}
-                                  </Badge>
-                                  <span>{contract.shares} shares</span>
-                                  <span className="text-muted-foreground">
-                                    @ {formatCurrency(contract.average_price)}
-                                  </span>
-                                </div>
-                                <Badge variant={
-                                  isWon ? 'default' :
-                                  isLost ? 'destructive' : 'outline'
-                                }>
-                                  {statusLabel}
-                                </Badge>
-                              </div>
-                              <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Total: {formatCurrency(contract.total_invested)}</span>
-                                <span>{format(new Date(contract.created_at), 'dd/MM/yyyy HH:mm')}</span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="text-center text-muted-foreground py-8">Nenhum contrato</p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
+              <TabsContent value="contracts" className="space-y-3 mt-4">
+                <p className="text-sm text-muted-foreground">Posições simuladas abertas; não representam ordens reais nem resultados liquidados.</p>
+                {userDetails.paper.positions.length ? userDetails.paper.positions.map(position => <div key={position.id} className="border rounded-lg p-4"><p className="font-medium">{position.market_question}</p><p className="text-sm text-muted-foreground">{position.outcome_label} · {Number(position.shares).toLocaleString('pt-BR')} shares · preço médio {(Number(position.average_price) * 100).toFixed(2)}¢</p></div>) : <p className="text-sm text-muted-foreground">Nenhuma posição simulada aberta.</p>}
               </TabsContent>
 
               <TabsContent value="activity" className="space-y-4 mt-4">
@@ -1077,7 +864,7 @@ export function AdminUsersPage() {
               </TabsContent>
             </Tabs>
           ) : (
-            <p className="text-center text-muted-foreground py-8">Usuário não encontrado</p>
+            <p role="alert" className="text-center text-destructive py-8">{detailsError ? "Não foi possível carregar os detalhes do usuário." : "Usuário não encontrado."}</p>
           )}
         </SheetContent>
       </Sheet>
@@ -1399,140 +1186,6 @@ export function AdminUsersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Adjustment Dialog */}
-      <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {adjustmentType === 'add' ? 'Creditar Saldo' : 'Debitar Saldo'}
-            </DialogTitle>
-            <DialogDescription>
-              {adjustmentType === 'add' 
-                ? 'Adicionar valor ao saldo disponível do usuário'
-                : 'Remover valor do saldo disponível do usuário'
-              }
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label>Usuário</Label>
-              <div className="bg-muted p-3 rounded space-y-1">
-                <p className="font-medium">
-                  {selectedUser?.display_name || 'Sem nome'}
-                </p>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {selectedUser?.email}
-                </p>
-                <p className="font-mono text-xs text-muted-foreground">
-                  ID: {selectedUser?.user_id.substring(0, 8)}...
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <Label>Saldo Atual</Label>
-              <p className="text-lg font-bold">
-                {selectedUser && formatCurrency(selectedUser.balance_available)}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Valor do Ajuste (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max="100000"
-                value={adjustmentAmount}
-                onChange={(e) => setAdjustmentAmount(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Motivo do Ajuste *</Label>
-              <Textarea
-                value={adjustmentReason}
-                onChange={(e) => setAdjustmentReason(e.target.value)}
-                placeholder="Descreva o motivo do ajuste..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAdjustDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleProceedToConfirm}>
-              Prosseguir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Balance Confirmation Dialog */}
-      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Ajuste de Saldo</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-4">
-                <p>Você está prestes a realizar o seguinte ajuste:</p>
-                
-                <div className="p-4 bg-muted rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Tipo:</span>
-                    <Badge variant={adjustmentType === 'add' ? 'default' : 'destructive'}>
-                      {adjustmentType === 'add' ? 'CRÉDITO' : 'DÉBITO'}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Valor:</span>
-                    <span className="font-bold">
-                      {adjustmentAmount && formatCurrency(parseFloat(adjustmentAmount))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Novo Saldo:</span>
-                    <span className="font-bold">
-                      {selectedUser && adjustmentAmount && formatCurrency(
-                        selectedUser.balance_available + 
-                        (adjustmentType === 'add' ? 1 : -1) * parseFloat(adjustmentAmount)
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                  <strong>Motivo:</strong> {adjustmentReason}
-                </div>
-
-                <p className="text-sm text-destructive font-medium">
-                  Esta ação será registrada no log de auditoria e não pode ser desfeita.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmAdjustment}
-              disabled={adjustBalance.isPending}
-            >
-              {adjustBalance.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Confirmar Ajuste'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

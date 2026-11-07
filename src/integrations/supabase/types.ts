@@ -2239,6 +2239,87 @@ export type Database = {
           },
         ]
       }
+      polymarket_favorites: {
+        Row: {
+          created_at: string
+          market_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          market_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          market_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      polymarket_market_cache: {
+        Row: {
+          accepting_orders: boolean
+          condition_id: string | null
+          description: string | null
+          end_date: string | null
+          image_url: string | null
+          liquidity_usd: number | null
+          market_id: string
+          outcomes: Json
+          protocol_version: string | null
+          question: string
+          restricted: boolean
+          slug: string | null
+          source: string
+          source_updated_at: string | null
+          spread: number | null
+          synced_at: string
+          volume_usd: number | null
+        }
+        Insert: {
+          accepting_orders?: boolean
+          condition_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          image_url?: string | null
+          liquidity_usd?: number | null
+          market_id: string
+          outcomes?: Json
+          protocol_version?: string | null
+          question: string
+          restricted?: boolean
+          slug?: string | null
+          source?: string
+          source_updated_at?: string | null
+          spread?: number | null
+          synced_at?: string
+          volume_usd?: number | null
+        }
+        Update: {
+          accepting_orders?: boolean
+          condition_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          image_url?: string | null
+          liquidity_usd?: number | null
+          market_id?: string
+          outcomes?: Json
+          protocol_version?: string | null
+          question?: string
+          restricted?: boolean
+          slug?: string | null
+          source?: string
+          source_updated_at?: string | null
+          spread?: number | null
+          synced_at?: string
+          volume_usd?: number | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

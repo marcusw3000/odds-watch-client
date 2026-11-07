@@ -451,12 +451,19 @@ BEGIN
 END;
 $function$;
 
--- Criar trigger se não existir
-DROP TRIGGER IF EXISTS trigger_update_referral_cache ON referrals;
-CREATE TRIGGER trigger_update_referral_cache
-  AFTER INSERT OR UPDATE ON referrals
-  FOR EACH ROW
-  EXECUTE FUNCTION update_referral_stats_cache();
+-- A tabela de referrals foi introduzida fora da linha de migrations original.
+-- Em bancos novos, instale o trigger apenas quando ela já estiver presente.
+DO $$
+BEGIN
+  IF to_regclass('public.referrals') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trigger_update_referral_cache ON public.referrals;
+    CREATE TRIGGER trigger_update_referral_cache
+      AFTER INSERT OR UPDATE ON public.referrals
+      FOR EACH ROW
+      EXECUTE FUNCTION public.update_referral_stats_cache();
+  END IF;
+END;
+$$;
 
 -- Parte 8: Trigger para atualizar cache de comissões
 CREATE OR REPLACE FUNCTION public.update_commission_cache()
@@ -493,12 +500,17 @@ BEGIN
 END;
 $function$;
 
--- Criar trigger se não existir
-DROP TRIGGER IF EXISTS trigger_update_commission_cache ON referral_commissions;
-CREATE TRIGGER trigger_update_commission_cache
-  AFTER INSERT ON referral_commissions
-  FOR EACH ROW
-  EXECUTE FUNCTION update_commission_cache();
+DO $$
+BEGIN
+  IF to_regclass('public.referral_commissions') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trigger_update_commission_cache ON public.referral_commissions;
+    CREATE TRIGGER trigger_update_commission_cache
+      AFTER INSERT ON public.referral_commissions
+      FOR EACH ROW
+      EXECUTE FUNCTION public.update_commission_cache();
+  END IF;
+END;
+$$;
 
 -- Parte 9: Atualizar check_and_grant_achievements para incluir novas conquistas
 CREATE OR REPLACE FUNCTION public.check_and_grant_achievements(p_user_id uuid)

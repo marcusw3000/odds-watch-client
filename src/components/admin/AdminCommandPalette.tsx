@@ -23,7 +23,6 @@ import {
   Activity,
   Gift,
   Flag,
-  Lightbulb,
   Headphones,
   Copy,
   Settings,
@@ -39,28 +38,16 @@ interface CommandPaletteProps {
 
 const navigationItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/events', label: 'Eventos', icon: Calendar },
-  { path: '/admin/settlements', label: 'Liquidações', icon: Scale },
   { path: '/admin/audit', label: 'Auditoria', icon: FileText },
-  { path: '/admin/financial', label: 'Visão Financeira', icon: DollarSign },
-  { path: '/admin/fees', label: 'Taxas', icon: Receipt },
-  { path: '/admin/ledger', label: 'Ledger', icon: BookOpen },
-  { path: '/admin/revenue', label: 'Receita', icon: TrendingUp },
-  { path: '/admin/copy-trade-settings', label: 'Copy Trade - Configurações', icon: Settings },
-  { path: '/admin/copy-traders', label: 'Copy Trade - Traders', icon: Copy },
-  { path: '/admin/suggestions', label: 'Sugestões', icon: Lightbulb },
   { path: '/admin/reports', label: 'Denúncias', icon: Flag },
   { path: '/admin/support', label: 'Suporte', icon: Headphones },
   { path: '/admin/audit-logs', label: 'Logs de Auditoria', icon: ClipboardList },
   { path: '/admin/users', label: 'Usuários', icon: Users },
-  { path: '/admin/market-events', label: 'Eventos de Mercado', icon: Activity },
   { path: '/admin/referrals', label: 'Indicações', icon: Gift },
   { path: '/admin/system', label: 'Sistema', icon: Server },
 ];
 
 const quickActions = [
-  { path: '/admin/events/new', label: 'Criar Novo Evento', icon: Plus },
-  { path: '/admin/settlements', label: 'Ver Liquidações Pendentes', icon: Scale },
   { path: '/admin/users', label: 'Buscar Usuário', icon: Search },
 ];
 

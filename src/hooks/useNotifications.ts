@@ -11,7 +11,7 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Fetch notifications
-  const { data: notifications, isLoading } = useQuery({
+  const { data: notifications, isLoading, error } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: async (): Promise<Notification[]> => {
       if (!user) return [];
@@ -71,6 +71,7 @@ export function useNotifications() {
     notifications: notifications || [],
     unreadCount,
     isLoading,
+    error,
   };
 }
 
@@ -164,11 +165,13 @@ export function useUpdateNotificationPreferences() {
       if (!user) throw new Error('Not authenticated');
 
       // Check if preferences exist
-      const { data: existing } = await supabase
+      const { data: existing, error: readError } = await supabase
         .from('notification_preferences')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      if (readError) throw readError;
 
       if (existing) {
         const { error } = await supabase

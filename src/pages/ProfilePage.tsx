@@ -7,16 +7,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { 
   usePublicProfile, 
   useMyLeaderboardProfile, 
-  useMyStatistics,
   useUpdateLeaderboardProfile,
-  useLeaderboard 
 } from '@/hooks/useLeaderboard';
+import { usePaperLeaderboard } from '@/hooks/usePaperLeaderboard';
+import { usePaperProfile } from '@/hooks/usePaperProfile';
+import { PaperProfileStats, PaperProfileAchievements, PaperProfileHistory } from '@/components/profile/PaperProfileSections';
 import { 
   ProfileHeader, 
-  ProfileStats, 
-  PublicTradeHistory,
   ProfilePrivacySettings,
-  AchievementsWithProgress
 } from '@/components/profile';
 import type { UserProfile } from '@/types/leaderboard';
 import { toast } from 'sonner';
@@ -30,8 +28,8 @@ export default function ProfilePage() {
 
   // Hooks for own profile
   const { data: myProfile, isLoading: isLoadingMyProfile } = useMyLeaderboardProfile();
-  const { data: myStats, isLoading: isLoadingMyStats } = useMyStatistics();
   const updateProfile = useUpdateLeaderboardProfile();
+  const paper = usePaperProfile(targetUserId);
 
   // Hook for public profile (other users)
   const { data: publicProfile, isLoading: isLoadingPublicProfile } = usePublicProfile(
@@ -39,15 +37,15 @@ export default function ProfilePage() {
   );
 
   // Get leaderboard to find rank
-  const { data: leaderboardData } = useLeaderboard('profit', 100);
+  const { data: leaderboardData } = usePaperLeaderboard('profit', 100);
 
   const isLoading = isOwnProfile 
-    ? (isLoadingMyProfile || isLoadingMyStats) 
+    ? isLoadingMyProfile
     : isLoadingPublicProfile;
 
   // Build unified profile object
   const profile: UserProfile | null = isOwnProfile
-    ? (myProfile && myStats ? {
+    ? (myProfile ? {
         id: myProfile.user_id,
         email: null,
         full_name: null,
@@ -59,14 +57,14 @@ export default function ProfilePage() {
         show_roi: myProfile.show_roi,
         show_volume: myProfile.show_volume,
         show_trades: myProfile.show_trades,
-        total_profit: myStats.total_profit,
-        roi_percent: myStats.roi_percent,
-        total_volume: myStats.total_volume,
-        total_trades: myStats.total_trades,
-        winning_trades: myStats.winning_trades,
-        current_streak: myStats.current_streak,
-        best_streak: myStats.best_streak,
-        best_trade_profit: myStats.best_trade_profit,
+        total_profit: 0,
+        roi_percent: 0,
+        total_volume: 0,
+        total_trades: 0,
+        winning_trades: 0,
+        current_streak: 0,
+        best_streak: 0,
+        best_trade_profit: 0,
         created_at: myProfile.created_at || '',
         updated_at: myProfile.updated_at || '',
       } : null)
@@ -180,15 +178,7 @@ export default function ProfilePage() {
     );
   }
 
-  // Hide history tab for approved copy traders when viewing someone else's profile
-  const isApprovedTrader = !isOwnProfile && profile?.is_copy_trader === true;
-  
-  // Calculate grid columns based on visible tabs
-  const getGridCols = () => {
-    if (isOwnProfile) return 'grid-cols-4';
-    if (isApprovedTrader) return 'grid-cols-2';
-    return 'grid-cols-3';
-  };
+  const getGridCols = () => isOwnProfile ? 'grid-cols-4' : 'grid-cols-3';
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
@@ -205,27 +195,21 @@ export default function ProfilePage() {
         <TabsList className={`grid w-full ${getGridCols()}`}>
           <TabsTrigger value="stats">Estatísticas</TabsTrigger>
           <TabsTrigger value="achievements">Conquistas</TabsTrigger>
-          {!isApprovedTrader && <TabsTrigger value="history">Histórico</TabsTrigger>}
+          <TabsTrigger value="history">Histórico</TabsTrigger>
           {isOwnProfile && <TabsTrigger value="settings">Configurações</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="stats" className="mt-6">
-          <ProfileStats profile={profile} isOwnProfile={isOwnProfile} />
+          {paper.isLoading ? <Skeleton className="h-32 w-full" /> : paper.isError || !paper.data ? <p role="alert">Não foi possível carregar as estatísticas do simulador. <button className="underline" onClick={() => paper.refetch()}>Tentar novamente</button></p> : <PaperProfileStats data={paper.data} />}
         </TabsContent>
 
         <TabsContent value="achievements" className="mt-6">
-          <AchievementsWithProgress />
+          {paper.isLoading ? <Skeleton className="h-32 w-full" /> : paper.isError || !paper.data ? <p role="alert">Não foi possível carregar as conquistas. <button className="underline" onClick={() => paper.refetch()}>Tentar novamente</button></p> : <PaperProfileAchievements data={paper.data} />}
         </TabsContent>
 
-        {!isApprovedTrader && (
           <TabsContent value="history" className="mt-6">
-            <PublicTradeHistory
-              userId={targetUserId || ''}
-              profile={profile}
-              isOwnProfile={isOwnProfile}
-            />
+            {paper.isLoading ? <Skeleton className="h-32 w-full" /> : paper.isError || !paper.data ? <p role="alert">Não foi possível carregar o histórico. <button className="underline" onClick={() => paper.refetch()}>Tentar novamente</button></p> : <PaperProfileHistory data={paper.data} />}
           </TabsContent>
-        )}
 
         {isOwnProfile && (
           <TabsContent value="settings" className="mt-6">

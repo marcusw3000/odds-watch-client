@@ -12,7 +12,11 @@ dist
 dist-ssr
 build
 .react-router
+playwright-report
+test-results
+blob-report
 *.local
+*.local.partial
 .env
 .env.*
 .lovable

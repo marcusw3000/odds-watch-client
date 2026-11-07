@@ -23,6 +23,7 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
     if (path.endsWith("/execute-polymarket-paper-trade")) {
       const body = route.request().postDataJSON();
       expect(body).toHaveProperty("requestId"); expect(body).toHaveProperty("roundId"); expect(body).not.toHaveProperty("p_price");
+      expect(body.shares).toBe(10.02);
       trades += 1; return reply({ success: true, price: 0.001, notional_usd: 0.01 });
     }
     return reply([]);
@@ -33,6 +34,19 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
   await page.locator('input[autocomplete="current-password"]').fill("PaperTest123!");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/polymarket\/market\/559687/);
+  const quantity = page.getByLabel('Quantidade', { exact: true });
+  await quantity.fill('10,02');
+  await page.getByRole('button', { name: 'Aumentar quantidade em 10 shares' }).click();
+  await expect(quantity).toHaveValue('20,02');
+  await page.getByRole('button', { name: 'Diminuir quantidade em 10 shares' }).click();
+  await expect(quantity).toHaveValue('10,02');
+  await page.getByRole('button', { name: 'Aumentar quantidade em 1 share' }).click();
+  await expect(quantity).toHaveValue('11,02');
+  await page.getByRole('button', { name: 'Diminuir quantidade em 1 share' }).click();
+  await expect(quantity).toHaveValue('10,02');
+  await page.getByRole('button', { name: 'Vender', exact: true }).click();
+  await expect(quantity).toHaveValue('10,02');
+  await page.getByRole('button', { name: 'Comprar', exact: true }).click();
   await page.getByRole("button", { name: "Comprar no simulador" }).click();
   await expect(page.getByText("Operação simulada registrada.")).toBeVisible();
   const preview = page.getByRole("dialog", { name: "Compartilhar minha previsão" });

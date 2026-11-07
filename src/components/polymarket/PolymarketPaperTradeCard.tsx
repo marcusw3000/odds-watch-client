@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FlaskConical, RotateCcw } from "lucide-react";
+import { FlaskConical, Minus, Plus, RotateCcw } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,13 +23,22 @@ export function PolymarketPaperTradeCard({ market, analytics, selectedOutcome, o
   const pendingRequest = useRef<{ fingerprint: string; requestId: string; limitPrice: number } | null>(null);
   const { data, isAuthenticated, userId, trade, reset, isLoading, error } = usePolymarketPaperTrading();
   const outcome = market.outcomes.find((item) => item.label === selectedOutcome) ?? market.outcomes[0];
-  const amount = Number(shares);
+  const amount = Number(shares.replace(",", "."));
   const selectedBook = analytics?.outcomeLabel === outcome?.label ? analytics : null;
   const preview = selectedBook ? previewPaperExecution(side === "BUY" ? selectedBook.asks : selectedBook.bids, amount, side) : null;
   const price = preview?.complete ? Number(preview.price.toFixed(6)) : NaN;
   const closed = market.status === "closed";
-  const canSubmit = !closed && Boolean(outcome) && Number.isFinite(amount) && amount > 0 && Number.isFinite(price) && price > 0 && price <= 1;
+  const canSubmit = !closed && Boolean(outcome) && Number.isFinite(amount) && amount > 0 && amount <= 1_000_000 && Number.isFinite(price) && price > 0 && price <= 1;
   const balance = data?.wallet?.balance_usd;
+
+  function changeShares(value: string) {
+    if (/^\d*(?:[.,]\d{0,6})?$/.test(value)) setShares(value);
+  }
+
+  function stepShares(step: number) {
+    const next = Math.min(1_000_000, Math.max(0, (Number.isFinite(amount) ? amount : 0) + step));
+    setShares(String(Number(next.toFixed(6))).replace(".", ","));
+  }
 
   function submit() {
     if (!canSubmit || !outcome || trade.isPending) return;
@@ -72,8 +81,17 @@ export function PolymarketPaperTradeCard({ market, analytics, selectedOutcome, o
           {(["BUY", "SELL"] as const).map((value) => <button key={value} type="button" onClick={() => setSide(value)} aria-pressed={side === value} className={`border-b-2 pb-2 ${side === value ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>{value === "BUY" ? "Comprar" : "Vender"}</button>)}
         </div>
         <div><p className="mb-2 text-xs font-medium text-muted-foreground">Resultado</p><div className="grid grid-cols-2 gap-2">{market.outcomes.map((item, index) => <button key={`${item.label}-${index}`} type="button" onClick={() => onSelectOutcome(item.label)} aria-pressed={outcome?.label === item.label} className={`rounded-lg border px-2 py-3 text-sm font-semibold transition-colors ${outcome?.label === item.label ? index === 0 ? "border-emerald-500/50 bg-emerald-600 text-white" : "border-rose-500/50 bg-rose-700 text-white" : "border-border bg-background/40 text-muted-foreground hover:text-foreground"}`}>{item.label} {item.price != null && Number.isFinite(Number(item.price)) ? `${(Number(item.price) * 100).toFixed(1)}¢` : "—"}</button>)}</div></div>
-        <label className="block text-sm font-semibold" htmlFor="paper-shares">Quantidade de shares</label>
-        <Input id="paper-shares" type="number" min="0.01" step="0.01" value={shares} onChange={(event) => setShares(event.target.value)} className="text-right text-lg" />
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold" htmlFor="paper-shares">Quantidade</label>
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 p-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+            <button type="button" aria-label="Diminuir quantidade em 1 share" disabled={trade.isPending || !Number.isFinite(amount) || amount <= 0} onClick={() => stepShares(-1)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"><Minus className="h-4 w-4" aria-hidden="true" /></button>
+            <button type="button" aria-label="Diminuir quantidade em 10 shares" disabled={trade.isPending || !Number.isFinite(amount) || amount <= 0} onClick={() => stepShares(-10)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40">−10</button>
+            <Input id="paper-shares" type="text" inputMode="decimal" autoComplete="off" value={shares} disabled={trade.isPending} onChange={(event) => changeShares(event.target.value)} className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-center font-mono text-lg font-semibold shadow-none focus-visible:ring-0 focus-visible:ring-offset-0" />
+            <button type="button" aria-label="Aumentar quantidade em 10 shares" disabled={trade.isPending || amount >= 1_000_000} onClick={() => stepShares(10)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40">+10</button>
+            <button type="button" aria-label="Aumentar quantidade em 1 share" disabled={trade.isPending || amount >= 1_000_000} onClick={() => stepShares(1)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4" aria-hidden="true" /></button>
+          </div>
+          <p className="text-xs text-muted-foreground">Use os botões ou digite uma quantidade, inclusive fracionada.</p>
+        </div>
         <div className="flex justify-between text-sm text-muted-foreground"><span>{side === "BUY" ? "Custo estimado" : "Valor estimado"}</span><span className="font-medium text-foreground">{canSubmit ? `US$ ${(amount * price).toFixed(2)}` : "—"}</span></div>
         {preview?.complete && <p className="text-xs text-muted-foreground">Preço médio simulado: {(price * 100).toFixed(2)}¢ por share, com base nas ofertas visíveis. Sem taxas.</p>}
         {!closed && (!preview || !preview.complete) && <p className="text-xs text-muted-foreground">{preview ? `Liquidez visível insuficiente: ${preview.available.toFixed(2)} shares disponíveis.` : "Livro de ofertas indisponível para esta operação."}</p>}

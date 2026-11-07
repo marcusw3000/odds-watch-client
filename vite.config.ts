@@ -9,6 +9,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     port: 8080,
   },
   plugins: [reactRouter()],
+  // Bundle both router packages into the SSR output so serverless tracing
+  // cannot omit React Router's conditional `dom` export at runtime.
+  ssr: {
+    noExternal: ["react-router", "react-router-dom"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

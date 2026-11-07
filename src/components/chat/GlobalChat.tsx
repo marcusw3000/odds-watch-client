@@ -72,7 +72,11 @@ export function GlobalChat() {
         ref={scrollRef}
         className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3"
       >
-        {isLoading ? (
+        {!isAuthenticated ? (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-center text-sm text-muted-foreground">Faça login para visualizar o chat</p>
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>

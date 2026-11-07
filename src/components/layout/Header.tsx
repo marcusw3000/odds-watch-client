@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, Menu, X, LogIn, Trophy, Briefcase } from 'lucide-react';
+import { TrendingUp, Menu, X, LogIn, Trophy } from 'lucide-react';
 import { KalshiIcon, PolymarketIcon } from './MarketBrandIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,6 @@ export function Header() {
     { path: '/polymarket', label: 'Polymarket', icon: PolymarketIcon },
     { path: '/kalshi', label: 'Kalshi', icon: KalshiIcon, unavailable: true },
     { path: '/leaderboard', label: 'Ranking', icon: Trophy },
-    { path: '/portfolio', label: 'Portfólio', icon: Briefcase },
   ];
 
   const isActive = (path: string) => {

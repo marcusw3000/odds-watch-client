@@ -3,6 +3,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 afterEach(() => { vi.unstubAllGlobals(); vi.resetModules(); });
 
 describe("Polymarket catalog filters", () => {
+  it("defaults to Brazil while preserving trending and global search", async () => {
+    const { parseCatalogFilters } = await import("@/services/PolymarketCatalogCache.server");
+    expect(parseCatalogFilters(new URLSearchParams()).category).toBe("brazil");
+    expect(parseCatalogFilters(new URLSearchParams("category=")).category).toBe("");
+    expect(parseCatalogFilters(new URLSearchParams("q=bitcoin")).category).toBe("");
+    expect(parseCatalogFilters(new URLSearchParams("q=bitcoin&category=brazil")).category).toBe("brazil");
+  });
+
   it("normalizes invalid input and preserves safe filters", async () => {
     const { parseCatalogFilters } = await import("@/services/PolymarketCatalogCache.server");
     expect(parseCatalogFilters(new URLSearchParams("category=invalid%2Fcategory&status=oops&sort=oops&page=-2&endAfter=2026-02-31&minVolume=-1"))).toMatchObject({ category: "", status: "open", sort: "volume", page: 1, endAfter: "", minVolume: "" });

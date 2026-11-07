@@ -1,6 +1,7 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
+  route("api/polymarket/portfolio-quotes", "./route-modules/polymarket-portfolio-quotes.ts", { id: "polymarket-portfolio-quotes" }),
   route("api/polymarket/market/:id/share", "./route-modules/polymarket-share-market.ts", { id: "polymarket-share-market" }),
   layout("./route-modules/public-info-layout.tsx", { id: "public-info-layout" }, [
     route("faq", "./route-modules/faq.tsx", { id: "faq" }),

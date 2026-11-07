@@ -16,6 +16,7 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
     if (path === "/auth/v1/user") return reply(user);
     if (path.endsWith("/rpc/has_role")) return reply(false);
     if (path.endsWith("/rpc/get_polymarket_paper_wallet")) return reply({ user_id: user.id, balance_usd: 10000, round_id: "4788abf8-4844-442a-9e03-6fcac9c0d129" });
+    if (path.endsWith("/polymarket_paper_positions")) return reply([{ id: "position-1", market_id: "559687", market_question: "Mercado de teste", outcome_label: "Yes", outcome_token_id: "token-yes", shares: 10, average_price: 0.25 }]);
     if (path.endsWith("/polymarket_paper_trades")) return reply(trades ? [{ id: "trade-1", market_id: "559687", side: "BUY", outcome_label: "Yes", price: 0.001, shares: 10, notional_usd: 0.01 }, { id: "trade-2", market_id: "559687", side: "SELL", outcome_label: "Yes", price: 0.002, shares: 1, notional_usd: 0.002 }] : []);
     if (path.endsWith("/rpc/get_my_paper_ranking_stats")) return reply([{ total_profit: 0, roi_percent: 0, total_volume: trades ? 0.01 : 0, total_trades: trades, winning_trades: 0 }]);
     if (path.endsWith("/rpc/get_paper_leaderboard")) return reply(trades ? [{ rank: 1, user_id: user.id, display_name: "Teste Paper", avatar_url: null, total_profit: 0, roi_percent: 0, total_volume: 0.01, total_trades: trades, winning_trades: 0, show_profit: true, show_roi: true, show_volume: true, show_trades: true }] : []);
@@ -29,11 +30,13 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
     return reply([]);
   });
   await page.route("**/api/polymarket/market/559687/share", route => route.fulfill({ json: { question: "Mercado de teste", imageUrl: null } }));
+  await page.route("**/api/polymarket/portfolio-quotes", route => route.fulfill({ json: { markets: [{ marketId: '559687', outcomes: [{ label: 'Yes', tokenId: 'token-yes', price: '0.5' }] }] } }));
   await page.goto("/auth?returnTo=%2Fpolymarket%2Fmarket%2F559687%3Foutcome%3DYes");
   await page.getByPlaceholder("seu@email.com").fill(user.email);
   await page.locator('input[autocomplete="current-password"]').fill("PaperTest123!");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/polymarket\/market\/559687/);
+  await expect(page.getByLabel('Valores simulados em dólares').getByText('US$ 5,00')).toBeVisible();
   const quantity = page.getByLabel('Quantidade', { exact: true });
   await quantity.fill('10,02');
   await page.getByRole('button', { name: 'Aumentar quantidade em 10 shares' }).click();
@@ -64,6 +67,9 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
   await expect(page.getByText("Operações verificadas", { exact: true })).toBeVisible();
   await expect(page.getByText("Operações verificadas", { exact: true }).locator("..")).toContainText("1");
   await page.goto("/portfolio");
+  await expect(page.getByText('Lucro / Prejuízo em aberto')).toBeVisible();
+  await expect(page.getByText('US$ 2,50')).toBeVisible();
+  await expect(page.getByText('Gráfico desta sessão.', { exact: false })).toBeVisible();
   await page.getByRole("tab", { name: "Histórico de trades" }).click();
   await expect(page.getByRole("button", { name: "Compartilhar card" })).toHaveCount(1);
   await page.getByRole("button", { name: "Compartilhar card" }).click();

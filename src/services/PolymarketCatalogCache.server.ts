@@ -4,7 +4,7 @@ import type { PolymarketMarket, PolymarketMarketsPage, PolymarketOutcome } from 
 
 const db = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 export const CATALOG_PAGE_SIZE = 24;
-export const CATEGORY_SLUGS = ["politics", "sports", "crypto", "esports", "iran", "finance", "geopolitics", "tech", "elections", "pop-culture", "economy", "weather", "art"] as const;
+export const CATEGORY_SLUGS = ["brazil", "politics", "sports", "crypto", "esports", "iran", "finance", "geopolitics", "tech", "elections", "pop-culture", "economy", "weather", "art"] as const;
 
 export interface CatalogFilters {
   query: string;
@@ -42,7 +42,8 @@ function validDate(value: string | null): string {
 }
 
 export function parseCatalogFilters(params: URLSearchParams): CatalogFilters {
-  const category = params.get("category") ?? "";
+  // An explicit empty category selects Em alta; searches without a category remain global.
+  const category = params.get("category") ?? (params.get("q")?.trim() ? "" : "brazil");
   const status = params.get("status");
   const sort = params.get("sort");
   const rawVolume = params.get("minVolume") ?? "";

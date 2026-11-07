@@ -14,7 +14,7 @@ export function usePolymarketPaperTrading({ enabled = true }: { enabled?: boolea
       db.from("polymarket_paper_trades").select("*").order("created_at", { ascending: false }).limit(10),
     ]); if (positionsError || tradesError) throw positionsError ?? tradesError; return { wallet, positions, trades };
   }});
-  const refresh = async () => { await Promise.all([client.invalidateQueries({ queryKey: key(user?.id) }), client.invalidateQueries({ queryKey: ["paper-leaderboard"] }), client.invalidateQueries({ queryKey: ["my-paper-ranking"] }), client.invalidateQueries({ queryKey: ["paper-profile", user?.id] })]); };
+  const refresh = async () => { await Promise.all([client.invalidateQueries({ queryKey: key(user?.id) }), client.invalidateQueries({ queryKey: ["paper-portfolio-quotes"] }), client.invalidateQueries({ queryKey: ["paper-leaderboard"] }), client.invalidateQueries({ queryKey: ["my-paper-ranking"] }), client.invalidateQueries({ queryKey: ["paper-profile", user?.id] })]); };
   const trade = useMutation({ mutationFn: async (input: PaperTradeInput) => {
     const { data, error } = await supabase.functions.invoke("execute-polymarket-paper-trade", { body: input });
     if (error) {

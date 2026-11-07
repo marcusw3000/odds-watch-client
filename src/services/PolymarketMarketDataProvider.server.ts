@@ -155,7 +155,7 @@ export async function listPolymarketMarkets({ cursor = null, limit = 18 }: {
 }
 
 export async function listPolymarketCategory(category: string): Promise<PolymarketMarketsPage> {
-  const allowed = new Set(["politics", "sports", "crypto", "esports", "finance", "geopolitics", "tech", "elections", "culture", "economy"]);
+  const allowed = new Set(["brazil", "politics", "sports", "crypto", "esports", "finance", "geopolitics", "tech", "elections", "culture", "economy"]);
   if (!allowed.has(category)) throw new Error("Invalid Polymarket category");
   const key = `category:${category}`;
   const cached = pageCache.get(key);

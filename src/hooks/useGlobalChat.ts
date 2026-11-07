@@ -48,6 +48,14 @@ export function useGlobalChat() {
 
   // Load history (last 6 hours)
   useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setMessages([]);
+      messageIdsRef.current.clear();
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
     const loadHistory = async () => {
       setIsLoading(true);
       setError(null);
@@ -61,22 +69,29 @@ export function useGlobalChat() {
           .limit(200);
 
         if (fetchError) throw fetchError;
+        if (cancelled) return;
 
         const msgs = (data || []) as ChatMessage[];
         messageIdsRef.current = new Set(msgs.map(m => m.id));
         setMessages(msgs);
       } catch (err: any) {
+        if (cancelled) return;
         console.error('[GlobalChat] Failed to load history:', err);
         setError('Erro ao carregar mensagens');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     loadHistory();
-  }, []);
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Realtime subscription (postgres_changes)
   useEffect(() => {
+    if (!user?.id) {
+      setIsConnected(false);
+      return;
+    }
     const channel = supabase
       .channel('global-chat-realtime')
       .on(
@@ -100,7 +115,7 @@ export function useGlobalChat() {
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, []);
+  }, [user?.id]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!user || !username) return;

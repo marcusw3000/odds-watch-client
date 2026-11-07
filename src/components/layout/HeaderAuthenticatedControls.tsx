@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Wallet, LogOut, Gift, Plus, Calculator, Headphones, Settings } from 'lucide-react';
+import { User, LogOut, Gift, Calculator, Headphones, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyLeaderboardProfile } from '@/hooks/useLeaderboard';
 import { usePolymarketPaperTrading } from '@/hooks/usePolymarketPaperTrading';
+import { usePaperPortfolioValue } from '@/hooks/usePaperPortfolioValue';
 
 const NotificationBell = lazy(() =>
   import('@/components/notifications/NotificationBell').then((module) => ({
@@ -20,25 +21,15 @@ const NotificationBell = lazy(() =>
   }))
 );
 
-function BalanceIcon({ isLoading }: { isLoading: boolean }) {
-  return (
-    <div className="relative">
-      <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-      {isLoading && (
-        <span
-          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse"
-          aria-label="Atualizando saldo"
-        />
-      )}
-    </div>
-  );
-}
+const formatUsd = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(value);
 
 function useHeaderUserState() {
   const { user, isAdmin, signOut } = useAuth();
   const { data: myProfile } = useMyLeaderboardProfile();
   const paper = usePolymarketPaperTrading();
-  const paperBalance = paper.data ? Number(paper.data.wallet.balance_usd) : null;
+  const portfolio = usePaperPortfolioValue(paper.data?.positions);
+  const balance = Number(paper.data?.wallet?.balance_usd);
+  const paperBalance = paper.data && Number.isFinite(balance) ? balance : null;
 
   const getUserInitials = () => {
     if (myProfile?.display_name) {
@@ -59,12 +50,14 @@ function useHeaderUserState() {
     myProfile,
     paperBalance,
     isPaperBalanceLoading: paper.isLoading,
+    portfolioValue: portfolio.total,
+    portfolioLoading: paper.isLoading || portfolio.isValuationLoading,
     getUserInitials,
   };
 }
 
 export function HeaderAuthenticatedControls() {
-  const { user, isAdmin, signOut, myProfile, paperBalance, isPaperBalanceLoading, getUserInitials } = useHeaderUserState();
+  const { user, isAdmin, signOut, myProfile, paperBalance, isPaperBalanceLoading, portfolioValue, portfolioLoading, getUserInitials } = useHeaderUserState();
 
   if (!user) {
     return null;
@@ -76,14 +69,10 @@ export function HeaderAuthenticatedControls() {
 
   return (
     <>
-      <div className="flex items-center gap-1 rounded-lg bg-secondary pl-4 pr-1 py-1" aria-label="Saldo virtual Paper Trading">
-          <BalanceIcon isLoading={isPaperBalanceLoading} />
-        <span className="font-mono font-semibold text-foreground mr-1">
-          {paperBalance === null ? 'Saldo indisponível' : `US$ ${paperBalance.toFixed(2)}`}
-        </span>
-          <Button size="sm" className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
-            <Link to="/polymarket/paper" aria-label="Abrir carteira Paper Trading"><Plus className="h-4 w-4" /></Link>
-          </Button>
+      <div className="flex items-center rounded-xl border border-border bg-secondary/70 px-1 py-1" aria-label="Valores simulados em dólares">
+        <Link to="/polymarket/paper" className="rounded-lg px-3 py-1 transition-colors hover:bg-accent"><span className="block text-[10px] font-medium text-muted-foreground">Carteira · virtual</span><span className="block whitespace-nowrap text-sm font-semibold tabular-nums">{isPaperBalanceLoading ? 'Carregando...' : paperBalance === null ? 'Indisponível' : formatUsd(paperBalance)}</span></Link>
+        <div className="h-7 w-px bg-border" aria-hidden="true" />
+        <Link to="/portfolio" className="rounded-lg px-3 py-1 transition-colors hover:bg-accent"><span className="block text-[10px] font-medium text-muted-foreground">Portfólio</span><span className="block whitespace-nowrap text-sm font-semibold tabular-nums text-emerald-400">{portfolioLoading ? 'Carregando...' : portfolioValue === null ? 'Indisponível' : formatUsd(portfolioValue)}</span></Link>
       </div>
       <Suspense fallback={null}>
         <NotificationBell />
@@ -158,7 +147,7 @@ export function HeaderAuthenticatedControls() {
 }
 
 export function MobileAuthenticatedMenu({ onNavigate }: { onNavigate: () => void }) {
-  const { user, isAdmin, signOut, myProfile, paperBalance, isPaperBalanceLoading, getUserInitials } = useHeaderUserState();
+  const { user, isAdmin, signOut, myProfile, paperBalance, isPaperBalanceLoading, portfolioValue, portfolioLoading, getUserInitials } = useHeaderUserState();
 
   if (!user) {
     return null;
@@ -171,19 +160,9 @@ export function MobileAuthenticatedMenu({ onNavigate }: { onNavigate: () => void
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
-        <div className="flex items-center gap-2">
-          <BalanceIcon isLoading={isPaperBalanceLoading} />
-          <span className="text-sm text-muted-foreground">Saldo virtual</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="font-mono font-semibold">
-            {paperBalance === null ? 'Indisponível' : `US$ ${paperBalance.toFixed(2)}`}
-          </span>
-            <Button size="sm" className="h-7 px-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
-              <Link to="/polymarket/paper" onClick={onNavigate} aria-label="Abrir carteira Paper Trading"><Plus className="h-4 w-4" /></Link>
-            </Button>
-        </div>
+      <div className="grid grid-cols-2 divide-x divide-border rounded-xl border border-border bg-secondary/70 p-1">
+        <Link to="/polymarket/paper" onClick={onNavigate} className="rounded-lg px-3 py-2 hover:bg-accent"><span className="block text-xs text-muted-foreground">Carteira · virtual</span><span className="mt-1 block text-sm font-semibold tabular-nums">{isPaperBalanceLoading ? 'Carregando...' : paperBalance === null ? 'Indisponível' : formatUsd(paperBalance)}</span></Link>
+        <Link to="/portfolio" onClick={onNavigate} className="rounded-lg px-3 py-2 hover:bg-accent"><span className="block text-xs text-muted-foreground">Portfólio</span><span className="mt-1 block text-sm font-semibold tabular-nums text-emerald-400">{portfolioLoading ? 'Carregando...' : portfolioValue === null ? 'Indisponível' : formatUsd(portfolioValue)}</span></Link>
       </div>
 
       <div className="flex flex-col gap-2">

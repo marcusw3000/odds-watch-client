@@ -16,6 +16,7 @@ test('invite is linked and the recreational dashboard shows verified participati
     if (path.endsWith('/rpc/apply_paper_referral')) { expect(route.request().postDataJSON()).toEqual({ p_code: 'ABCDEF123456' }); applied++; return reply('applied'); }
     if (path.endsWith('/rpc/get_my_paper_referral_code')) return reply('F123456789AB');
     if (path.endsWith('/rpc/get_my_paper_referral_stats')) return reply([{ total_referred: 2, active_referred: 1, verified_trades: 3 }]);
+    if (path.endsWith('/rpc/get_my_paper_copy_referral_summary')) return reply({rate:0.1,received_usd:2,paid_current_round_usd:0,history:[]});
     if (path.endsWith('/rpc/get_polymarket_paper_wallet')) return reply({ user_id: user.id, balance_usd: 10000, round_id: '4788abf8-4844-442a-9e03-6fcac9c0d129' });
     if (path.endsWith('/profiles')) return reply({ id: user.id, display_name: 'Teste Paper', is_public: true, show_profit: true, show_roi: true, show_volume: true, show_trades: true });
     return reply([]);
@@ -31,7 +32,8 @@ test('invite is linked and the recreational dashboard shows verified participati
   await expect(page.getByText('F123456789AB')).toBeVisible();
   await expect(page.getByText('Pessoas convidadas').locator('..').locator('..')).toContainText('2');
   await expect(page.getByText('Participantes ativos').locator('..').locator('..')).toContainText('1');
-  await expect(page.getByText(/não oferecem desconto, comissão ou dinheiro/i)).toBeVisible();
+  await expect(page.getByText(/você recebe 10% do lucro elegível/i)).toBeVisible();
+  await expect(page.getByText('Comissões virtuais de Copy Trading')).toBeVisible();
   await expect.poll(() => applied).toBe(1);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('pendingReferralCode'))).toBeNull();
 });

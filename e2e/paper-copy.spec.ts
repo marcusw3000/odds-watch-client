@@ -18,7 +18,8 @@ test("configure a simulated copy and approve a manual signal", async ({ page }) 
     if (path.endsWith("/rpc/respond_paper_copy_signal")) { expect(route.request().postDataJSON()).toMatchObject({p_signal:signalId,p_accept:true}); signalStatus="approved"; return reply(null); }
     if (path.endsWith("/paper_copy_strategies")) return reply(active ? [{id:strategyId,source_kind:"polymarket",source_id:address,source_name:"Trader Externo",mode:"manual",total_limit:100,per_trade_limit:10,spent_usd:0,round_id:"round",active:true,started_at:new Date().toISOString()}] : []);
     if (path.endsWith("/paper_copy_signals")) return reply(active ? [{id:signalId,strategy_id:strategyId,question:"Mercado de teste",outcome:"Yes",status:signalStatus,source_price:0.4,source_notional:10,reason:null,created_at:new Date().toISOString()}] : []);
-    if (path.endsWith("/paper_copy_positions")) return reply([]);
+    if (path.endsWith("/paper_copy_positions")) return reply(active ? [{strategy_id:strategyId,round_id:"round",realized_usd:10}] : []);
+    if (path.endsWith("/rpc/get_my_paper_copy_referral_summary")) return reply({rate:0.1,received_usd:0,paid_current_round_usd:active ? 1 : 0,history:[]});
     if (path.endsWith("/rpc/get_my_paper_ranking_stats")) return reply([{total_profit:0,roi_percent:0,total_volume:0,total_trades:0,winning_trades:0}]);
     if (path.endsWith("/profiles")) return reply({id:user.id,display_name:"Teste",is_public:true});
     return reply([]);
@@ -36,6 +37,9 @@ test("configure a simulated copy and approve a manual signal", async ({ page }) 
   await page.getByLabel("Limite por operação (USD virtual)").fill("10");
   await page.getByRole("button", {name:"Ativar estratégia"}).click();
   await expect(page.getByText("Aguardando aprovação")).toBeVisible();
+  await expect(page.getByLabel("Resultado de cópias")).toContainText("Lucro bruto: $10.00");
+  await expect(page.getByLabel("Resultado de cópias")).toContainText("Comissão descontada: $1.00");
+  await expect(page.getByLabel("Resultado de cópias")).toContainText("Resultado líquido: $9.00");
   await page.getByRole("button", {name:"Aceitar cópia"}).click();
   await expect(page.getByText("Aguardando processamento")).toBeVisible();
 });

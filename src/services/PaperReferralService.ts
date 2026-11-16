@@ -2,6 +2,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type PaperReferralResult = 'applied' | 'already_linked' | 'invalid' | 'ineligible' | 'own_code';
 export interface PaperReferralStats { total_referred: number; active_referred: number; verified_trades: number }
+export interface PaperCopyReferralSummary { rate: number; received_usd: number; paid_current_round_usd: number; history: { created_at: string; commission_usd: number }[] }
+
+export async function getPaperCopyReferralSummary(): Promise<PaperCopyReferralSummary> {
+  const { data, error } = await (supabase as any).rpc('get_my_paper_copy_referral_summary');
+  if (error) throw error;
+  if (!data || !Array.isArray(data.history)) throw new Error('Resumo de comissões indisponível');
+  return data as PaperCopyReferralSummary;
+}
 
 export async function getPaperReferralCode(): Promise<string> {
   const { data, error } = await (supabase as any).rpc('get_my_paper_referral_code');

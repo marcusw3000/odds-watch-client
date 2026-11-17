@@ -29,8 +29,8 @@ export function usePolymarketMarketStream(assetId: string | null): { state: Poly
       setStreamState("reconnecting");
       retry = setTimeout(connect, Math.min(1_000 * 2 ** (attempt - 1), 30_000));
     };
-    const refreshSnapshot = () => {
-      if (Date.now() - lastRevalidation.current < MIN_REVALIDATE_MS) return;
+    const refreshSnapshot = (force = false) => {
+      if (!force && Date.now() - lastRevalidation.current < MIN_REVALIDATE_MS) return;
       lastRevalidation.current = Date.now();
       revalidate();
     };
@@ -41,13 +41,14 @@ export function usePolymarketMarketStream(assetId: string | null): { state: Poly
         attempt = 0;
         socket?.send(JSON.stringify({ assets_ids: [assetId], type: "market", custom_feature_enabled: true }));
         heartbeat = setInterval(() => socket?.readyState === WebSocket.OPEN && socket.send("PING"), HEARTBEAT_MS);
-        setStreamState("live");
-        refreshSnapshot();
+        setStreamState("connecting");
+        refreshSnapshot(true);
       };
       socket.onmessage = (event) => {
         if (typeof event.data !== "string" || event.data === "PONG") return;
         const update = parseMarketStreamMessage(event.data, assetId);
         if (!update) return;
+        setStreamState("live");
         setQuote((previous) => ({
           assetId, bestBid: null, bestAsk: null, lastTradePrice: null,
           ...(previous?.assetId === assetId ? previous : {}),

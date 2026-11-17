@@ -48,7 +48,7 @@ export function PolymarketMarketDetailPage({ market, fx, analytics, insights, co
     next.set("outcome", label);
     setParams(next, { preventScrollReset: true });
   };
-  const streamLabel = stream === "live" ? "Ao vivo" : stream === "idle" ? "Sem atualização ao vivo" : "Reconectando";
+  const streamLabel = stream === "live" && quote ? `Ofertas recebidas às ${new Date(quote.receivedAt).toLocaleTimeString("pt-BR")}` : stream === "idle" ? "Atualização ao vivo indisponível" : stream === "connecting" ? "Conectando às ofertas" : "Reconectando às ofertas";
 
   return (
     <section className="mx-auto w-full max-w-6xl space-y-5 py-1">

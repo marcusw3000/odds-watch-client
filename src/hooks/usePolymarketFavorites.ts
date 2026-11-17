@@ -10,7 +10,7 @@ const queryKey = (userId?: string) => ["polymarket-favorites", userId] as const;
 export function usePolymarketFavorites() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: favorites = [], isLoading } = useQuery({
+  const { data: favorites = [], isLoading, isError, refetch } = useQuery({
     queryKey: queryKey(user?.id),
     enabled: Boolean(user),
     staleTime: 60_000,
@@ -70,5 +70,5 @@ export function usePolymarketFavorites() {
   const toggleFavorite = useCallback((marketId: string) => {
     if (isFavorite(marketId)) remove.mutate(marketId); else add.mutate(marketId);
   }, [add, isFavorite, remove]);
-  return { favorites, isFavorite, toggleFavorite, isLoading, isMutating: add.isPending || remove.isPending };
+  return { favorites, isFavorite, toggleFavorite, isLoading, isError, refetch, isMutating: add.isPending || remove.isPending };
 }

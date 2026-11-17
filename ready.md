@@ -218,6 +218,7 @@ As etapas abaixo pertencem ao plano original e não são necessárias para concl
 
 ### Identidade e carteiras para negociação real
 
+- [ ] Iniciar com **carteira integrada**, conforme escolha do usuário. Comparar provedores por compatibilidade Polymarket/Polygon, custos, segurança, recuperação e portabilidade antes de selecionar um.
 - [ ] Registrar as decisões de arquitetura em ADRs e comparar carteira externa e integrada quanto a custo, recuperação, segurança, rede e compatibilidade com a Polymarket.
 - [ ] Definir verificação de e-mail, recuperação de conta e MFA/passkey conforme os requisitos escolhidos.
 - [ ] Se aprovada a carteira integrada, selecionar provedor e criar vínculo individual sem armazenar chaves privadas no servidor.
@@ -237,6 +238,8 @@ As etapas abaixo pertencem ao plano original e não são necessárias para concl
 
 ### Fiat e PIX
 
+- [ ] Considerar que, segundo o usuário, a Pods ainda não oferece sandbox para este fluxo; confirmar as opções de teste com o provedor e usar mocks isolados até existir teste autorizado.
+- [ ] Separar os estados de cotação PIX, pagamento, entrega de USDC, conversão na Bridge e crédito de pUSD; só oferecer confirmação da ordem após o crédito confirmado.
 - [ ] Avaliar parceiro autorizado e compatível com BRL/PIX, carteiras individuais e a finalidade pretendida.
 - [ ] Implementar cotação com validade, tarifas e prazos claros; separar equivalência estimada de saldo efetivamente liquidado.
 - [ ] Validar webhooks assinados, proteção contra replay, idempotência, estados de transferência e reconciliação.
@@ -248,6 +251,9 @@ As etapas abaixo pertencem ao plano original e não são necessárias para concl
 - [ ] Implementar e testar atribuição Builder no fluxo autorizado antes da assinatura, conforme a versão vigente da integração.
 - [ ] Preparar documentação, demonstração e eventual candidatura; não anunciar parceria oficial sem confirmação e autorização.
 - [ ] Definir ambientes de desenvolvimento, homologação e produção, com critérios explícitos de liberação e observabilidade.
+- [ ] Manter operações reais separadas do Paper Trading, sem converter saldos, posições, Copy Trading ou comissões simuladas em ativos reais.
+- [ ] Cobrir ordens reais com confirmação explícita, idempotência, execução parcial, cancelamento e reconciliação; tratar timeouts sem presumir execução ou rejeição.
+- [ ] Realizar testes com valores reais somente em contexto elegível e autorizado, com limite definido e procedimentos de recuperação.
 
 ## Referências
 

@@ -1,6 +1,7 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
+  route("api/admin/disk-metrics", "./route-modules/admin-disk-metrics.ts", { id: "admin-disk-metrics" }),
   route("api/polymarket/leaderboard", "./route-modules/polymarket-leaderboard-data.ts", { id: "polymarket-leaderboard-data" }),
   route("api/polymarket/biggest-wins", "./route-modules/polymarket-biggest-wins.ts", { id: "polymarket-biggest-wins" }),
   route("api/polymarket/portfolio-quotes", "./route-modules/polymarket-portfolio-quotes.ts", { id: "polymarket-portfolio-quotes" }),

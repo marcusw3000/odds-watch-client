@@ -22,7 +22,7 @@ import {
 } from '@/hooks/useNotifications';
 import { useToast } from '@/hooks/use-toast';
 import type { NotificationType, Notification } from '@/types/notification';
-import { polymarketNotificationLink } from '@/lib/notificationLinks';
+import { operationalNotificationLink, polymarketNotificationLink } from '@/lib/notificationLinks';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NotificationSkeleton } from './NotificationSkeleton';
@@ -93,6 +93,8 @@ const GROUPABLE_TYPES: NotificationType[] = ['COMMENT_LIKE', 'ACHIEVEMENT_UNLOCK
 // Get link for notification based on type and data
 function getNotificationLink(notification: Notification): string | null {
   const { type, data } = notification;
+  const operationalLink = operationalNotificationLink(notification);
+  if (operationalLink) return operationalLink;
   if (data?.source === 'paper_copy') return '/copy-trading';
   const polymarketLink = polymarketNotificationLink(notification);
   if (polymarketLink) return polymarketLink;

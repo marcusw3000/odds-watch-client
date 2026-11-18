@@ -20,14 +20,15 @@ export function useSystemHealth() {
     queryKey: ['admin-system-health'],
     queryFn: async () => {
       const started = performance.now();
-      const [database, auth, catalog, operational, http] = await Promise.all([
+      const [database, auth, catalog, operational, http, catalogExecution] = await Promise.all([
         supabase.from('profiles').select('id').limit(1),
         supabase.auth.getUser(),
         (supabase as any).rpc('get_admin_catalog_health'),
         (supabase as any).rpc('get_admin_operational_health'),
         (supabase as any).rpc('get_admin_http_health'),
+        (supabase as any).rpc('get_admin_catalog_execution_health'),
       ]);
-      return { database: !database.error, auth: !auth.error && Boolean(auth.data.user), latencyMs: Math.round(performance.now() - started), catalog: catalog.error ? null : catalog.data as AdminCatalogHealth, catalogError: Boolean(catalog.error), operational: operational.error ? null : operational.data as AdminOperationalHealth, http: http.error ? null : http.data as Array<{ job_name: string; requested_at: string; status_code: number | null; status: string }> };
+      return { database: !database.error, auth: !auth.error && Boolean(auth.data.user), latencyMs: Math.round(performance.now() - started), catalog: catalog.error ? null : catalog.data as AdminCatalogHealth, catalogError: Boolean(catalog.error), operational: operational.error ? null : operational.data as AdminOperationalHealth, http: http.error ? null : http.data as Array<{ job_name: string; requested_at: string; status_code: number | null; status: string }>, catalogExecution: catalogExecution.error ? null : catalogExecution.data as { error_kind: string | null; last_cron_duration_ms: number | null; last_market_cycle_duration_ms?: number | null; last_event_cycle_duration_ms?: number | null } };
     },
     refetchInterval: 60000,
     staleTime: 30000,

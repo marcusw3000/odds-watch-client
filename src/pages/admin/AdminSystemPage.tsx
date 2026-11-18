@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDiskMetrics, useSystemHealth } from '@/hooks/useSystemHealth';
 import { getOperationalAlerts } from '@/lib/operationalAlerts';
+import { diskUsageLevel } from '@/lib/supabaseDiskMetrics';
 
 const date = (value: string | null) => value ? new Date(value).toLocaleString('pt-BR') : 'Sem registro';
 
@@ -27,8 +28,12 @@ export function AdminSystemPage() {
         {operationalAlerts.length > 0 && <div role="alert" className="rounded-md border border-amber-500/50 p-3 text-sm text-amber-500"><p className="font-semibold">Atenção</p>{operationalAlerts.map(message => <p key={message}>{message}</p>)}</div>}
         <p>Banco de dados: {(data.operational.database_bytes / 1048576).toFixed(1)} MiB · Cache de mercados e índices: {(data.operational.market_cache_bytes / 1048576).toFixed(1)} MiB</p>
         <p>Disco de dados: {disk.isLoading ? 'Carregando...' : disk.data ? `${disk.data.usedPercent.toFixed(1)}% usado · ${(disk.data.available / 1073741824).toFixed(2)} GiB disponíveis · consultado em ${date(disk.data.observedAt)}` : 'Indisponível'}</p>
+        {disk.data && ['warning', 'critical'].includes(diskUsageLevel(disk.data.usedPercent)) && <p role="alert" className="text-amber-500">Uso de disco elevado. Consulte a infraestrutura do Supabase e o procedimento de recuperação.</p>}
         <p className="text-xs text-muted-foreground">O tamanho do banco não representa todo o disco usado, que inclui WAL e outros arquivos. A medição de disco requer credencial de servidor configurada.</p>
         <p>Último sucesso do catálogo: {date(data.operational.catalog_last_success)} · {data.operational.catalog_error ? 'Há erro registrado na sincronização' : 'Sem erro registrado'}</p>
+        <p>Classificação do erro: {data.catalogExecution?.error_kind === 'gamma' ? 'Gamma identificada na mensagem' : data.catalogExecution?.error_kind === 'other_or_unknown' ? 'Outra origem ou não identificada' : data.catalogExecution ? 'Nenhum erro registrado' : 'Indisponível'} · Duração do último comando cron: {data.catalogExecution?.last_cron_duration_ms != null ? `${Math.round(data.catalogExecution.last_cron_duration_ms)} ms` : 'Indisponível'}</p>
+        <p className="text-xs text-muted-foreground">A duração do cron mede o envio da requisição, não a execução completa da sincronização.</p>
+        <p>Duração do último ciclo completo de mercados: {data.catalogExecution?.last_market_cycle_duration_ms != null ? `${(data.catalogExecution.last_market_cycle_duration_ms / 1000).toFixed(1)} s` : 'Ainda não registrada'} · Eventos: {data.catalogExecution?.last_event_cycle_duration_ms != null ? `${(data.catalogExecution.last_event_cycle_duration_ms / 1000).toFixed(1)} s` : 'Ainda não registrada'}</p>
         <p>Copy Trading: {data.operational.copy_active} estratégias ativas · {data.operational.copy_pending} sinais pendentes · verificação mais antiga: {date(data.operational.copy_oldest_check)}</p>
         <p>Portfólio: último sucesso {date(data.operational.snapshot_last_success)} · {data.operational.snapshot_failed_attempts} contas com tentativa posterior ao último sucesso</p>
         {data.operational.jobs.map(job => <p key={job.name}>{job.name}: {job.active ? 'Ativo' : 'Pausado'} · {date(job.last_run)} · {job.last_status ?? 'Sem resultado'}</p>)}

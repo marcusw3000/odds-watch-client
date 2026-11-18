@@ -10,3 +10,8 @@ export function parseDatabaseDiskMetrics(text: string): { size: number; availabl
   if (size === undefined || available === undefined || size <= 0 || available > size) return null;
   return { size, available, usedPercent: (1 - available / size) * 100 };
 }
+
+export function diskUsageLevel(percent: number): 'normal' | 'warning' | 'critical' | 'unavailable' {
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) return 'unavailable';
+  return percent >= 90 ? 'critical' : percent >= 80 ? 'warning' : 'normal';
+}

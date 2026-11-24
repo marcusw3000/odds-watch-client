@@ -1,6 +1,6 @@
-# Odds Watch Client
+# OrbMarket
 
-Cliente web da plataforma Odds Watch, agora estruturado em React Router Framework Mode com React, TypeScript e Tailwind CSS.
+Cliente web da plataforma OrbMarket, agora estruturado em React Router Framework Mode com React, TypeScript e Tailwind CSS.
 
 ## Desenvolvimento
 

@@ -44,7 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Polymarket | PredictMarket" },
+  { title: "Polymarket | OrbMarket" },
   { name: "description", content: "Acompanhe dados públicos de mercados da Polymarket em modo somente leitura." },
 ];
 

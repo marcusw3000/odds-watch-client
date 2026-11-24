@@ -90,7 +90,7 @@ export function ShareButton({
       title,
       description: shareText,
       deepLink: shareUrl,
-      hashtags: ['MercadoPrevisoes', 'Trading'],
+      hashtags: ['OrbMarket', 'Trading'],
     });
     window.open(links.twitter, '_blank', 'noopener,noreferrer');
   };

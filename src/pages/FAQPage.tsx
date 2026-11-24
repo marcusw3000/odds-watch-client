@@ -20,14 +20,14 @@ export function FAQPage() {
             em suas expectativas sobre o resultado de eventos reais, como eleiÃ§Ãµes, indicadores econÃ´micos ou eventos esportivos.`,
         },
         {
-          question: 'Como funciona a plataforma OddsWatch?',
-          answer: `A OddsWatch oferece mercados preditivos onde vocÃª pode comprar contratos "Sim" ou "NÃ£o" sobre 
+          question: 'Como funciona a plataforma OrbMarket?',
+          answer: `A OrbMarket oferece mercados preditivos onde vocÃª pode comprar contratos "Sim" ou "NÃ£o" sobre 
             eventos futuros. Cada contrato custa entre R$0,01 e R$0,99, refletindo a probabilidade estimada do evento. 
             Se sua previsÃ£o estiver correta quando o evento Ã© resolvido, seu contrato vale R$1,00. Caso contrÃ¡rio, vale R$0,00.`,
         },
         {
           question: 'Isso Ã© aposta ou jogo de azar?',
-          answer: `NÃ£o. A OddsWatch Ã© uma plataforma de mercados preditivos para fins informativos e educacionais. 
+          answer: `NÃ£o. A OrbMarket Ã© uma plataforma de mercados preditivos para fins informativos e educacionais. 
             Diferente de apostas, mercados preditivos agregam informaÃ§Ã£o e conhecimento coletivo, funcionando como 
             ferramentas de previsÃ£o descentralizada. NÃ£o oferecemos jogos de azar nem cassino.`,
         },

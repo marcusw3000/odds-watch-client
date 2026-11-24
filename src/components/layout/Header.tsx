@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, Menu, X, LogIn, Trophy } from 'lucide-react';
+import { Menu, X, LogIn, Trophy } from 'lucide-react';
 import { KalshiIcon, PolymarketIcon } from './MarketBrandIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -66,11 +66,9 @@ export function Header() {
       </a>
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
-          </div>
+          <img src="/orbmarket.svg" alt="" width="36" height="36" className="h-9 w-9 shrink-0" />
           <span className="text-xl font-bold tracking-tight">
-            Predict<span className="text-gradient-primary">Market</span>
+            OrbMarket
           </span>
         </Link>
 

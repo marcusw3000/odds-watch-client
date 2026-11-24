@@ -10,7 +10,7 @@ export function Footer() {
           <div className="flex items-center gap-2 text-muted-foreground justify-center">
             <Shield className="h-4 w-4 flex-shrink-0" />
             <p className="text-sm text-center">
-              Plataforma de mercados preditivos. Não constitui oferta de serviços financeiros, apostas ou jogos de azar. Operação em conformidade com a legislação brasileira.
+              Plataforma de mercados preditivos. Não constitui oferta de serviços financeiros, apostas ou jogos de azar.
             </p>
           </div>
           
@@ -36,7 +36,7 @@ export function Footer() {
           
           {/* Copyright */}
           <p className="text-xs text-center text-muted-foreground">
-            © 2024 OddsWatch. Todos os direitos reservados.
+            © 2026 OrbMarket. Todos os direitos reservados.
           </p>
         </div>
       </div>

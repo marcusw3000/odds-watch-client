@@ -72,7 +72,7 @@ serve(async (req) => {
           price_data: {
             currency: "brl",
             product_data: {
-              name: "Depósito PredictMarket",
+              name: "Depósito OrbMarket",
               description: `Depósito de R$${amount.toFixed(2)} na sua conta`,
             },
             unit_amount: Math.round(amount * 100), // Convert to cents

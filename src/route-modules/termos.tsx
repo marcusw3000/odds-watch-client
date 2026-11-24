@@ -2,10 +2,10 @@ import type { MetaFunction } from "react-router";
 import { TermosPage } from "@/pages/TermosPage";
 
 export const meta: MetaFunction = () => [
-  { title: "Termos de Uso | Mercado de Previsões" },
+  { title: "Termos de Uso | OrbMarket" },
   {
     name: "description",
-    content: "Leia os termos de uso da plataforma OddsWatch e as regras aplicáveis ao uso do serviço.",
+    content: "Leia os termos de uso da plataforma OrbMarket e as regras aplicáveis ao uso do serviço.",
   },
 ];
 

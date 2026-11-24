@@ -7,7 +7,7 @@ interface MetaTagsConfig {
   siteName?: string;
 }
 
-const DEFAULT_SITE_NAME = 'Mercado de Previsões';
+const DEFAULT_SITE_NAME = 'OrbMarket';
 const DEFAULT_IMAGE = '/og-image.png';
 
 /**
@@ -24,7 +24,7 @@ export function updateMetaTags(config: MetaTagsConfig): void {
   } = config;
 
   // Update document title
-  document.title = `${title} | ${siteName}`;
+  document.title = title === siteName ? title : `${title} | ${siteName}`;
 
   // Helper to update or create meta tag
   const setMetaTag = (property: string, content: string, isName = false) => {
@@ -66,7 +66,7 @@ export function updateMetaTags(config: MetaTagsConfig): void {
  */
 export function resetMetaTags(): void {
   updateMetaTags({
-    title: 'Mercado de Previsões',
+    title: 'OrbMarket',
     description: 'Negocie contratos de previsão sobre eventos econômicos brasileiros. SELIC, IPCA, Dólar e mais.',
   });
 }

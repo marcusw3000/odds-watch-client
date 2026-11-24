@@ -21,7 +21,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     return { event: null, failed: true, comments: Promise.resolve({ items: [], error: true }), series: Promise.resolve([]), liveVolume: Promise.resolve(null), period };
   }
 }
-export const meta: Route.MetaFunction = ({ data }) => [{ title: data?.event ? `${data.event.title} | Polymarket` : "Evento | Polymarket" }];
+export const meta: Route.MetaFunction = ({ data }) => [{ title: data?.event ? `${data.event.title} | OrbMarket` : "Evento | OrbMarket" }];
 export default function PolymarketEventDetailRoute() {
   const { event, failed, comments, series, liveVolume, period } = useLoaderData<typeof loader>();
   return <PolymarketEventPage key={event?.id ?? "missing"} event={event} failed={failed} comments={comments} series={series} liveVolume={liveVolume} period={period} />;

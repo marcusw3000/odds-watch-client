@@ -48,7 +48,7 @@
 
 @layer base {
   :root {
-    --background: 220 20% 4%;
+    --background: 240 7% 6%;
     --foreground: 210 20% 95%;
 
     --card: 220 18% 8%;
@@ -58,8 +58,8 @@
     --popover: 220 18% 8%;
     --popover-foreground: 210 20% 95%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 220 20% 4%;
+    --primary: 272 94% 69%;
+    --primary-foreground: 240 7% 6%;
 
     --secondary: 220 14% 15%;
     --secondary-foreground: 210 20% 85%;
@@ -89,31 +89,31 @@
 
     --border: 220 14% 18%;
     --input: 220 14% 15%;
-    --ring: 199 89% 48%;
+    --ring: 272 94% 69%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 220 18% 6%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary: 272 94% 69%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 12%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 220 14% 15%;
-    --sidebar-ring: 199 89% 48%;
+    --sidebar-ring: 272 94% 69%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%), hsl(217 91% 60%));
+    --gradient-primary: linear-gradient(135deg, #8A00FF, #FF00D6);
     --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(160 84% 39%));
     --gradient-danger: linear-gradient(135deg, hsl(0 72% 51%), hsl(15 80% 55%));
     --gradient-card: linear-gradient(180deg, hsl(220 18% 10%), hsl(220 18% 6%));
 
-    --shadow-glow-primary: 0 0 40px hsl(199 89% 48% / 0.15);
+    --shadow-glow-primary: 0 0 40px hsl(272 94% 69% / 0.15);
     --shadow-glow-success: 0 0 30px hsl(142 71% 45% / 0.2);
     --shadow-glow-danger: 0 0 30px hsl(0 72% 51% / 0.2);
     --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.3);
     --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.4);
 
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-sans: 'Montserrat', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -122,7 +122,7 @@
   }
 
   .dark {
-    --background: 220 20% 4%;
+    --background: 240 7% 6%;
     --foreground: 210 20% 95%;
   }
 }

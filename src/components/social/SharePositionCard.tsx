@@ -155,12 +155,9 @@ export function SharePositionCard({ position, trigger }: SharePositionCardProps)
               {/* Branding Footer */}
               <div className="flex items-center justify-between pt-4 border-t border-white/10">
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-                    <span className="text-sm font-bold text-primary-foreground">M</span>
-                  </div>
+                  <img src="/orbmarket.svg" alt="" width="36" height="36" className="h-9 w-9 shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold">Mercado de Previsões</p>
-                    <p className="text-[10px] text-slate-400">mercadoprevisoes.com.br</p>
+                    <p className="text-sm font-semibold">OrbMarket</p>
                   </div>
                 </div>
                 <div className="text-right">

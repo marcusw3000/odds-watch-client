@@ -250,7 +250,7 @@ export function PurchaseSuccessModal({
             {/* Branding */}
             <div className="bg-slate-900 px-3 py-2 flex items-center justify-between">
               <span className="text-[10px] text-slate-500 font-medium tracking-wider">
-                PREDIX.COM.BR
+                OrbMarket
               </span>
               <span className="text-[10px] text-slate-500">
                 {new Date().toLocaleDateString('pt-BR')}

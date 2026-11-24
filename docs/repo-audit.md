@@ -1,4 +1,4 @@
-# Odds Watch — auditoria para integração Polymarket
+# OrbMarket — auditoria para integração Polymarket
 
 Data: 03/11/2026. Base local: commit `76f6183`.
 

@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { FileText, HelpCircle, Scale, ShieldCheck, TrendingUp } from 'lucide-react';
+import { FileText, HelpCircle, Scale, ShieldCheck } from 'lucide-react';
 
 import { Footer } from './Footer';
 import { cn } from '@/lib/utils';
@@ -20,12 +20,10 @@ export function PublicInfoLayout() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary shadow-sm">
-                <TrendingUp className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
-              </div>
+              <img src="/orbmarket.svg" alt="" width="36" height="36" className="h-9 w-9 shrink-0" />
               <div>
                 <p className="text-lg font-semibold tracking-tight">
-                  Predict<span className="text-gradient-primary">Market</span>
+                  OrbMarket
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Informacoes institucionais e politicas da plataforma

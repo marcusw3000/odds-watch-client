@@ -27,39 +27,38 @@ export const links: LinksFunction = () => [
   { rel: "preconnect", href: import.meta.env.VITE_SUPABASE_URL },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
   },
-  { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+  { rel: "icon", href: "/orbmarket.svg", type: "image/svg+xml" },
 ];
 
 export const meta: MetaFunction = () => [
-  { title: "Mercado de Previs\u00f5es" },
+  { title: "OrbMarket" },
   {
     name: "description",
     content:
       "Negocie contratos de previs\u00e3o sobre eventos econ\u00f4micos brasileiros. SELIC, IPCA, D\u00f3lar e mais.",
   },
-  { name: "author", content: "Mercado de Previs\u00f5es" },
+  { name: "author", content: "OrbMarket" },
   {
     name: "keywords",
     content:
       "mercado de previs\u00f5es, trading, SELIC, IPCA, d\u00f3lar, economia brasileira, contratos",
   },
-  { property: "og:title", content: "Mercado de Previs\u00f5es" },
+  { property: "og:title", content: "OrbMarket" },
   {
     property: "og:description",
     content:
       "Negocie contratos de previs\u00e3o sobre eventos econ\u00f4micos brasileiros. SELIC, IPCA, D\u00f3lar e mais.",
   },
   { property: "og:type", content: "website" },
-  { property: "og:url", content: "https://mercadoprevisoes.com.br" },
   { property: "og:image", content: "/og-image.png" },
   { property: "og:image:width", content: "1200" },
   { property: "og:image:height", content: "630" },
-  { property: "og:site_name", content: "Mercado de Previs\u00f5es" },
+  { property: "og:site_name", content: "OrbMarket" },
   { property: "og:locale", content: "pt_BR" },
   { name: "twitter:card", content: "summary_large_image" },
-  { name: "twitter:title", content: "Mercado de Previs\u00f5es" },
+  { name: "twitter:title", content: "OrbMarket" },
   {
     name: "twitter:description",
     content: "Negocie contratos de previs\u00e3o sobre eventos econ\u00f4micos brasileiros.",

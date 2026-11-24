@@ -29,7 +29,7 @@ export function TermosPage() {
         <section>
           <h2 className="text-xl font-semibold mb-3">1. Definicoes e Escopo</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Bem-vindo a plataforma OddsWatch. Estes Termos de Uso ("Termos") regem o uso de
+            Bem-vindo a plataforma OrbMarket. Estes Termos de Uso ("Termos") regem o uso de
             nossa plataforma de mercados preditivos, incluindo todos os servicos, recursos e
             funcionalidades oferecidos.
           </p>
@@ -55,7 +55,7 @@ export function TermosPage() {
         <section>
           <h2 className="text-xl font-semibold mb-3">3. Natureza dos Mercados Preditivos</h2>
           <p className="text-muted-foreground leading-relaxed">
-            A plataforma OddsWatch oferece mercados preditivos para fins informativos e
+            A plataforma OrbMarket oferece mercados preditivos para fins informativos e
             educacionais. Os mercados preditivos sao instrumentos que agregam opinioes
             sobre a probabilidade de eventos futuros.
           </p>
@@ -83,7 +83,7 @@ export function TermosPage() {
           <p className="text-muted-foreground leading-relaxed">
             Todo o conteudo da plataforma, incluindo mas nao limitado a textos, graficos,
             logos, icones, imagens, codigo-fonte e software, e de propriedade exclusiva
-            da OddsWatch ou de seus licenciadores.
+            da OrbMarket ou de seus licenciadores.
           </p>
           <p className="text-muted-foreground leading-relaxed">
             E proibida a reproducao, distribuicao, modificacao ou uso comercial de qualquer

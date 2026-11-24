@@ -21,7 +21,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `🎯 Resultado: ${data.market_title || 'Mercado'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>Resultado do Mercado</h2>
         <p style="font-size: 18px;">${data.title || 'Um mercado que você apostou foi liquidado'}</p>
         <p style="color: #666;">${data.message}</p>
@@ -31,11 +31,11 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
             ${data.profit ? `<strong>Seu lucro:</strong> R$${data.profit.toFixed(2)}` : ''}
           </div>
         ` : ''}
-        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver meu portfólio
         </a>
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Você recebeu este email porque está inscrito nas notificações do PredictMarket.
+          Você recebeu este email porque está inscrito nas notificações do OrbMarket.
           <a href="https://predictmarket.com/settings/notifications">Gerenciar preferências</a>
         </p>
       </div>
@@ -46,18 +46,18 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `⏰ Mercado fechando: ${data.market_title || 'Atenção'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>⏰ Mercado Fechando em Breve</h2>
         <p style="font-size: 18px;">${data.title}</p>
         <p style="color: #666;">${data.message}</p>
         <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
           <strong>Tempo restante:</strong> ${data.time_remaining || 'Poucas horas'}
         </div>
-        <a href="https://predictmarket.com/market/${data.market_id}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/market/${data.market_id}" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver mercado
         </a>
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Você recebeu este email porque está inscrito nas notificações do PredictMarket.
+          Você recebeu este email porque está inscrito nas notificações do OrbMarket.
         </p>
       </div>
     `,
@@ -67,7 +67,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `💸 Saque solicitado: R$${data.amount?.toFixed(2) || '0,00'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>💸 Solicitação de Saque Recebida</h2>
         <p style="color: #666;">Recebemos sua solicitação de saque e ela está sendo processada.</p>
         
@@ -98,7 +98,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Você receberá outro email quando o saque for concluído.
         </p>
 
-        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver meu portfólio
         </a>
         
@@ -113,7 +113,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `✅ Saque concluído: R$${data.net_amount?.toFixed(2) || '0,00'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>✅ Saque Concluído com Sucesso!</h2>
         <p style="color: #666;">Seu saque foi processado e o valor foi transferido para sua conta.</p>
         
@@ -122,7 +122,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           <p style="font-size: 32px; font-weight: bold; color: #22c55e; margin: 8px 0;">R$${data.net_amount?.toFixed(2) || '0,00'}</p>
         </div>
 
-        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+        <div style="background: #f8fafc; border-left: 4px solid #8A00FF; padding: 16px; margin: 20px 0;">
           <strong>Chave PIX:</strong> ${data.pix_key || 'Não informada'}<br>
           <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </div>
@@ -131,12 +131,12 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           O valor deve aparecer em sua conta em alguns minutos. Caso não receba, entre em contato conosco.
         </p>
 
-        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver histórico
         </a>
         
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Obrigado por usar o PredictMarket!
+          Obrigado por usar o OrbMarket!
         </p>
       </div>
     `,
@@ -146,7 +146,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `❌ Problema com seu saque`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>❌ Problema com seu Saque</h2>
         <p style="color: #666;">Infelizmente não foi possível processar seu saque.</p>
         
@@ -160,7 +160,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           O valor foi estornado para o seu saldo na plataforma. Por favor, verifique os dados da chave PIX e tente novamente.
         </p>
 
-        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/portfolio" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Tentar novamente
         </a>
         
@@ -175,7 +175,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `⚠️ Advertência: Seu comentário foi reportado`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>⚠️ Advertência Recebida</h2>
         <p style="color: #666;">Seu comentário foi reportado pela comunidade e revisado pela nossa equipe de moderação.</p>
         
@@ -189,7 +189,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Esta é uma advertência formal. Múltiplas advertências podem resultar em restrições na sua conta.
         </p>
 
-        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+        <div style="background: #f8fafc; border-left: 4px solid #8A00FF; padding: 16px; margin: 20px 0;">
           <strong>Diretrizes da Comunidade:</strong>
           <ul style="color: #64748b; margin: 8px 0; padding-left: 20px;">
             <li>Mantenha o respeito com outros usuários</li>
@@ -199,7 +199,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           </ul>
         </div>
 
-        <a href="https://predictmarket.com/settings" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/settings" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver minhas configurações
         </a>
         
@@ -214,7 +214,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `📩 Nova resposta no seu ticket: ${data.subject || 'Suporte'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>📩 Nova Resposta no Suporte</h2>
         <p style="color: #666;">Nossa equipe respondeu ao seu ticket de suporte.</p>
         
@@ -223,12 +223,12 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           ${data.message_preview ? `<p style="color: #334155; margin: 0; font-style: italic;">"${data.message_preview}..."</p>` : ''}
         </div>
 
-        <a href="https://predictmarket.com/settings?tab=support&ticket=${data.ticket_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/settings?tab=support&ticket=${data.ticket_id || ''}" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver resposta completa
         </a>
         
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Você recebeu este email porque abriu um ticket de suporte no PredictMarket.
+          Você recebeu este email porque abriu um ticket de suporte no OrbMarket.
         </p>
       </div>
     `,
@@ -238,7 +238,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `✅ Ticket resolvido: ${data.subject || 'Suporte'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>✅ Ticket Resolvido</h2>
         <p style="color: #666;">Seu ticket de suporte foi marcado como resolvido.</p>
         
@@ -251,7 +251,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Se você ainda tiver dúvidas ou o problema persistir, você pode reabrir o ticket ou criar um novo.
         </p>
 
-        <a href="https://predictmarket.com/settings?tab=support" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/settings?tab=support" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver meus tickets
         </a>
         
@@ -266,7 +266,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `🎉 Parabéns! Sua candidatura como Copy Trader foi aprovada!`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>🎉 Candidatura Aprovada!</h2>
         <p style="color: #666;">Parabéns, <strong>${data.display_name || 'Trader'}</strong>! Sua candidatura como Copy Trader foi aprovada.</p>
         
@@ -275,7 +275,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           <p style="font-size: 18px; font-weight: bold; color: #22c55e; margin: 8px 0;">Você agora é um Copy Trader!</p>
         </div>
 
-        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+        <div style="background: #f8fafc; border-left: 4px solid #8A00FF; padding: 16px; margin: 20px 0;">
           <strong>O que acontece agora:</strong>
           <ul style="color: #64748b; margin: 8px 0; padding-left: 20px;">
             <li>Seu perfil aparecerá na lista de Copy Traders</li>
@@ -286,7 +286,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           </ul>
         </div>
 
-        <a href="https://predictmarket.com/trader/dashboard" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/trader/dashboard" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Acessar meu Dashboard
         </a>
         
@@ -301,7 +301,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `📋 Atualização sobre sua candidatura como Copy Trader`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>📋 Candidatura Não Aprovada</h2>
         <p style="color: #666;">Olá, <strong>${data.display_name || 'Trader'}</strong>.</p>
         <p style="color: #666;">Infelizmente, sua candidatura como Copy Trader não foi aprovada neste momento.</p>
@@ -313,7 +313,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
         </div>
         ` : ''}
 
-        <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0;">
+        <div style="background: #f8fafc; border-left: 4px solid #8A00FF; padding: 16px; margin: 20px 0;">
           <strong>O que você pode fazer:</strong>
           <ul style="color: #64748b; margin: 8px 0; padding-left: 20px;">
             <li>Revise as informações da sua candidatura</li>
@@ -322,7 +322,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           </ul>
         </div>
 
-        <a href="https://predictmarket.com/copy-traders" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/copy-traders" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Tentar Novamente
         </a>
         
@@ -337,7 +337,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `✅ Sugestão Aprovada: ${data.suggestion_title || 'Sua sugestão'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>✅ Sua Sugestão foi Aprovada!</h2>
         <p style="color: #666;">Ótima notícia! Sua sugestão foi revisada e aprovada pela nossa equipe.</p>
         
@@ -350,12 +350,12 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Obrigado por contribuir com a comunidade! Sua sugestão será avaliada para criação de um novo mercado.
         </p>
 
-        <a href="https://predictmarket.com/suggestions/${data.suggestion_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/suggestions/${data.suggestion_id || ''}" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver sugestão
         </a>
         
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Você recebeu este email porque enviou uma sugestão no PredictMarket.
+          Você recebeu este email porque enviou uma sugestão no OrbMarket.
         </p>
       </div>
     `,
@@ -365,7 +365,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `Sugestão Não Aprovada: ${data.suggestion_title || 'Sua sugestão'}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>📋 Sugestão Não Aprovada</h2>
         <p style="color: #666;">Infelizmente, sua sugestão não foi aprovada neste momento.</p>
         
@@ -378,12 +378,12 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Você pode enviar novas sugestões a qualquer momento. Agradecemos sua contribuição!
         </p>
 
-        <a href="https://predictmarket.com/suggestions/${data.suggestion_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/suggestions/${data.suggestion_id || ''}" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver sugestão
         </a>
         
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Você recebeu este email porque enviou uma sugestão no PredictMarket.
+          Você recebeu este email porque enviou uma sugestão no OrbMarket.
         </p>
       </div>
     `,
@@ -393,13 +393,13 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `🚀 Sua sugestão virou mercado!`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>🚀 Sua Sugestão Virou Mercado!</h2>
         <p style="color: #666;">Parabéns! Sua sugestão foi transformada em um mercado de previsão real.</p>
         
         <div style="background: #f0f0ff; border: 1px solid #c7c7ff; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
           <p style="font-size: 24px; margin: 0;">🚀</p>
-          <p style="font-size: 18px; font-weight: bold; color: #6366f1; margin: 8px 0;">${data.suggestion_title || data.title}</p>
+          <p style="font-size: 18px; font-weight: bold; color: #8A00FF; margin: 8px 0;">${data.suggestion_title || data.title}</p>
           <p style="color: #666; margin: 4px 0 0 0;">Agora é um mercado ativo!</p>
         </div>
 
@@ -407,12 +407,12 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Acesse o mercado para fazer sua primeira aposta e acompanhar os resultados.
         </p>
 
-        <a href="https://predictmarket.com/market/${data.market_id || ''}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/market/${data.market_id || ''}" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Ver mercado
         </a>
         
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Obrigado por contribuir com o PredictMarket!
+          Obrigado por contribuir com o OrbMarket!
         </p>
       </div>
     `,
@@ -422,7 +422,7 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
     subject: `⚠️ Sua conta de Copy Trader foi suspensa`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>⚠️ Conta de Trader Suspensa</h2>
         <p style="color: #666;">Olá, <strong>${data.display_name || 'Trader'}</strong>.</p>
         <p style="color: #666;">Sua conta de Copy Trader foi temporariamente suspensa.</p>
@@ -440,25 +440,25 @@ const emailTemplates: Record<string, (data: any) => { subject: string; html: str
           Se você acredita que isso foi um erro ou deseja mais informações, entre em contato com nosso suporte.
         </p>
 
-        <a href="https://predictmarket.com/settings?tab=support" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com/settings?tab=support" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Contatar Suporte
         </a>
         
         <p style="color: #999; font-size: 12px; margin-top: 40px;">
-          Este email foi enviado automaticamente pelo PredictMarket.
+          Este email foi enviado automaticamente pelo OrbMarket.
         </p>
       </div>
     `,
   }),
 
   DEFAULT: (data) => ({
-    subject: data.title || 'Notificação do PredictMarket',
+    subject: data.title || 'Notificação do OrbMarket',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #6366f1;">PredictMarket</h1>
+        <h1 style="color: #8A00FF;">OrbMarket</h1>
         <h2>${data.title}</h2>
         <p style="color: #666;">${data.message}</p>
-        <a href="https://predictmarket.com" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+        <a href="https://predictmarket.com" style="display: inline-block; background: #8A00FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">
           Acessar plataforma
         </a>
       </div>
@@ -474,7 +474,7 @@ async function sendResendEmail(to: string, subject: string, html: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "PredictMarket <notifications@resend.dev>",
+      from: "OrbMarket <notifications@resend.dev>",
       to: [to],
       subject,
       html,

@@ -2,10 +2,10 @@ import type { MetaFunction } from "react-router";
 import { FAQPage } from "@/pages/FAQPage";
 
 export const meta: MetaFunction = () => [
-  { title: "Perguntas Frequentes | Mercado de Previsões" },
+  { title: "Perguntas Frequentes | OrbMarket" },
   {
     name: "description",
-    content: "Tire suas dúvidas sobre a plataforma OddsWatch, conta, segurança, depósitos, saques e mercados.",
+    content: "Tire suas dúvidas sobre a plataforma OrbMarket, conta, segurança, depósitos, saques e mercados.",
   },
 ];
 

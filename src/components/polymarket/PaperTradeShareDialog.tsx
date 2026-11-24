@@ -83,8 +83,8 @@ export function PaperTradeShareDialog({ purchase, onClose }: { purchase: PaperPu
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent className="max-h-[95dvh] overflow-y-auto sm:max-w-md">
       <DialogHeader><DialogTitle>Compartilhar minha previsão</DialogTitle><DialogDescription>Compra simulada confirmada. Escolha se deseja compartilhar.</DialogDescription></DialogHeader>
-      <div ref={card} className="mx-auto flex aspect-[9/16] w-full max-w-[300px] flex-col overflow-hidden rounded-2xl p-6 text-white" style={{ background: negative ? "linear-gradient(150deg,#101b36 0%,#251127 60%,#4a1524 100%)" : "linear-gradient(150deg,#101b36 0%,#10283a 60%,#104438 100%)", fontFamily: "Arial, sans-serif" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.5, color: "#8edbff" }}>PREDICTMARKET</div>
+      <div ref={card} className="mx-auto flex aspect-[9/16] w-full max-w-[300px] flex-col overflow-hidden rounded-2xl p-6 text-white" style={{ background: negative ? "linear-gradient(150deg,#101b36 0%,#251127 60%,#4a1524 100%)" : "linear-gradient(150deg,#101b36 0%,#10283a 60%,#104438 100%)", fontFamily: "Montserrat, Arial, sans-serif" }}>
+        <div className="flex items-center gap-2 font-bold"><img src="/orbmarket.svg" alt="" width="24" height="24" />OrbMarket</div>
         <div style={{ marginTop: 12, fontSize: 11, fontWeight: 700, color: "#c3d3e3", textTransform: "uppercase" }}>Compra simulada · Paper Trading</div>
         <div style={{ marginTop: "auto" }}>
           {purchase.imageUrl && !previewImageFailed && <img data-paper-share-image src={purchase.imageUrl} onError={() => setPreviewImageFailed(true)} alt="" crossOrigin="anonymous" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 14, marginBottom: 18 }} />}

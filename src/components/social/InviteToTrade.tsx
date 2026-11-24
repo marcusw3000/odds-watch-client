@@ -52,7 +52,7 @@ export function InviteToTrade({
     const links = generateSocialShareLinks({
       title: inviteText,
       deepLink: inviteLink,
-      hashtags: ['Trading', 'MercadoPrevisoes'],
+      hashtags: ['Trading', 'OrbMarket'],
     });
     window.open(links.twitter, '_blank');
   };

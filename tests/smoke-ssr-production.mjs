@@ -14,6 +14,6 @@ const response = await createRequestHandler(build, 'production')(new Request('ht
 assert.equal(response.status, 200);
 const html = await response.text();
 assert.match(html, /<html/i);
-assert.match(html, /OddsWatch/i);
+assert.match(html, /OrbMarket/i);
 console.log('SSR de produção respondeu com HTTP 200 e React Router incluído no bundle.');
 process.exit(0);

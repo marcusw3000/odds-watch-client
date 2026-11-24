@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, AlertCircle, Mail, Gift, KeyRound, Eye, EyeOff, User, Lock, TrendingUp, CreditCard, Phone } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Gift, KeyRound, Eye, EyeOff, User, Lock, CreditCard, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { validateCPF, formatCPF, validateBrazilianPhone, formatPhone, extractDigits } from '@/lib/brazilianValidation';
 import { Input } from '@/components/ui/input';
@@ -244,11 +244,9 @@ export function AuthPage() {
         <CardHeader className="text-center space-y-3">
           {/* Logo/Brand */}
           <div className="flex justify-center mb-2">
-            <div className="p-3 rounded-xl bg-primary/10 ring-1 ring-primary/20">
-              <TrendingUp className="h-8 w-8 text-primary" />
-            </div>
+            <img src="/orbmarket.svg" alt="" width="64" height="64" />
           </div>
-          <CardTitle className="text-2xl font-bold">Bem-vindo ao OddsWatch</CardTitle>
+          <CardTitle className="text-2xl font-bold">Bem-vindo ao OrbMarket</CardTitle>
           <CardDescription className="text-base">
             {referralCode 
               ? 'Você recebeu um convite para participar do simulador.'

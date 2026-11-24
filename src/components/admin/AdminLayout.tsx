@@ -105,7 +105,7 @@ export function AdminLayout() {
         <div className="h-16 flex items-center justify-between px-4 border-b border-border">
           {sidebarOpen && (
             <span className="font-bold text-lg text-foreground">
-              Admin Panel
+              OrbMarket Admin
             </span>
           )}
           <div className="flex items-center gap-1">

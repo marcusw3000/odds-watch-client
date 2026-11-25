@@ -36,7 +36,7 @@ export function LeaderboardPage() {
           <TabsTrigger value="polymarket">Polymarket</TabsTrigger>
           <TabsTrigger value="ranking" className="gap-2">
             <Trophy className="h-4 w-4" />
-            <span>Paper Trading</span>
+            <span>Simulador</span>
           </TabsTrigger>
           <TabsTrigger value="achievements" className="gap-2">
             <Award className="h-4 w-4" />

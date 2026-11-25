@@ -23,12 +23,12 @@ export function ReferralPage() {
   const share = async () => {
     if (!link) return;
     if (!navigator.share) { await copy(link, 'Link de convite copiado.'); return; }
-    try { await navigator.share({ title: 'Convite para o simulador', text: 'Conheça o simulador Paper Trading.', url: link }); }
+    try { await navigator.share({ title: 'Convite para o simulador', text: 'Conheça o simulador.', url: link }); }
     catch (error) { if (!(error instanceof Error && error.name === 'AbortError')) toast({ title: 'Não foi possível compartilhar', variant: 'destructive' }); }
   };
 
   return <section className="container mx-auto max-w-6xl px-4 py-8">
-    <div className="mb-8"><h1 className="mb-2 text-3xl font-bold">Convites para o simulador</h1><p className="text-muted-foreground">Convide amigos e acompanhe a participação deles no Paper Trading Polymarket.</p></div>
+    <div className="mb-8"><h1 className="mb-2 text-3xl font-bold">Convites para o simulador</h1><p className="text-muted-foreground">Convide amigos e acompanhe a participação deles no Simulador Polymarket.</p></div>
     <Card className="mb-8 border-primary/20 bg-primary/5"><CardHeader><CardTitle className="flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> Seu código de convite</CardTitle><CardDescription>O mesmo código pode ser usado por várias pessoas. Você recebe 10% do lucro elegível de Copy Trading dos indicados, em saldo virtual.</CardDescription></CardHeader><CardContent>
       {code.isLoading ? <Skeleton className="h-12 w-48" /> : code.isError || !code.data ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">Convites temporariamente indisponíveis.</p><Button variant="outline" onClick={() => code.refetch()}>Tentar novamente</Button></div> : <div className="flex flex-wrap items-center gap-3"><span className="rounded-lg border border-primary/30 bg-background px-5 py-3 font-mono text-xl font-bold tracking-wider text-primary">{code.data}</span><Button variant="outline" onClick={() => copy(code.data, 'Código de convite copiado.')}><Copy className="mr-2 h-4 w-4" /> Copiar código</Button><Button variant="outline" onClick={() => copy(link, 'Link de convite copiado.')}><Copy className="mr-2 h-4 w-4" /> Copiar link</Button><Button onClick={share}><Share2 className="mr-2 h-4 w-4" /> Compartilhar</Button></div>}
     </CardContent></Card>

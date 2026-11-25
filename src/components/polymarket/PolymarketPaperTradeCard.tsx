@@ -71,9 +71,9 @@ export function PolymarketPaperTradeCard({ market, analytics, selectedOutcome, o
   }
 
   return (
-    <><section aria-label="Painel de paper trading" className="overflow-hidden rounded-2xl border border-border bg-card">
+    <><section aria-label="Painel de simulação" className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="border-b border-border p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold"><FlaskConical className="h-4 w-4 text-primary" /> Paper Trading <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">Simulado</span></div>
+        <div className="flex items-center gap-2 text-sm font-semibold"><FlaskConical className="h-4 w-4 text-primary" /> Simulador <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">Simulado</span></div>
         <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{market.question}</p>
       </div>
       <div className="space-y-5 p-4">

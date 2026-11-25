@@ -403,7 +403,7 @@ export function AdminUsersPage() {
       <div className="flex items-center gap-3">
         <Users className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Usuários e Paper Trading</h1>
+          <h1 className="text-2xl font-bold">Usuários e Simulador</h1>
           <p className="text-muted-foreground">
             Gerenciamento de contas, saldo virtual e permissões
           </p>
@@ -802,7 +802,7 @@ export function AdminUsersPage() {
               </TabsContent>
 
               <TabsContent value="wallet" className="space-y-4 mt-4">
-                <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Saldo virtual disponível · Paper Trading</p><p className="text-2xl font-bold">{userDetails.paper.wallet ? formatCurrency(Number(userDetails.paper.wallet.balance_usd)) : 'Carteira ainda não iniciada'}</p><p className="mt-2 text-xs text-muted-foreground">USD virtual; não representa fundos reais.</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Saldo virtual disponível · Simulador</p><p className="text-2xl font-bold">{userDetails.paper.wallet ? formatCurrency(Number(userDetails.paper.wallet.balance_usd)) : 'Carteira ainda não iniciada'}</p><p className="mt-2 text-xs text-muted-foreground">USD virtual; não representa fundos reais.</p></CardContent></Card>
                 <div className="border rounded-lg p-4 space-y-2"><h4 className="font-medium">Operações simuladas recentes</h4>{userDetails.paper.trades.length ? userDetails.paper.trades.map(trade => <div key={trade.id} className="flex justify-between gap-3 border-b py-2 text-sm"><span>{trade.side === 'BUY' ? 'Compra' : 'Venda'} · {trade.outcome_label} · {Number(trade.shares).toLocaleString('pt-BR')} shares</span><span>{(Number(trade.price) * 100).toFixed(2)}¢</span></div>) : <p className="text-sm text-muted-foreground">Nenhuma operação simulada.</p>}</div>
               </TabsContent>
               <TabsContent value="contracts" className="space-y-3 mt-4">

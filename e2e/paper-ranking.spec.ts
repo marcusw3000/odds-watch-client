@@ -56,7 +56,7 @@ test("authenticated simulated trade updates the paper leaderboard", async ({ pag
   await expect(page.getByText("Operação simulada registrada.")).toBeVisible();
   const preview = page.getByRole("dialog", { name: "Compartilhar minha previsão" });
   await expect(preview).toBeVisible();
-  await expect(preview.getByText("Compra simulada · Paper Trading")).toBeVisible();
+  await expect(preview.getByText("Compra simulada · Simulador")).toBeVisible();
   await expect(preview.getByText("0,1¢")).toBeVisible();
   await expect(preview.getByText("SIM", { exact: true })).toBeVisible();
   await expect(preview.getByRole("button", { name: "Baixar PNG" })).toBeEnabled({ timeout: 15000 });

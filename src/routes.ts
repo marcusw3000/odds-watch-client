@@ -1,6 +1,8 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
+  route("api/webhooks/pushinpay", "./route-modules/pushinpay-webhook.ts", { id: "pushinpay-webhook" }),
+  route("api/internal/pushinpay-reconcile", "./route-modules/pushinpay-reconcile.ts", { id: "pushinpay-reconcile" }),
   route("api/admin/disk-metrics", "./route-modules/admin-disk-metrics.ts", { id: "admin-disk-metrics" }),
   route("api/polymarket/leaderboard", "./route-modules/polymarket-leaderboard-data.ts", { id: "polymarket-leaderboard-data" }),
   route("api/polymarket/biggest-wins", "./route-modules/polymarket-biggest-wins.ts", { id: "polymarket-biggest-wins" }),

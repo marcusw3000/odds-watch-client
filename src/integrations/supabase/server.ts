@@ -133,18 +133,17 @@ export async function getServerAuthState(
   };
 }
 
-function buildAuthRedirectTarget(request: Request) {
-  const url = new URL(request.url);
+function buildAuthRedirectTarget(url: URL) {
   const returnTo = `${url.pathname}${url.search}`;
 
   return `/auth?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
-export async function requireAuthenticatedUser(request: Request) {
+export async function requireAuthenticatedUser(request: Request, url = new URL(request.url)) {
   const auth = await getServerAuthState(request);
 
   if (!auth.user) {
-    throw redirect(buildAuthRedirectTarget(request), {
+    throw redirect(buildAuthRedirectTarget(url), {
       headers: auth.headers,
     });
   }

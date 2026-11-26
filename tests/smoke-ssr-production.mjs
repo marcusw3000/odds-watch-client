@@ -15,5 +15,18 @@ assert.equal(response.status, 200);
 const html = await response.text();
 assert.match(html, /<html/i);
 assert.match(html, /OrbMarket/i);
+const handler = createRequestHandler(build, 'production');
+for (const route of ['/', '/markets', '/market/legacy-id']) {
+  const redirectResponse = await handler(new Request(`http://localhost${route}`));
+  assert.equal(redirectResponse.status, 302, `Redirecionamento ausente em ${route}`);
+  assert.equal(redirectResponse.headers.get('location'), '/polymarket');
+}
+for (const route of ['portfolio', 'profile', 'settings', 'referral']) {
+  const protectedResponse = await handler(new Request(`http://localhost/${route}.data?tab=teste`));
+  const body = await protectedResponse.text();
+  assert.equal(protectedResponse.status, 202);
+  assert.ok(body.includes(`/auth?returnTo=%2F${route}%3Ftab%3Dteste`), `Retorno incorreto para ${route}`);
+  assert.doesNotMatch(body, /returnTo=[^"\s]*\.data/);
+}
 console.log('SSR de produção respondeu com HTTP 200 e React Router incluído no bundle.');
 process.exit(0);

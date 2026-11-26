@@ -3,7 +3,7 @@ import { reactRouter } from "@react-router/dev/vite";
 import path from "path";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode, isSsrBuild, command }) => {
+export default defineConfig(({ mode, command }) => {
   if (command === "build") {
     const env = loadEnv(mode, process.cwd(), "VITE_");
     const missing = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"].filter((name) => !env[name]?.trim());
@@ -30,16 +30,12 @@ export default defineConfig(({ mode, isSsrBuild, command }) => {
   optimizeDeps: {
     include: ["react", "react-dom", "react-router", "react-router-dom", "@tanstack/react-query"],
   },
-  esbuild: mode === 'production' ? {
-    // Drop console.* and debugger statements from client bundle only
-    drop: isSsrBuild ? ['debugger'] : ['console', 'debugger'],
-  } : undefined,
-  build: {
-    rollupOptions: {
-      output:
-        isSsrBuild
-          ? undefined
-          : {
+  environments: {
+    client: {
+      esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : undefined,
+      build: {
+        rollupOptions: {
+          output: {
               manualChunks(id) {
                 if (!id.includes("node_modules")) {
                   return;
@@ -125,8 +121,15 @@ export default defineConfig(({ mode, isSsrBuild, command }) => {
                   return "vendor-ui";
                 }
               },
-            },
+          },
+        },
+      },
     },
+    ssr: {
+      esbuild: mode === 'production' ? { drop: ['debugger'] } : undefined,
+    },
+  },
+  build: {
     // The heaviest lazy chunks are export-only libraries loaded on demand.
     chunkSizeWarningLimit: 1000,
     // Enable minification

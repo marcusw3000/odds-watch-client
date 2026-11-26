@@ -1,5 +1,5 @@
-import { Navigate } from "react-router";
+import { redirect } from "react-router";
 
-export default function IndexRedirectRoute() {
-  return <Navigate to="/polymarket" replace />;
+export function loader() {
+  return redirect("/polymarket");
 }

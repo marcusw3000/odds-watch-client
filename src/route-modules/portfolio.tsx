@@ -2,8 +2,8 @@ import { PolymarketPaperPortfolioPage } from "@/pages/PolymarketPaperPortfolioPa
 import { requireAuthenticatedUser } from "@/integrations/supabase/server";
 import type { Route } from "./+types/portfolio";
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const auth = await requireAuthenticatedUser(request);
+export async function loader({ request, url }: Route.LoaderArgs) {
+  const auth = await requireAuthenticatedUser(request, url);
 
   return null;
 }

@@ -1,3 +1,4 @@
+import { isValidPolymarketPrice } from "@/lib/polymarketPrice";
 import { useRef, useState } from "react";
 import { FlaskConical, Minus, Plus, RotateCcw } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -71,7 +72,7 @@ export function PolymarketPaperTradeCard({ market, analytics, selectedOutcome, o
   }
 
   return (
-    <><section aria-label="Painel de simulação" className="overflow-hidden rounded-2xl border border-border bg-card">
+    <><section aria-label="Painel de simula??o" className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="border-b border-border p-4">
         <div className="flex items-center gap-2 text-sm font-semibold"><FlaskConical className="h-4 w-4 text-primary" /> Simulador <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">Simulado</span></div>
         <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{market.question}</p>
@@ -80,7 +81,7 @@ export function PolymarketPaperTradeCard({ market, analytics, selectedOutcome, o
         <div className="flex gap-5 border-b border-border text-sm font-semibold" role="group" aria-label="Tipo de operação">
           {(["BUY", "SELL"] as const).map((value) => <button key={value} type="button" onClick={() => setSide(value)} aria-pressed={side === value} className={`border-b-2 pb-2 ${side === value ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>{value === "BUY" ? "Comprar" : "Vender"}</button>)}
         </div>
-        <div><p className="mb-2 text-xs font-medium text-muted-foreground">Resultado</p><div className="grid grid-cols-2 gap-2">{market.outcomes.map((item, index) => <button key={`${item.label}-${index}`} type="button" onClick={() => onSelectOutcome(item.label)} aria-pressed={outcome?.label === item.label} className={`rounded-lg border px-2 py-3 text-sm font-semibold transition-colors ${outcome?.label === item.label ? index === 0 ? "border-emerald-500/50 bg-emerald-600 text-white" : "border-rose-500/50 bg-rose-700 text-white" : "border-border bg-background/40 text-muted-foreground hover:text-foreground"}`}>{item.label} {item.price != null && Number.isFinite(Number(item.price)) ? `${(Number(item.price) * 100).toFixed(1)}¢` : "—"}</button>)}</div></div>
+        <div><p className="mb-2 text-xs font-medium text-muted-foreground">Resultado</p><div className="grid grid-cols-2 gap-2">{market.outcomes.map((item, index) => <button key={`${item.label}-${index}`} type="button" onClick={() => onSelectOutcome(item.label)} aria-pressed={outcome?.label === item.label} className={`rounded-lg border px-2 py-3 text-sm font-semibold transition-colors ${outcome?.label === item.label ? index === 0 ? "border-emerald-500/50 bg-emerald-600 text-white" : "border-rose-500/50 bg-rose-700 text-white" : "border-border bg-background/40 text-muted-foreground hover:text-foreground"}`}>{item.label} {isValidPolymarketPrice(item.price) ? `${(Number(item.price) * 100).toFixed(1)}¢` : "—"}</button>)}</div></div>
         <div className="space-y-2">
           <label className="block text-sm font-semibold" htmlFor="paper-shares">Quantidade</label>
           <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 p-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -93,6 +94,7 @@ export function PolymarketPaperTradeCard({ market, analytics, selectedOutcome, o
           <p className="text-xs text-muted-foreground">Use os botões ou digite uma quantidade, inclusive fracionada.</p>
         </div>
         <div className="flex justify-between text-sm text-muted-foreground"><span>{side === "BUY" ? "Custo estimado" : "Valor estimado"}</span><span className="font-medium text-foreground">{canSubmit ? `US$ ${(amount * price).toFixed(2)}` : "—"}</span></div>
+        {side === "BUY" && <div className="space-y-1"><div className="flex items-center justify-between gap-2 text-sm"><span className="font-semibold">Recebimento potencial</span><span className="text-lg font-bold text-emerald-400">{canSubmit ? `US$ ${amount.toFixed(2)}` : "—"}</span></div><p className="text-xs text-muted-foreground">Valor virtual estimado se o resultado vencer, considerando US$ 1 por share. Não inclui o custo; a liquidação automática ainda não está disponível.</p></div>}
         {preview?.complete && <p className="text-xs text-muted-foreground">Preço médio simulado: {(price * 100).toFixed(2)}¢ por share, com base nas ofertas visíveis. Sem taxas.</p>}
         {!closed && (!preview || !preview.complete) && <p className="text-xs text-muted-foreground">{preview ? `Liquidez visível insuficiente: ${preview.available.toFixed(2)} shares disponíveis.` : "Livro de ofertas indisponível para esta operação."}</p>}
         <Button className="w-full" disabled={!canSubmit || trade.isPending || (isAuthenticated && !data?.wallet?.round_id)} onClick={submit}>{trade.isPending ? "Registrando..." : isAuthenticated ? `${side === "BUY" ? "Comprar" : "Vender"} no simulador` : "Entrar para simular"}</Button>

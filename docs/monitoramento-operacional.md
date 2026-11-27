@@ -14,4 +14,6 @@ A migration `20261118020000_operational_alerts.sql` prepara notificações inter
 
 Os avisos cobrem erro registrado no catálogo, verificação de Copy Trading atrasada por mais de 15 minutos, tentativa de amostragem de portfólio sem sucesso posterior por mais de 15 minutos e falha do último cron ativo. O cron só informa o estado do comando agendado; a resposta HTTP precisa de verificação separada. A capacidade total de disco e a duração dos ciclos ainda não são monitoradas por este mecanismo.
 
-Antes de aplicar em produção, execute testes em banco isolado para permissões, duplicidade, recuperação e ausência de administradores, e confirme que os alertas não geram ruído com o cron pausado. O envio externo por e-mail ou mensageria não está configurado. Se a migration ainda não tiver sido aplicada, não há monitoramento automático ativo.
+O alerta de disco usa a função `check-disk-health`, agendada a cada dez minutos, com limite de 80% e repetição máxima a cada seis horas enquanto a condição persistir. A recuperação e a deduplicação foram testadas em banco isolado; o job e uma verificação real foram confirmados em produção. O envio externo por e-mail ou mensageria não está configurado.
+
+As migrations de duração de ciclo registram o tempo entre o início e a conclusão de cada ciclo de mercados e eventos. Os valores aparecem somente após um ciclo completo posterior à implantação; não reinicie o cron pausado apenas para gerar uma amostra.

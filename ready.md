@@ -1,4 +1,39 @@
-# Plano de melhorias
+﻿# Plano de melhorias
+
+## Ramp com Pushin Pay — 25/11/2026
+
+
+A Pushin Pay é o gateway escolhido para os fluxos PIX. A etapa de conversão entre BRL e cripto fica pendente de definição, conforme a decisão de concentrar esta implementação na Pushin Pay.
+
+**Implementação PIX local:** há interface autenticada, cobrança, envio de saque, saldo real em BRL, histórico, webhook e conciliação. O crédito e a reserva ocorrem de forma idempotente e transacional; o destino de saque é cifrado antes da persistência. O endpoint oficial de criação de saque é `/pix/cashOut`. A rota de consulta `/transfers/{id}` respondeu HTTP 404 e `[]` para um identificador fictício autenticado; ainda é necessário confirmar o formato e os estados de uma transferência real com a Pushin Pay. Os fluxos permanecem desativados por padrão.
+
+**Persistência PIX em preparação:** as migrations e testes SQL passaram em PostgreSQL 17 temporário, incluindo 20 tentativas simultâneas de envio, 20 créditos repetidos e dois saques concorrentes com conexões independentes. A carteira PIX usa centavos de BRL e é separada da carteira pUSD e do simulador. Antes de aplicação remota, revisar identidade e histórico do projeto Supabase.
+
+**Fluxo de entrada:** autenticação → solicitação de depósito vinculada ao usuário → cobrança PIX na Pushin Pay → confirmação por consulta autenticada e conciliação → aquisição e entrega do ativo pelo conversor escolhido → confirmação do destino e da disponibilidade em pUSD → lançamento individual no ledger. A confirmação de pagamento e a conclusão da conversão são eventos distintos.
+
+**Fluxo de saída:** solicitação vinculada ao usuário → reserva atômica do saldo disponível → venda ou conversão pelo provedor escolhido → confirmação do BRL disponível → pagamento PIX pela Pushin Pay → confirmação e conciliação do pagamento → liquidação da reserva. Em caso de resultado desconhecido, consultar e reconciliar antes de reenviar ou liberar valores.
+
+- [ ] Confirmar com a Pushin Pay a elegibilidade do negócio, o modelo de titularidade da conta e das chaves PIX, as tarifas contratadas, prazos e limites. O valor de R$ 0,50 por saque é uma proposta comercial, ainda sem confirmação de acordo.
+- [ ] Definir conversor, ativos, rede, custódia, origem e destino dos recursos, política de câmbio e taxas, e verificar a compatibilidade de cada etapa com os provedores.
+- [ ] Integrar o sandbox Pushin Pay ao fluxo autenticado com persistência por usuário. Há uma ferramenta local de homologação em `scripts/pushinpay-sandbox.mjs`, que cria e consulta cobranças e registra resultados localmente. Configure `PUSHINPAY_SANDBOX_TOKEN` em `.env.local` e execute `node --env-file=.env.local scripts/pushinpay-sandbox.mjs criar 100`, `listar` ou `consultar <identificador local>`. A ferramenta usa Node com suporte a TypeScript nativo. Ela não credita saldo e não substitui o fluxo de produção. Uma falha durante a criação deixa o resultado desconhecido para conciliação no painel antes de qualquer repetição. Se o processo for interrompido, verifique que não há outra execução antes de remover o arquivo de bloqueio local `pushinpay-sandbox-lock.local`.
+- [ ] Persistir solicitações e transições, identificadores externos únicos, valores em unidades inteiras, histórico de eventos e lançamentos imutáveis separados por usuário. Implementar reservas e liquidação em transações atômicas.
+- [ ] Implementar endpoints autenticados de criação e consulta com verificação de titularidade, idempotência, limites e tratamento de respostas incertas. Confirmar o contrato de idempotência da Pushin Pay antes de qualquer repetição.
+- [ ] Receber notificações de pagamento, consultar a transação na Pushin Pay pelo servidor e conferir identificador, valor e estado antes de qualquer lançamento. Tratar notificações repetidas e ausentes por conciliação periódica.
+
+  A rota local `/api/webhooks/pushinpay` autentica o cabeçalho `x-pushinpay-token` e enfileira o identificador. A rota interna `/api/internal/pushinpay-reconcile` processa uma notificação por execução e recupera cobranças sem aviso. A migration `20261125211000_pushinpay_reconcile_schedule.sql` prepara o agendamento mediante Vault e extensões. Ainda falta aplicar as migrations no projeto correto, configurar os segredos na Vercel e no painel da Pushin Pay. Um pagamento confirmado por consulta autenticada credita o saldo BRL uma única vez.
+
+  Cobranças expiradas são exibidas como expiradas e podem ser consultadas novamente pelo usuário; uma confirmação posterior de pagamento gera crédito idempotente. Caso a criação retorne resultado desconhecido sem identificador externo, é necessária uma forma comprovada de localizar e vincular a operação antes de reenviar ou liberar valores. Confirmar também os eventos e o procedimento para estorno ou devolução após um pagamento já creditado.
+
+  O pg_net armazena temporariamente cabeçalhos HTTP na fila do banco. Antes de configurar o segredo do agendamento, verificar no projeto quais papéis conseguem ler a fila e proteger a credencial de conciliação. Referência: https://supabase.com/kb/troubleshooting/database-roles-can-read-request-headers-queued-by-pg_net-ad6357
+
+- [ ] Concluir a validação do fluxo de depósito antes de habilitá-lo. O crédito em BRL ocorre na mesma transação que registra o status confirmado, inclusive para depósitos anteriormente confirmados. Falta testar a integração com a Pushin Pay e configurar as variáveis do servidor. `PUSHINPAY_DEPOSITS_ENABLED` permanece desativado.
+- [ ] Implementar integração de conversão com confirmação de valores, taxas, rede, destino, entrega e disponibilização efetiva. Registrar estados pendentes e erros recuperáveis.
+- [ ] Validar o saque PIX com a Pushin Pay, inclusive titularidade, formato da consulta, estados, taxas e falhas. O fluxo local reserva saldo e cifra o destino, registra resultado incerto e concilia pagamento ou cancelamento sem duplicar lançamentos. `PUSHINPAY_WITHDRAWALS_ENABLED` permanece desativado.
+- [ ] Criar interface para cotação, taxas, confirmação, histórico e estados de depósito e saque, com saldos reais separados do simulador.
+- [ ] Validar sandbox de ponta a ponta, incluindo pagamentos duplicados, notificações fora de ordem, falhas parciais, concorrência e recuperação. Conciliar saldos de usuários, reservas e ativos da empresa antes de ativar produção.
+- [ ] Verificar elegibilidade e restrições atuais para a Polymarket e obter confirmações dos provedores antes de habilitar operações reais.
+
+Referências: https://app.theneo.io/pushinpay/pix/criar-pix e https://app.theneo.io/pushinpay/pix/consultar-pix
 
 Este documento reúne as melhorias propostas após os testes do site. A ordem prioriza confiabilidade dos dados e conclusão do simulador antes de novas funcionalidades.
 
@@ -21,11 +56,11 @@ Este documento reúne as melhorias propostas após os testes do site. A ordem pr
 
 ### 2. Transparência e atualização dos preços
 
-- [ ] Identificar a origem e o horário das cotações exibidas em cards, destaques, detalhes e portfólio.
-- [ ] Diferenciar visualmente dados ao vivo, dados em cache e dados desatualizados.
-- [ ] Tratar ausência de cotação sem apresentar valores inexistentes como zero.
-- [ ] Garantir que favoritos exibam nome e informações úteis mesmo quando o mercado não estiver na cache consultada.
-- [ ] Testar divergências temporárias entre telas, falha da API e reconexão.
+- [x] Identificar a origem e o horário das cotações exibidas em cards, destaques, detalhes e portfólio, informando quando o horário individual não estiver disponível.
+- [x] Diferenciar visualmente dados ao vivo, dados em cache e dados desatualizados.
+- [x] Tratar ausência de cotação sem apresentar valores inexistentes como zero. Validado com dados simulados no catálogo, no mercado e no portfólio; zero confirmado continua válido.
+- [x] Garantir que favoritos exibam nome e informações úteis mesmo quando o mercado não estiver na cache consultada. Se a consulta pública falhar, mostrar o identificador e informar a indisponibilidade.
+- [x] Testar divergências temporárias entre telas, falha da API e reconexão com dados simulados.
 
 **Prós:** o usuário entende a origem dos valores e percebe quando uma informação pode estar desatualizada.
 
@@ -36,15 +71,29 @@ Este documento reúne as melhorias propostas após os testes do site. A ordem pr
 - [ ] Acompanhar espaço do banco e do disco, crescimento da cache e estado dos agendamentos.
 - [ ] Monitorar falhas da Gamma, idade da cache e duração dos ciclos de sincronização.
 - [ ] Monitorar filas, atrasos e falhas de processamento do Copy Trading e do histórico de portfólio.
-- [ ] Definir limites, destinatários e canais de alerta, evitando notificações repetitivas.
-- [ ] Exibir no painel administrativo o estado dos serviços e a última execução bem-sucedida.
-- [ ] Testar alertas e registrar procedimentos de recuperação.
+- [x] Definir limites, destinatários e canais de alerta, evitando notificações repetitivas: notificações internas para administradores, com repetição limitada.
+- [x] Exibir no painel administrativo o estado dos serviços e a última execução bem-sucedida.
+- [x] Testar alertas em banco isolado e registrar procedimentos de recuperação em `docs/monitoramento-operacional.md`.
 
 **Prós:** problemas podem ser identificados antes de afetar muitos usuários.
 
 **Contras:** exige configuração e manutenção; limites inadequados podem gerar alertas excessivos.
 
-### 4. Liquidação automática no paper trading
+### 4. Resolução e resgate automático de posições
+
+**Decisão:** priorizar o resgate automático das posições reais pela carteira integrada. A automação depende de suporte e autorização adequados do provedor de carteira; a mecânica, os limites e os custos ainda precisam ser definidos. Manter negociação real desativada até os pré-requisitos serem validados.
+
+#### Posições reais Polymarket
+
+- [ ] Distinguir fechamento, contestação e resolução definitiva; consultar estado oficial e identificar o protocolo e a posição corretos antes de propor resgate.
+- [ ] Selecionar provedor de carteira integrada que suporte autorização e execução automática de resgates, com limites, revogação, recuperação e política de gás definidos.
+- [ ] Detectar posições elegíveis e consultar saldo e pagamento aplicável, incluindo resultados fracionados e mercados excepcionais, sem presumir sempre US$ 1 ou US$ 0.
+- [ ] Executar o resgate pelo fluxo e contrato corretos para cada protocolo, registrando intenção, autorização, transação e estados de modo idempotente.
+- [ ] Conciliar confirmações, reorganizações, transações pendentes, falhas e resgates externos; atualizar saldo pUSD e posições somente após confirmação confiável.
+- [ ] Exibir status, custos e histórico ao usuário; monitorar filas e falhas e oferecer recuperação sem duplicar transações.
+- [ ] Testar com mocks, concorrência, repetição, recuperação e ambiente autorizado antes de liberar a funcionalidade real.
+
+#### Posições simuladas
 
 - [ ] Definir como identificar resolução definitiva, cancelamento, contestação e alterações posteriores da fonte.
 - [ ] Implementar liquidação idempotente das posições simuladas, com registro auditável.
@@ -158,6 +207,34 @@ Navegador → aplicação → Redis (cache pública compartilhada)
 
 **Aceite do piloto:** resultados corretos e isolados, fallback comprovado e melhoria mensurável que justifique custo e complexidade. O teste não autoriza reativar o cron completo do catálogo.
 
+## Rate limit e proteção contra abuso
+
+**Prioridade:** proteger primeiro os endpoints ativos com escrita e as consultas públicas de maior custo. Definir limites após medir o uso normal; não limitar atualizações internas da interface como se fossem requisições ao servidor.
+
+### Inventário e política
+
+- [ ] Inventariar rotas da aplicação, Edge Functions e RPCs expostas, seus chamadores, autenticação, custo e limites já existentes. Confirmar quais mecanismos estão realmente publicados antes de alterá-los.
+- [ ] Definir limites independentes por operação para consultas públicas, autenticação, favoritos, comentários, paper trading, copy trading, exportação e rotinas administrativas. Considerar também o limite das APIs externas.
+- [ ] Identificar usuários autenticados pelo identificador validado no servidor; para acesso anônimo, usar IP apenas quando fornecido por proxy confiável. Evitar confiar em cabeçalhos arbitrários e considerar usuários que compartilham IP.
+- [ ] Definir janelas, limites de rajada, exceções internas autenticadas e custos diferentes para operações caras, ajustando-os com base nas métricas. Não registrar segredos nem dados pessoais desnecessários nas chaves ou logs.
+
+### Implementação
+
+- [ ] Aplicar a verificação no servidor antes do trabalho custoso ou da gravação, com contagem atômica compartilhada entre instâncias. Reutilizar a função de banco existente apenas após revisar permissões, concorrência, limpeza e custo.
+- [ ] Comparar PostgreSQL com Redis ou serviço equivalente para os endpoints de maior tráfego. Medir escritas e consumo antes de ampliar o uso no banco; usar TTL e limitar a retenção dos contadores.
+- [ ] Garantir que chamadas de cron e serviços internos tenham autenticação própria e política adequada; rate limit não substitui autenticação, autorização, validação ou idempotência.
+- [ ] Definir comportamento na falha do armazenamento por rota: operações sensíveis devem falhar de forma segura; consultas públicas podem ter fallback restrito e monitorado quando apropriado.
+- [ ] Retornar HTTP 429 e `Retry-After` quando aplicável; apresentar mensagem clara e permitir nova tentativa sem repetição automática excessiva. Respeitar os limites e respostas 429 das APIs externas com backoff e jitter.
+- [ ] Evitar exposição pública dos contadores e proteger credenciais do armazenamento no servidor. Documentar configuração, implantação, revisão e reversão por ambiente.
+
+### Testes e acompanhamento
+
+- [ ] Testar abaixo e acima do limite, expiração da janela, concorrência entre instâncias, isolamento entre usuários e IPs, múltiplas ações, proxy confiável e recuperação após falhas.
+- [ ] Verificar que ações sensíveis não são executadas quando bloqueadas, que repetições idempotentes mantêm seu comportamento e que cron e tráfego legítimo não são bloqueados indevidamente.
+- [ ] Medir requisições permitidas e bloqueadas, latência, erros, escritas no banco, consumo e custos; configurar alertas agregados sem dados sensíveis e ajustar limites progressivamente.
+
+**Aceite:** proteção distribuída e testada nos endpoints priorizados, com resposta clara ao usuário, política de falha documentada e consumo compatível com a capacidade disponível.
+
 ## Evoluções de produto
 
 ### 7. Tradução dos mercados
@@ -173,9 +250,9 @@ Navegador → aplicação → Redis (cache pública compartilhada)
 
 ### 8. Portfólio mais analítico
 
-- [ ] Apresentar claramente resultado realizado e em aberto, valor atual e custo das posições.
+- [x] Apresentar claramente resultado realizado e em aberto, valor atual e custo das posições.
 - [ ] Aprimorar gráficos por período e detalhamento por mercado, respeitando as amostras disponíveis.
-- [ ] Informar que o histórico persistente começa com a coleta e não é retroativo.
+- [x] Informar que o histórico persistente começa com a coleta e não é retroativo.
 - [ ] Testar cálculos, períodos sem amostras e cotações ausentes.
 
 **Prós:** ajuda o usuário a entender o desempenho das suas decisões.
@@ -238,7 +315,7 @@ As etapas abaixo pertencem ao plano original e não são necessárias para concl
 
 ### Fiat e PIX
 
-- [ ] Considerar que, segundo o usuário, a Pods ainda não oferece sandbox para este fluxo; confirmar as opções de teste com o provedor e usar mocks isolados até existir teste autorizado.
+- [ ] Confirmar com a Pods quais operações de ramp estão habilitadas para a credencial de staging e validar seus contratos antes de implementar o fluxo financeiro de teste.
 - [ ] Separar os estados de cotação PIX, pagamento, entrega de USDC, conversão na Bridge e crédito de pUSD; só oferecer confirmação da ordem após o crédito confirmado.
 - [ ] Avaliar parceiro autorizado e compatível com BRL/PIX, carteiras individuais e a finalidade pretendida.
 - [ ] Implementar cotação com validade, tarifas e prazos claros; separar equivalência estimada de saldo efetivamente liquidado.

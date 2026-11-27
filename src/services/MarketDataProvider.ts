@@ -261,12 +261,12 @@ export const MarketDataProvider = {
 
     if (error) {
       console.error('Error fetching markets:', error);
-      return mockMarkets;
+      throw error;
     }
 
-    // Return mocks if no data in DB
+    // An empty database is an empty catalog.
     if (!data || data.length === 0) {
-      return mockMarkets;
+      return [];
     }
 
     // Fetch options for MULTIPLE markets
@@ -303,9 +303,7 @@ export const MarketDataProvider = {
   async getEventById(id: string): Promise<MarketEvent | null> {
     // Check if it's a mock ID first
     const mockMarket = mockMarkets.find(m => m.id === id);
-    if (mockMarket) {
-      return mockMarket;
-    }
+    if (mockMarket) return null;
 
     const { data, error } = await supabase
       .from('markets')
@@ -473,101 +471,10 @@ export const MarketDataProvider = {
   async getUserPortfolio(): Promise<UserPortfolio> {
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Mock contracts for demo purposes
-    const mockContracts: UserContract[] = [
-      {
-        id: 'mock-contract-1',
-        eventId: 'mock-selic-2026',
-        eventTitle: 'Taxa SELIC ficará acima de 14% em março de 2026?',
-        outcome: 'YES',
-        quantity: 10,
-        priceAtPurchase: 65,
-        purchasedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        status: 'ACTIVE',
-      },
-      {
-        id: 'mock-contract-2',
-        eventId: 'mock-dolar-jan',
-        eventTitle: 'Dólar fechará acima de R$6,20 em janeiro de 2026?',
-        outcome: 'NO',
-        quantity: 5,
-        priceAtPurchase: 28,
-        purchasedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-        status: 'ACTIVE',
-      },
-      {
-        id: 'mock-contract-3',
-        eventId: 'mock-ipca-2025',
-        eventTitle: 'IPCA acumulado de 2025 ficará acima de 5%?',
-        outcome: 'YES',
-        quantity: 15,
-        priceAtPurchase: 82,
-        purchasedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-        status: 'ACTIVE',
-      },
-      {
-        id: 'mock-contract-4',
-        eventId: 'mock-settled-1',
-        eventTitle: 'Taxa SELIC subiu em dezembro de 2025?',
-        outcome: 'YES',
-        quantity: 8,
-        priceAtPurchase: 70,
-        purchasedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-        status: 'WON',
-        payout: 8, // R$1 per contract won
-      },
-      {
-        id: 'mock-contract-5',
-        eventId: 'mock-settled-2',
-        eventTitle: 'Dólar fechou abaixo de R$5,50 em novembro?',
-        outcome: 'YES',
-        quantity: 12,
-        priceAtPurchase: 45,
-        purchasedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago
-        status: 'LOST',
-      },
-    ];
-
-    const mockTransactions: Transaction[] = [
-      {
-        id: 'mock-tx-1',
-        type: 'BUY',
-        amount: 6.50,
-        eventTitle: 'Taxa SELIC ficará acima de 14% em março de 2026?',
-        outcome: 'YES',
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'mock-tx-2',
-        type: 'BUY',
-        amount: 1.40,
-        eventTitle: 'Dólar fechará acima de R$6,20 em janeiro de 2026?',
-        outcome: 'NO',
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'mock-tx-3',
-        type: 'DEPOSIT',
-        amount: 500,
-        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'mock-tx-4',
-        type: 'PAYOUT',
-        amount: 8,
-        eventTitle: 'Taxa SELIC subiu em dezembro de 2025?',
-        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
-      },
-    ];
 
     if (!user) {
-      // Return mock data for non-logged users to see the UI
-      return { 
-        balance: 485.60, 
-        totalProfit: 23.45, 
-        contracts: mockContracts, 
-        transactions: mockTransactions 
-      };
+      // A visitor has no portfolio; never display demonstration balances.
+      throw new Error('Faça login para acessar seu portfólio.');
     }
 
     // Get balance from wallets table

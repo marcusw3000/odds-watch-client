@@ -20,7 +20,7 @@ interface GammaMarketRecord {
   clobTokenIds?: unknown; positionIds?: unknown; volume?: unknown; volumeNum?: unknown;
   liquidity?: unknown; liquidityNum?: unknown; spread?: unknown; endDate?: unknown; updatedAt?: unknown;
   acceptingOrders?: unknown; restricted?: unknown;
-  category?: unknown; closed?: unknown; events?: unknown;
+  category?: unknown; closed?: unknown; events?: unknown; resolutionSource?: unknown;
 }
 
 const pageCache = new Map<string, CacheEntry>();
@@ -72,7 +72,7 @@ function mapMarket(record: GammaMarketRecord): PolymarketMarket | null {
     liquidityUsd: asString(record.liquidity) ?? asString(record.liquidityNum), spread: asString(record.spread),
     endDate: asString(record.endDate), sourceUpdatedAt: asString(record.updatedAt),
     acceptingOrders: record.acceptingOrders === true, restricted: record.restricted === true,
-    category: asString(record.category), status: record.closed === true ? "closed" : "open",
+    category: asString(record.category), resolutionSource: asString(record.resolutionSource), status: record.closed === true ? "closed" : "open",
     url: slug ? `https://polymarket.com/event/${encodeURIComponent(slug)}` : null,
   };
 }
@@ -121,7 +121,7 @@ async function cachedMarkets(limit: number, query?: string): Promise<PolymarketM
 async function cachedMarket(id: string): Promise<PolymarketMarket | null> {
   const { data, error } = await persistentCache.from("polymarket_market_cache")
     .select("*").eq("source", "polymarket").eq("market_id", id).maybeSingle();
-  return error || !data ? null : mapCachedMarket(data);
+  return error || !data ? null : { ...mapCachedMarket(data), quoteOrigin: "persistent_cache", quoteObservedAt: data.synced_at };
 }
 
 export async function listPolymarketMarkets({ cursor = null, limit = 18 }: {
@@ -255,6 +255,7 @@ export async function getPolymarketMarket(id: string): Promise<PolymarketMarket 
       ? (payload as { markets: unknown[] }).markets : null;
     if (!records) throw new Error("Polymarket returned an invalid market response");
     market = records.map((record) => mapMarket(record as GammaMarketRecord)).find((item) => item?.id === id) ?? null;
+    if (market) market = { ...market, quoteOrigin: "gamma", quoteObservedAt: new Date().toISOString() };
   } catch (error) {
     const fallback = await cachedMarket(id);
     if (!fallback) throw error;

@@ -7,7 +7,7 @@ export interface PolymarketLiveQuote {
 }
 
 function decimal(value: unknown): string | null {
-  if ((typeof value !== "string" && typeof value !== "number") || value === "") return null;
+  if ((typeof value !== "string" && typeof value !== "number") || (typeof value === "string" && value.trim() === "")) return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 && n <= 1 ? String(value) : null;
 }

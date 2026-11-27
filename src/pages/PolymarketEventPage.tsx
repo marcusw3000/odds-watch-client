@@ -1,3 +1,4 @@
+import { isValidPolymarketPrice } from "@/lib/polymarketPrice";
 import { ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { Link, useSearchParams, Await } from "react-router-dom";
 import { Suspense, useState } from "react";
@@ -10,7 +11,7 @@ import type { PolymarketEvent } from "@/services/PolymarketEventProvider.server"
 import type { PolymarketPublicComment } from "@/services/PolymarketPublicComments.server";
 import type { EventChartInterval, EventPriceSeries } from "@/services/PolymarketEventAnalytics.server";
 
-const probability = (value: string | null) => value !== null && Number.isFinite(Number(value)) ? new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(Number(value)) : "—";
+const probability = (value: string | null) => isValidPolymarketPrice(value) ? new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(Number(value)) : "—";
 const usd = (value: string | null) => value !== null && Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: Number(value) >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(Number(value)) : "—";
 
 function EventChart({ series, period }: { series: EventPriceSeries[]; period: EventChartInterval }) {

@@ -33,7 +33,7 @@ Deno.test("paper copy worker detects a paper buy and executes an approved copy o
   } finally {
     Object.defineProperty(Deno, "serve", { configurable: true, value: oldServe });
     globalThis.fetch = oldFetch;
-    for (const [key, value] of oldEnv) value === undefined ? Deno.env.delete(key) : Deno.env.set(key, value);
+    for (const [key, value] of oldEnv) { if (value === undefined) Deno.env.delete(key); else Deno.env.set(key, value); }
   }
 });
 
@@ -64,7 +64,7 @@ Deno.test("Polymarket fills in one transaction are grouped before a signal is cr
   } finally {
     Object.defineProperty(Deno, "serve", { configurable: true, value: oldServe });
     globalThis.fetch = oldFetch;
-    for (const [key, value] of oldEnv) value === undefined ? Deno.env.delete(key) : Deno.env.set(key, value);
+    for (const [key, value] of oldEnv) { if (value === undefined) Deno.env.delete(key); else Deno.env.set(key, value); }
   }
 });
 
@@ -90,7 +90,7 @@ Deno.test("a private paper trader pauses the strategy without reading their trad
     assertEquals(response.status,200);assertEquals(paused,true);assertEquals(cancelled,true);assertEquals(readTrades,false);
   } finally {
     Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;
-    for(const [key,value] of oldEnv)value===undefined?Deno.env.delete(key):Deno.env.set(key,value);
+    for(const [key,value] of oldEnv){ if (value === undefined) Deno.env.delete(key); else Deno.env.set(key, value); }
   }
 });
 
@@ -120,7 +120,7 @@ Deno.test("paper sale copies only the matching proportional shares",async()=>{
     const {handlePaperCopyRequest}=await import("../supabase/functions/process-paper-copy/index.ts");
     const response=await handlePaperCopyRequest(new Request("https://local.test",{method:"POST",headers:{"x-copy-cron-secret":"cron"}}));
     assertEquals(response.status,200);assertEquals(created,1);assertEquals(executed,1);
-  } finally {Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;for(const [k,v] of env)v===undefined?Deno.env.delete(k):Deno.env.set(k,v);}
+  } finally {Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;for(const [k,v] of env){ if (v === undefined) Deno.env.delete(k); else Deno.env.set(k, v); }}
 });
 
 Deno.test("Polymarket sale reconstructs the position before generating a signal",async()=>{
@@ -143,5 +143,5 @@ Deno.test("Polymarket sale reconstructs the position before generating a signal"
     const {handlePaperCopyRequest}=await import("../supabase/functions/process-paper-copy/index.ts");
     const response=await handlePaperCopyRequest(new Request("https://local.test",{method:"POST",headers:{"x-copy-cron-secret":"cron"}}));
     assertEquals(response.status,200);assertEquals(created,1);
-  }finally{Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;for(const [k,v] of env)v===undefined?Deno.env.delete(k):Deno.env.set(k,v);}
+  }finally{Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;for(const [k,v] of env){ if (v === undefined) Deno.env.delete(k); else Deno.env.set(k, v); }}
 });

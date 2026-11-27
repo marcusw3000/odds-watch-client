@@ -19,7 +19,7 @@ export function PaperProfileStats({ data }: { data: PaperProfileData }) {
     ['Sequência atual', data.current_streak === null ? null : `${data.current_streak} vendas`],
     ['Melhor sequência', data.best_streak === null ? null : `${data.best_streak} vendas`],
   ];
-  return <><p className="mb-3 text-sm text-muted-foreground">Simulação em USD virtual. Lucro, ROI e sequências consideram vendas verificadas da rodada atual; posições abertas e operações legadas não pontuam.</p>
+  return <><p className="mb-3 text-sm text-muted-foreground">Simula??o em USD virtual. Lucro, ROI e sequências consideram vendas verificadas da rodada atual; posições abertas e operações legadas não pontuam.</p>
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">{stats.map(([label, value]) => <Card key={label}><CardContent className="p-4"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 font-mono text-xl font-bold">{value ?? 'Oculto'}</p></CardContent></Card>)}</div>
   </>;
 }

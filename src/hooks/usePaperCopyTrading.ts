@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getPaperCopyReferralSummary } from "@/services/PaperReferralService";
 
 export type CopyStrategy = { id: string; source_kind: "paper" | "polymarket"; source_id: string; source_name: string; mode: "automatic" | "manual"; total_limit: number; per_trade_limit: number; spent_usd: number; round_id: string; active: boolean; started_at: string; monitoring_error: string | null; last_success_at: string | null };
-export type CopySignal = { id: string; strategy_id: string; question: string; outcome: string; side: "BUY" | "SELL"; status: "pending" | "approved" | "executed" | "rejected" | "skipped"; source_price: number; source_notional: number; sell_fraction: number | null; reason: string | null; created_at: string };
+export type CopySignal = { id: string; strategy_id: string; question: string; outcome: string; side: "BUY" | "SELL"; status: "pending" | "approved" | "executed" | "rejected" | "skipped"; source_price: number; source_notional: number; source_at: string; result: { price?: number | string } | null; sell_fraction: number | null; reason: string | null; created_at: string };
 export type CopyPosition = { strategy_id: string; round_id: string; realized_usd: number };
 export function usePaperCopyTrading() {
   const { user } = useAuth(); const client = useQueryClient(); const db = supabase as any;

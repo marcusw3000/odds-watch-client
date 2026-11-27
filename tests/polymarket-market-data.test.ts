@@ -6,6 +6,24 @@ afterEach(() => {
 });
 
 describe("Polymarket market-data provider", () => {
+  it("tracks Gamma quote origin and observation time", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ markets: [{ id: "123", question: "Example" }] }), { status: 200 })));
+    const { getPolymarketMarket } = await import("@/services/PolymarketMarketDataProvider.server");
+    const market = await getPolymarketMarket("123");
+    expect(market?.quoteOrigin).toBe("gamma");
+    expect(Number.isFinite(Date.parse(market?.quoteObservedAt ?? ""))).toBe(true);
+  });
+
+  it("identifies the cached quote and its sync time after a Gamma timeout", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("gamma-api.polymarket.com")) throw new DOMException("Timeout", "TimeoutError");
+      if (url.includes("polymarket_market_cache")) return new Response(JSON.stringify({ source: "polymarket", market_id: "42", question: "Cached question", outcomes: [], synced_at: "2026-11-03T00:00:00.000Z" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    const { getPolymarketMarket } = await import("@/services/PolymarketMarketDataProvider.server");
+    expect(await getPolymarketMarket("42")).toMatchObject({ quoteOrigin: "persistent_cache", quoteObservedAt: "2026-11-03T00:00:00.000Z" });
+  });
   it("normalizes Gamma data while preserving external IDs as strings", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       markets: [{

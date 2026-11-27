@@ -19,5 +19,6 @@ describe("Polymarket stream parsing", () => {
     expect(parseMarketStreamMessage("PONG", "token")).toBeNull();
     expect(parseMarketStreamMessage(JSON.stringify({ event_type: "last_trade_price", asset_id: "other", price: "0.5" }), "token")).toBeNull();
     expect(parseMarketStreamMessage(JSON.stringify({ event_type: "last_trade_price", asset_id: "token", price: "1.5" }), "token")).toBeNull();
+    expect(parseMarketStreamMessage(JSON.stringify({ event_type: "last_trade_price", asset_id: "token", price: "  " }), "token")).toBeNull();
   });
 });

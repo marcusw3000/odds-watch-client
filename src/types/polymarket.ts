@@ -25,6 +25,9 @@ export interface PolymarketMarket {
   spread: string | null;
   endDate: string | null;
   sourceUpdatedAt: string | null;
+  resolutionSource?: string | null;
+  quoteOrigin?: "gamma" | "persistent_cache";
+  quoteObservedAt?: string | null;
   acceptingOrders: boolean;
   restricted: boolean;
   category?: string | null;

@@ -1,5 +1,31 @@
 # Bugs e Fixes — Revisão do projeto odds-watch-client
 
+## Testes de produção — 25/11/2026
+
+Medições de laboratório em `www.orbmarket.com.br`, com três visitas por tela e cache desativado. O perfil móvel usou CPU 4× mais lenta, rede de 1,6 Mbps e latência de 150 ms. Os tempos são medianas de LCP e precisam ser complementados com dados de usuários reais.
+
+- [ ] **Alto — desempenho do portfólio no celular:** LCP de 4,66 s e 107 recursos com uma conta nova. Investigar a sequência de carregamento da carteira, posições, operações e histórico. Priorizar a exibição inicial dos dados e adiar a atualização do histórico quando possível.
+- [ ] **Alto — hidratação nas telas autenticadas:** portfólio, configurações e perfil registraram erros React nas nove visitas móveis. Investigar atualizações durante a hidratação e validar novamente com sessão autenticada e rede lenta. Os LCPs de configurações e perfil foram 2,84 s e 3,63 s.
+- [ ] **Alto — fuso horário no gráfico de mercado:** o detalhe `/polymarket/market/1544795` apresentou erros de hidratação nas seis visitas públicas. Um horário enviado como 19:00 apareceu como 16:00 no navegador em São Paulo; em UTC os erros desapareceram no teste adicional. Definir fuso explícito e testar renderização no servidor e no navegador.
+- [ ] **Médio — deslocamento causado pelo chat no desktop:** o gráfico do evento muda de largura quando a coluna do chat aparece. Reservar o espaço desde o primeiro desenho. No teste local no navegador, o CLS do evento passou de 0,109 para 0,000 em duas comparações.
+- [ ] **Médio — JavaScript inicial:** o pacote de monitoramento transferiu 147 KiB nas telas observadas, inclusive login e FAQ. Medir o carregamento posterior da gravação de sessão e do rastreamento detalhado, preservando a captura inicial de erros.
+- [ ] **Médio — acessibilidade das configurações no celular:** as quatro abas de configurações ficam apenas com ícones e sem nomes acessíveis. Adicionar nomes para leitores de tela e verificar navegação por teclado.
+- [ ] **Médio — caracteres corrompidos no FAQ:** perguntas exibem texto como “O que sÃ£o mercados preditivos?”. Corrigir a codificação do conteúdo e conferir os textos publicados.
+
+Os dados das 54 visitas estão em `../orbmarket-desempenho-2026-11-25.csv`. Os testes percorreram categorias, busca, gráficos, comentários, ranking, menus e áreas autenticadas. O formulário de suporte foi aberto sem envio; operações financeiras e painel administrativo ficaram fora da medição.
+
+## Revisão de lançamento — 20/11/2026
+
+Revisão local, sem verificar o ambiente publicado. Itens abaixo permanecem pendentes:
+
+- [ ] **Médio — monitoramento administrativo:** teste E2E de `/admin/system` encontrou `Cannot read properties of undefined (reading 'some')` com resposta simulada incompleta. Validar entradas e investigar também o mock; o comportamento com resposta real ainda não foi confirmado.
+- [ ] **Médio — retirada do simulador incompleta:** `/portfolio` continua carregando o portfólio Paper Trading e as rotas de simulador e Copy Trading permanecem disponíveis. Planejar a transição preservando os dados de usuários conforme solicitado.
+- [ ] **Médio — redirecionamentos SSR:** `<Navigate>` no render inicial de `index-redirect.tsx`, `markets.tsx` e `market-detail.tsx` é ignorado pelo `StaticRouter`. Usar redirecionamento HTTP adequado e testar sem JavaScript.
+- [ ] **Baixo — busca no portfólio:** o campo filtra posições, mas não o histórico de operações. Ajustar a busca por aba ou deixar o escopo explícito.
+- [ ] **E2E — seletor ambíguo no portfólio:** `e2e/polymarket-missing-prices.spec.ts:82` encontra dois elementos após a inclusão do resultado por posição. Corrigir o seletor e executar novamente a verificação de cotações ausentes.
+
+Checks da revisão: 88 testes unitários passaram e typecheck passou; E2E teve 9 testes aprovados e 2 falhas (monitoramento e seletor acima). Nenhuma alteração de banco remoto foi realizada.
+
 Data: 2026-11-04. Revisão por leitura de código e migrations, sem conexão com o banco remoto.
 Estado dos checks: typecheck OK, lint 0 erros / 218 warnings (`any`), build OK, vitest 5 testes passando (3 arquivos). Nenhum teste cobre fluxos de dinheiro.
 
@@ -202,3 +228,12 @@ select has_function_privilege('anon','public.atomic_deposit_balance(uuid,numeric
 3. **Auditoria do ledger em produção:** buscar créditos duplicados, depósitos sem pagamento correspondente, saldos negativos ou fora do esperado, assinaturas/traders criados com status privilegiado. Os buracos acima podem já ter sido explorados.
 4. Crons com Vault, cookies do SSR, recuperação de senha, polling do PIX, comissão de copy trade (A7, A9–A12).
 5. Reverter migrations editadas e criar baseline; ligar `strict` aos poucos; testes de integração para fluxos de dinheiro e Deno tests no CI.
+## Revisão da XGate e carteira compartilhada
+
+- [ ] **Alta — titularidade do depósito:** `confirm-payment` credita o usuário autenticado sem conferir a titularidade do PaymentIntent. Validar titular, valor e registro antes de creditar.
+- [ ] **Alta — créditos duplicados ou ausentes:** `check-pix-status` consulta um ID criptografado enquanto a criação armazena o ID em texto. Unificar a identificação e garantir crédito idempotente e conclusão do pagamento na mesma transação.
+- [ ] **Alta — saque sem registro:** `request-withdrawal` debita a carteira antes de criar a solicitação. Reservar saldo e criar pedido atomicamente, inclusive em chamadas repetidas.
+- [ ] **XGate — conciliação incompleta:** `classifyXGateProgress` considera `PAID` e `DELIVERED` suficientes para encerrar a conciliação. Confirmar valor, destino, entrega on-chain e crédito em pUSD antes de creditar o cliente.
+- [ ] **Carteira compartilhada — banco:** validar a migration local em PostgreSQL isolado, incluindo concorrência e permissões. Implementar créditos verificados, posições individuais e conciliação dos ativos antes de habilitar operações reais.
+- [ ] **Planejamento desatualizado:** atualizar `ready.md` e `docs/plano-trading-real.md` para refletir a escolha da XGate e carteira compartilhada.
+- [ ] **Elegibilidade:** a documentação da Polymarket lista o Brasil como close-only. Confirmar elegibilidade e termos antes de qualquer negociação real. https://docs.polymarket.com/api-reference/geoblock

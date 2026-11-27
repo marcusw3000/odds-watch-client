@@ -21,5 +21,5 @@ Deno.test("snapshot uses server prices and rejects incomplete quotes",async()=>{
     const call=()=>handleSnapshot(new Request("https://local.test",{method:"POST",headers:{"x-copy-cron-secret":"cron"}}));
     assertEquals((await call()).status,200);assertEquals(saved,1);
     missing=true;assertEquals((await call()).status,503);assertEquals(saved,1);
-  } finally {Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;for(const [k,v] of env)v===undefined?Deno.env.delete(k):Deno.env.set(k,v);}
+  } finally {Object.defineProperty(Deno,"serve",{configurable:true,value:oldServe});globalThis.fetch=oldFetch;for(const [k,v] of env){ if (v === undefined) Deno.env.delete(k); else Deno.env.set(k, v); }}
 });

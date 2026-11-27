@@ -13,6 +13,7 @@ export interface PolymarketEvent {
   tags: string[];
   markets: PolymarketMarket[];
   stale: boolean;
+  quoteObservedAt?: string | null;
 }
 
 const cache = new Map<string, { value: PolymarketEvent; expiresAt: number }>();
@@ -57,7 +58,7 @@ async function cachedEvent(id: string): Promise<PolymarketEvent | null> {
   const e = eventResult.data as Record<string, unknown>;
   const title = asText(e.title);
   if (!title) return null;
-  return { id, slug: asText(e.slug), title, description: asText(e.description), imageUrl: asText(e.image_url), volumeUsd: asText(e.volume_usd), endDate: asText(e.end_date), tags: stringArray(e.tags), markets: (marketResult.data as Record<string, unknown>[]).map(fromCachedMarket).filter((m): m is PolymarketMarket => m !== null), stale: true };
+  return { id, slug: asText(e.slug), title, description: asText(e.description), imageUrl: asText(e.image_url), volumeUsd: asText(e.volume_usd), endDate: asText(e.end_date), tags: stringArray(e.tags), markets: (marketResult.data as Record<string, unknown>[]).map(fromCachedMarket).filter((m): m is PolymarketMarket => m !== null), stale: true, quoteObservedAt: asText(e.synced_at) };
 }
 
 export async function getPolymarketEvent(id: string): Promise<PolymarketEvent | null> {
@@ -73,7 +74,7 @@ export async function getPolymarketEvent(id: string): Promise<PolymarketEvent | 
     const e = raw as Record<string, unknown>, title = asText(e.title);
     if (!title || asText(e.id) !== id || !Array.isArray(e.markets)) throw new Error("Incomplete event response");
     const tags = Array.isArray(e.tags) ? e.tags.flatMap((tag) => tag && typeof tag === "object" && asText((tag as Record<string, unknown>).slug) ? [asText((tag as Record<string, unknown>).slug)!] : []) : [];
-    const event: PolymarketEvent = { id, slug: asText(e.slug), title, description: asText(e.description), imageUrl: asText(e.image) ?? asText(e.icon), volumeUsd: asText(e.volume), endDate: asText(e.endDate), tags, markets: e.markets.map(fromGammaMarket).filter((m): m is PolymarketMarket => m !== null), stale: false };
+    const event: PolymarketEvent = { id, slug: asText(e.slug), title, description: asText(e.description), imageUrl: asText(e.image) ?? asText(e.icon), volumeUsd: asText(e.volume), endDate: asText(e.endDate), tags, markets: e.markets.map(fromGammaMarket).filter((m): m is PolymarketMarket => m !== null), stale: false, quoteObservedAt: new Date().toISOString() };
     cache.set(id, { value: event, expiresAt: Date.now() + 30_000 });
     return event;
   } catch (error) {

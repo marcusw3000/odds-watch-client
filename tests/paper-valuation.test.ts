@@ -14,4 +14,14 @@ describe('paper portfolio valuation', () => {
     expect(valuePaperPositions([{ market_id: '1', outcome_label: 'Yes', outcome_token_id: null, shares: 5 }], [{ ...market, outcomes: [{ label: 'Yes', tokenId: null, price: '0' }] }]).total).toBe(0);
     expect(valuePaperPositions([], []).total).toBe(0);
   });
+  it('treats blank prices and share quantities as unavailable', () => {
+    const position = { market_id: '1', outcome_label: 'Yes', outcome_token_id: null, shares: 5 };
+    expect(valuePaperPositions([position], [{ ...market, outcomes: [{ label: 'Yes', tokenId: null, price: '  ' }] }]).total).toBeNull();
+    expect(valuePaperPositions([{ ...position, shares: '  ' }], [market]).total).toBeNull();
+  });
+  it('handles malformed remote outcomes without inventing a price or crashing', () => {
+    const position = { market_id: '1', outcome_label: 'Yes', outcome_token_id: null, shares: 5 };
+    expect(valuePaperPositions([position], [{ marketId: '1', outcomes: null } as unknown as typeof market]).total).toBeNull();
+    expect(valuePaperPositions([position], [{ marketId: '1', outcomes: [null, { label: 'Yes', tokenId: null, price: {} }] } as unknown as typeof market]).total).toBeNull();
+  });
 });

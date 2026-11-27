@@ -1,0 +1,17 @@
+# Integração XGate: preparação
+
+Decisão de produto: estudar a implementação de uma carteira compartilhada da empresa, com saldos e posições separados por cliente. `SharedWalletAccounting.server.ts` contém apenas cálculos isolados de reserva em unidades inteiras; não é ledger persistente e não protege contra concorrência. Antes de uso real, implementar operações transacionais atômicas no banco, lançamentos imutáveis e idempotentes, autorização server-side, isolamento por usuário e conciliação independente de passivos, reservas, posições e ativos. Confirmar que XGate, PSAV e Polymarket aceitam o modelo e que seu enquadramento foi validado. A decisão anterior de carteira individual em `plano-trading-real.md` fica substituída por esta direção, ainda pendente de validação.
+
+A migration local `20261120000000_shared_wallet_reservations.sql` prepara saldo individual e reservas transacionais em esquema privado, sem acesso de papéis da aplicação e sem mecanismo de crédito. O teste SQL correspondente é `supabase/tests/shared_wallet_reservations.sql`. Migration e teste ainda não foram executados em PostgreSQL; precisam de validação isolada, incluindo concorrência real e permissões, antes de qualquer publicação ou integração. Não usar como ledger completo: ainda faltam créditos verificados, posições, reconciliação, trilha de auditoria e conexão com eventos externos.
+
+A XGate substitui a Pods como candidata para o fluxo PIX → USDC. A preparação em `XGateDeposit.server.ts` monta o payload documentado para BRL, USDC e Polygon, sem realizar chamadas externas. Não há endpoint de depósito real habilitado.
+
+`XGateProtocol.server.ts` prepara os caminhos de login, criação e consulta e valida a resposta inicial com compra associada e `externalId` correspondente. Uma resposta inválida ou timeout exige conciliação antes de qualquer tentativa. O classificador distingue PIX pago de compra entregue, mas esses estados isolados não autorizam crédito ao usuário: ainda é necessário confirmar a operação de forma autenticada, conferir valores e destino e reconciliar a transação on-chain e o crédito de pUSD. Nenhum transporte de rede foi conectado.
+
+Antes de integrar chamadas reais, confirmar por escrito com a XGate e a PSAV executora: aceitação de recursos de clientes e da finalidade Polymarket, requisitos de identificação dos usuários, titularidade e destino da carteira, sandbox autorizado, limites, taxas, PIX de terceiros e devoluções. A compra documentada usa saldo e carteira da empresa; não assumir que permite carteira individual ou endereço da Bridge.
+
+Implementar depois de confirmados os contratos: autenticação e segredos no servidor, criação de clientes e cobrança com identificador persistido antes da chamada, reconciliação autenticada de PIX e compra, eventos autenticados conforme mecanismo confirmado, proteção contra repetição e reordenação, contestações, auditoria, saldo individual e recuperação de resultados incertos. Uma confirmação PIX não confirma entrega de USDC nem crédito de pUSD. Nunca reenviar uma operação incerta sem consultar a anterior.
+
+Carteira, Bridge, execução e reconciliação de ordens reais, saque e elegibilidade continuam pendentes. O Paper Trading permanece isolado. As capabilities existentes devem continuar fechadas até validação técnica, contratual e operacional; não usar credenciais ou fundos reais nos testes.
+
+Referências: https://api.doc.xgateglobal.com/docs/fiat/deposit/create/ e https://api.doc.xgateglobal.com/docs/buy-sell/overview/.

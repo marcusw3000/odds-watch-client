@@ -5,6 +5,7 @@ import { parseMarketStreamMessage, type PolymarketLiveQuote } from "@/lib/polyma
 const MARKET_STREAM_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
 const HEARTBEAT_MS = 10_000;
 const MIN_REVALIDATE_MS = 30_000;
+const MAX_QUOTE_AGE_MS = 60_000;
 
 export type PolymarketStreamState = "idle" | "connecting" | "live" | "reconnecting" | "stale";
 
@@ -23,6 +24,14 @@ export function usePolymarketMarketStream(assetId: string | null): { state: Poly
     let socket: WebSocket | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
+    let lastUpdateAt: number | null = null;
+    const freshness = setInterval(() => {
+      if (lastUpdateAt !== null && Date.now() - lastUpdateAt > MAX_QUOTE_AGE_MS) {
+        lastUpdateAt = null;
+        setQuote(null);
+        setStreamState('stale');
+      }
+    }, HEARTBEAT_MS);
     const scheduleRetry = () => {
       if (closed) return;
       attempt += 1;
@@ -48,6 +57,7 @@ export function usePolymarketMarketStream(assetId: string | null): { state: Poly
         if (typeof event.data !== "string" || event.data === "PONG") return;
         const update = parseMarketStreamMessage(event.data, assetId);
         if (!update) return;
+        lastUpdateAt = Date.now();
         setStreamState("live");
         setQuote((previous) => ({
           assetId, bestBid: null, bestAsk: null, lastTradePrice: null,
@@ -57,12 +67,13 @@ export function usePolymarketMarketStream(assetId: string | null): { state: Poly
         refreshSnapshot();
       };
       socket.onerror = () => setStreamState("stale");
-      socket.onclose = () => { if (heartbeat) clearInterval(heartbeat); setQuote(null); scheduleRetry(); };
+      socket.onclose = () => { if (heartbeat) clearInterval(heartbeat); lastUpdateAt = null; setQuote(null); scheduleRetry(); };
     };
     connect();
     return () => {
       closed = true;
       if (heartbeat) clearInterval(heartbeat);
+      clearInterval(freshness);
       if (retry) clearTimeout(retry);
       socket?.close();
     };

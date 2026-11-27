@@ -1,0 +1,34 @@
+name: Conciliar PIX Pushin Pay
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pushinpay-reconciliation
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar operações pendentes
+        env:
+          RECONCILE_SECRET: ${{ secrets.PUSHINPAY_RECONCILE_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$RECONCILE_SECRET" ]]; then
+            echo 'Segredo de conciliação não configurado.' >&2
+            exit 1
+          fi
+          for attempt in 1 2 3 4; do
+            if (( attempt > 1 )); then sleep 65; fi
+            curl --fail --silent --show-error --max-time 25 \
+              --header "Authorization: Bearer $RECONCILE_SECRET" \
+              https://www.orbmarket.com.br/api/internal/pushinpay-reconcile > /dev/null
+          done

@@ -49,8 +49,7 @@ export async function getPolymarketMarketAnalytics(market: PolymarketMarket, out
   bookUrl.searchParams.set("token_id", assetId);
   const historyUrl = new URL("/v2/prices-history", DATA_API_URL);
   historyUrl.searchParams.set("token_id", assetId);
-  historyUrl.searchParams.set("interval", "1d");
-  historyUrl.searchParams.set("bucket_seconds", "3600");
+  historyUrl.searchParams.set("interval", "max");
   const [bookResult, historyResult] = await Promise.allSettled([
     fetch(bookUrl, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
     fetch(historyUrl, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),

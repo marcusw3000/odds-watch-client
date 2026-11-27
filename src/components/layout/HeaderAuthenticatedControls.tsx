@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { User, LogOut, Gift, Calculator, Headphones, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -189,7 +190,7 @@ function PixAccess({ userId }: { userId: string }) {
         {!intent && <label className="grid gap-2 text-sm">Valor do depósito em reais<input className="h-10 rounded-md border border-input bg-background px-3" inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} placeholder="0,00" /></label>}
         {intent && <p className="text-sm">Valor solicitado: {(intent.valueCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
         {deposit && <p className="text-sm" role="status">{deposit.status === 'paid' ? 'Pagamento confirmado e crédito registrado.' : deposit.status === 'canceled' ? 'Cobrança cancelada.' : deposit.status === 'expired' ? 'Cobrança expirada.' : deposit.status === 'created' ? 'Aguardando pagamento.' : 'Aguardando confirmação da cobrança.'}</p>}
-        {deposit?.pixCode && deposit.status === 'created' && <label className="grid gap-2 text-sm">PIX copia e cola<textarea className="min-h-24 w-full rounded-md border border-input bg-background p-3 text-xs" readOnly value={deposit.pixCode} onFocus={event => event.currentTarget.select()} /></label>}
+        {deposit?.pixCode && deposit.status === 'created' && <div className="grid gap-3"><div className="mx-auto rounded-xl bg-white p-4"><QRCodeSVG value={deposit.pixCode} size={200} marginSize={1} role="img" aria-label="QR Code para pagamento PIX" /></div><label className="grid gap-2 text-sm">PIX copia e cola<textarea className="min-h-24 w-full rounded-md border border-input bg-background p-3 text-xs" readOnly value={deposit.pixCode} onFocus={event => event.currentTarget.select()} /></label></div>}
         {message && <p className="text-sm text-muted-foreground" role="status">{message}</p>}
         <div className="flex flex-wrap gap-2">
           {!deposit && <Button disabled={loading} onClick={createDeposit}>{loading ? 'Aguarde...' : intent ? 'Tentar novamente' : 'Gerar PIX'}</Button>}

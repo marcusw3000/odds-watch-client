@@ -4,6 +4,8 @@
 
 O workflow `Conciliar PIX Pushin Pay` deve executar automaticamente na branch padrão e também aceita execução manual. Uma execução bem-sucedida confirma respostas HTTP aceitas, mas não comprova que havia operações para processar. Verifique o histórico do GitHub Actions, falhas consecutivas e o tempo desde o último disparo automático. O GitHub pode atrasar ou omitir disparos; o fluxo atual consulta no máximo quatro operações por execução e não substitui monitoramento da fila.
 
+Para consultar os totais da fila e de depósitos com estado desconhecido sem listar dados pessoais, verifique primeiro o projeto vinculado e execute `npx supabase db query --remote --read-only --file scripts/pushinpay-monitor.sql`. Esse diagnóstico é manual e não envia alertas automaticamente.
+
 O agendamento `pushinpay-reconcile` do pg_cron deve permanecer desativado: a fila do pg_net pode expor cabeçalhos de autenticação. Não coloque o segredo de conciliação em URLs, logs ou chamados de pg_net.
 
 ## Resultado desconhecido

@@ -14,6 +14,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const supabase = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   return reconcilePushinPayNotification(request, secret, {
     async claim(leaseId) {
+      const recovery = await supabase.rpc('pushinpay_mark_stalled_deposits_unknown');
+      if (recovery.error) throw new Error('Recovery unavailable');
       let { data, error } = await supabase.rpc('pushinpay_claim_notification_v2', { p_lease_id: leaseId, p_include_withdrawals: includeWithdrawals });
       if (error || !Array.isArray(data)) throw new Error('Queue unavailable');
       if (data.length === 0) {

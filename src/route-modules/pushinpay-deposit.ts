@@ -41,7 +41,9 @@ export async function action({ request }: Route.ActionArgs) {
   const { auth, headers, db } = await context(request);
   if (!auth.user) return Response.json({ error: 'Faça login.' }, { status: 401, headers });
   if (request.headers.get('Origin') !== new URL(request.url).origin) return Response.json({ error: 'Origem inválida.' }, { status: 403, headers });
-  if (process.env.PUSHINPAY_DEPOSITS_ENABLED !== 'true') return Response.json({ error: 'Depósito PIX em preparação.', code: 'unavailable' }, { status: 503, headers });
+  const testUser = process.env.PUSHINPAY_DEPOSIT_TEST_USER_ID;
+  const testMode = process.env.PUSHINPAY_DEPOSITS_ENABLED !== 'true' && !!testUser && uuid.test(testUser) && auth.user.id === testUser;
+  if (process.env.PUSHINPAY_DEPOSITS_ENABLED !== 'true' && !testMode) return Response.json({ error: 'Depósito PIX em preparação.', code: 'unavailable' }, { status: 503, headers });
   const token = process.env.PUSHINPAY_API_TOKEN;
   const webhook = process.env.PUSHINPAY_WEBHOOK_URL;
   if (!db || !token || !webhook || !process.env.PUSHINPAY_WEBHOOK_SECRET || !process.env.PUSHINPAY_RECONCILE_SECRET) return Response.json({ error: 'Depósito PIX indisponível.', code: 'unavailable' }, { status: 503, headers });
@@ -66,6 +68,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!payload || typeof payload !== 'object' || !('id' in payload) || typeof payload.id !== 'string' || !uuid.test(payload.id) || !('valueCents' in payload) || typeof payload.valueCents !== 'number' || !Number.isSafeInteger(payload.valueCents) || payload.valueCents < 50) {
     return Response.json({ error: 'Dados inválidos.' }, { status: 400, headers });
   }
+  if (testMode && payload.valueCents !== 50) return Response.json({ error: 'O teste aceita apenas R$ 0,50.' }, { status: 422, headers });
   try {
     const item = await createPersistedPushinPayDeposit({ id: payload.id, userId: auth.user.id, valueCents: payload.valueCents, notificationUrl: webhook }, db, token);
     return Response.json(responseData(item), { headers });

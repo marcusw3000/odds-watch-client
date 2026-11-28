@@ -74,6 +74,43 @@ function PixAccess({ userId }: { userId: string }) {
     } catch { sessionStorage.removeItem(storageKey); }
   }, [storageKey]);
 
+  // Restaura o status da cobrança salva para que o acompanhamento automático retome após recarregar a página.
+  useEffect(() => {
+    if (!intent || deposit || loading) return;
+    let active = true;
+    fetch(`/api/pix/deposit?id=${encodeURIComponent(intent.id)}`, { cache: 'no-store' })
+      .then(response => (response.ok ? response.json() : null))
+      .then(data => { if (active && data && typeof data.status === 'string') setDeposit(data); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [intent, deposit, loading]);
+
+  // Acompanha a cobrança pendente até a confirmação, sem exigir clique em "Consultar status".
+  const pendingDepositId = intent && deposit && intent.id === deposit.id && ['prepared', 'submitting', 'unknown', 'created'].includes(deposit.status) ? intent.id : null;
+  useEffect(() => {
+    if (!pendingDepositId) return;
+    let active = true;
+    let ticks = 0;
+    const deadline = Date.now() + 60 * 60 * 1000;
+    const timer = window.setInterval(async () => {
+      if (Date.now() > deadline) { window.clearInterval(timer); return; }
+      ticks += 1;
+      try {
+        if (ticks === 3 || ticks % 12 === 0) await fetch(`/api/pix/deposit/recheck?id=${encodeURIComponent(pendingDepositId)}`, { method: 'POST' }).catch(() => null);
+        const response = await fetch(`/api/pix/deposit?id=${encodeURIComponent(pendingDepositId)}`, { cache: 'no-store' });
+        if (!active || !response.ok) return;
+        const data = await response.json();
+        if (!active || typeof data?.status !== 'string') return;
+        setDeposit(data);
+        if (['paid', 'canceled', 'expired'].includes(data.status)) {
+          setMessage('');
+          void refreshOverview();
+        }
+      } catch { /* nova tentativa no próximo ciclo */ }
+    }, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [pendingDepositId]);
+
   useEffect(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(withdrawalStorageKey) || 'null');

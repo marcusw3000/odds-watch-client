@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getServerAuthState } from '@/integrations/supabase/server';
+import { tryProcessPushinPayQueueNow } from '@/services/PushinPayQueue.server';
 import type { Route } from './+types/pushinpay-deposit-recheck';
 
 export async function action({ request, url }: Route.ActionArgs) {
@@ -17,5 +18,7 @@ export async function action({ request, url }: Route.ActionArgs) {
   const { data, error } = await db.rpc('pushinpay_request_deposit_recheck', { p_id: id, p_user_id: auth.user.id });
   if (error) return Response.json({ error: 'Consulta indisponível.' }, { status: 503, headers });
   if (data !== true) return Response.json({ error: 'Cobrança ainda não vinculada ao provedor.' }, { status: 409, headers });
-  return Response.json({ queued: true }, { status: 202, headers });
+  // Limitado a uma consulta por operação por minuto; sem vaga, o pedido segue na fila.
+  const processed = await tryProcessPushinPayQueueNow(db);
+  return Response.json({ queued: true, processed }, { status: 202, headers });
 }

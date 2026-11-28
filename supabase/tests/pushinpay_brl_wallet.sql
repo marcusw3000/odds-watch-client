@@ -27,7 +27,7 @@ BEGIN
 END $$;
 SELECT public.pushinpay_claim_withdrawal('20000000-0000-4000-8000-000000000071','00000000-0000-4000-8000-000000000071');
 SELECT public.pushinpay_register_withdrawal('20000000-0000-4000-8000-000000000071','00000000-0000-4000-8000-000000000071','withdrawal-71',400);
-UPDATE pushinpay_private.verification_limit SET last_claimed_at = NULL;
+UPDATE pushinpay_private.operations SET last_verification_at = NULL;
 SELECT public.pushinpay_claim_notification_v2('30000000-0000-4000-8000-000000000072', true);
 SELECT public.pushinpay_complete_notification('20000000-0000-4000-8000-000000000071','00000000-0000-4000-8000-000000000071','withdrawal-71',400,1,'canceled','30000000-0000-4000-8000-000000000072');
 SELECT pushinpay_private.settle_brl_withdrawal('20000000-0000-4000-8000-000000000071','00000000-0000-4000-8000-000000000071');
@@ -37,7 +37,7 @@ END $$;
 SELECT public.pushinpay_prepare_brl_withdrawal('20000000-0000-4000-8000-000000000073','00000000-0000-4000-8000-000000000071',600,repeat('d',64),'encrypted-test');
 SELECT public.pushinpay_claim_withdrawal('20000000-0000-4000-8000-000000000073','00000000-0000-4000-8000-000000000071');
 SELECT public.pushinpay_register_withdrawal('20000000-0000-4000-8000-000000000073','00000000-0000-4000-8000-000000000071','withdrawal-73',600);
-UPDATE pushinpay_private.verification_limit SET last_claimed_at = NULL;
+UPDATE pushinpay_private.operations SET last_verification_at = NULL;
 SELECT public.pushinpay_claim_notification_v2('30000000-0000-4000-8000-000000000073', true);
 SELECT public.pushinpay_complete_notification('20000000-0000-4000-8000-000000000073','00000000-0000-4000-8000-000000000071','withdrawal-73',600,1,'paid','30000000-0000-4000-8000-000000000073');
 SELECT pushinpay_private.settle_brl_withdrawal('20000000-0000-4000-8000-000000000073','00000000-0000-4000-8000-000000000071');
@@ -48,7 +48,7 @@ SELECT pushinpay_private.prepare_operation('10000000-0000-4000-8000-000000000074
 SELECT pushinpay_private.claim_submission('10000000-0000-4000-8000-000000000074','00000000-0000-4000-8000-000000000072');
 SELECT pushinpay_private.record_deposit_created('10000000-0000-4000-8000-000000000074','00000000-0000-4000-8000-000000000072','deposit-expired',500,'pix');
 SELECT public.pushinpay_enqueue_notification('deposit-expired');
-UPDATE pushinpay_private.verification_limit SET last_claimed_at = NULL;
+UPDATE pushinpay_private.operations SET last_verification_at = NULL;
 SELECT public.pushinpay_claim_notification_v2('30000000-0000-4000-8000-000000000074',true);
 SELECT public.pushinpay_complete_notification('10000000-0000-4000-8000-000000000074','00000000-0000-4000-8000-000000000072','deposit-expired',500,1,'expired','30000000-0000-4000-8000-000000000074');
 DO $$ BEGIN
@@ -58,7 +58,7 @@ DO $$ BEGIN
  IF public.pushinpay_request_deposit_recheck('10000000-0000-4000-8000-000000000074','00000000-0000-4000-8000-000000000071') THEN RAISE EXCEPTION 'cross-user recheck allowed'; END IF;
  IF NOT public.pushinpay_request_deposit_recheck('10000000-0000-4000-8000-000000000074','00000000-0000-4000-8000-000000000072') THEN RAISE EXCEPTION 'owner recheck failed'; END IF;
 END $$;
-UPDATE pushinpay_private.verification_limit SET last_claimed_at = NULL;
+UPDATE pushinpay_private.operations SET last_verification_at = NULL;
 SELECT public.pushinpay_claim_notification_v2('30000000-0000-4000-8000-000000000075',true);
 SELECT public.pushinpay_complete_notification('10000000-0000-4000-8000-000000000074','00000000-0000-4000-8000-000000000072','deposit-expired',500,2,'paid','30000000-0000-4000-8000-000000000075');
 DO $$ BEGIN

@@ -41,7 +41,10 @@ BEGIN
   PERFORM pushinpay_private.record_provider_status('10000000-0000-4000-8000-000000000091', '00000000-0000-4000-8000-000000000091', 'ABC', 'paid');
   IF NOT pushinpay_private.claim_verification('10000000-0000-4000-8000-000000000091') THEN RAISE EXCEPTION 'first verification claim failed'; END IF;
   IF pushinpay_private.claim_verification('10000000-0000-4000-8000-000000000091') THEN RAISE EXCEPTION 'verification rate limit failed'; END IF;
-  UPDATE pushinpay_private.verification_limit SET last_claimed_at = NULL;
+  -- O limite vale por operação: outra operação com provider_id continua liberada.
+  IF NOT pushinpay_private.claim_verification('10000000-0000-4000-8000-000000000092') THEN RAISE EXCEPTION 'verification limit leaked across operations'; END IF;
+  IF pushinpay_private.claim_verification('10000000-0000-4000-8000-000000000092') THEN RAISE EXCEPTION 'per-operation rate limit failed'; END IF;
+  UPDATE pushinpay_private.operations SET last_verification_at = NULL;
   PERFORM public.pushinpay_enqueue_notification('ABC');
   IF (SELECT count(*) FROM public.pushinpay_claim_notification('30000000-0000-4000-8000-000000000091')) <> 1 THEN RAISE EXCEPTION 'queue claim failed'; END IF;
   PERFORM public.pushinpay_enqueue_notification('abc');

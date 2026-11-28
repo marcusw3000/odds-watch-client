@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { reconcilePushinPayNotification } from '../src/services/PushinPayReconcile.server';
+import { processNextPushinPayNotification, reconcilePushinPayNotification } from '../src/services/PushinPayReconcile.server';
 
 const item = { operation_id: 'op', user_id: 'user', provider_id: 'abc', amount_cents: 1000, direction: 'deposit', revision: 1 };
 const request = (token = 'secret') => new Request('https://example.test/internal', { headers: { authorization: `Bearer ${token}` } });
@@ -25,5 +25,13 @@ describe('conciliação da fila PIX', () => {
     d.consult.mockRejectedValueOnce(new Error('offline'));
     expect((await reconcilePushinPayNotification(request(), 'secret', d)).status).toBe(503);
     expect(d.complete).not.toHaveBeenCalled();
+  });
+  it('processa imediatamente quando há aviso e informa fila vazia', async () => {
+    const d = deps();
+    expect(await processNextPushinPayNotification(d)).toBe(true);
+    expect(d.complete).toHaveBeenCalledWith(item, 'paid', d.claim.mock.calls[0][0]);
+    d.claim.mockResolvedValueOnce(null);
+    expect(await processNextPushinPayNotification(d)).toBe(false);
+    expect(d.complete).toHaveBeenCalledTimes(1);
   });
 });
